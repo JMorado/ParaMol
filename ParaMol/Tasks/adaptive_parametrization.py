@@ -138,7 +138,7 @@ class AdaptiveParametrization(Task):
                 # Perform WHAM re-weighing
                 if wham_reweighing:
                     print("Reweighting configurations of system {}.".format(system.name))
-                    system.wham_reweightning(parameters_generations)
+                    system.wham_reweighing(parameters_generations)
 
                 print("Generated new {} MM structures for system {}.".format(structures_per_iter, system.name))
 
