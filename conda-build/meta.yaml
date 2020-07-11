@@ -1,0 +1,45 @@
+# ParaMol conda package builder
+#
+# conda-build . purge
+
+
+
+package:
+  name: 'paramol'
+  version: 1.0.0
+
+source:
+  path: ../ParaMol/
+
+build:
+  number: 1
+  noarch: python
+  script: "{{ PYTHON   }} -m pip install $RECIPE_DIR/../ -vv"
+
+requirements:
+  host:
+    - python>=3.7
+    - pip
+  run:
+    - python>=3.7
+    - numpy
+    - scipy
+    - openmmtools
+    - ambertools
+    - ase
+    - parmed
+    - rdkit
+    - netCDF4
+
+about:
+  home: https://github.com/JMorado/ParaMol
+  license: MIT
+  license_family: MIT
+  summary: "ParaMol: A Package for Parametrization of Molecular Mechanics Force Fields"
+  doc_url: https://cubelib.readthedocs.io/
+  dev_url: https://github.com/JMorado/ParaMol
+
+extra:
+  # GitHub IDs for maintainers of the recipe
+  recipe-maintainers:
+    - JMorado

@@ -1,0 +1,18 @@
+ Fitting point charges to electrostatic potential
+ Charges from ESP fit, RMS=   0.00123 RRMS=   0.10456:
+ ESP charges:
+               1
+     1  C   -0.062863
+     2  C   -0.369134
+     3  C    0.503195
+     4  C   -0.369134
+     5  C   -0.062859
+     6  C   -0.239133
+     7  H    0.136280
+     8  H    0.181401
+     9  H    0.181401
+    10  H    0.136279
+    11  H    0.145494
+    12  N   -0.920057
+    13  H    0.369564
+    14  H    0.369565
