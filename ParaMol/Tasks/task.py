@@ -82,9 +82,6 @@ class Task:
             
             parameter_space.initial_optimizable_parameters_values = copy.deepcopy(parameter_space.optimizable_parameters_values)
             parameter_space.initial_optimizable_parameters_values_scaled = copy.deepcopy(parameter_space.optimizable_parameters_values_scaled)
-
-            # Write restart file
-            Task.write_restart_file(parameter_space)
         else:
             # Read restart file
             Task.read_restart_file(parameter_space, restart_settings["restart_file"])

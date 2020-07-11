@@ -162,7 +162,7 @@ class AdaptiveParametrization(Task):
                 system.write_data("paramol_data_sc_iter_{}.nc".format(iteration+1))
 
             # Write ParaMol restart file
-            self.write_restart_file(parameter_space, "{}_restart_sc_iter_{}.nc".format(system.name, iteration+1))
+            Task.write_restart_file(parameter_space, "{}_restart_sc_iter_{}.nc".format(system.name, iteration+1))
 
             # Compute RMSD and check for convergence
             new_param = copy.deepcopy(parameter_space.optimizable_parameters_values_scaled)

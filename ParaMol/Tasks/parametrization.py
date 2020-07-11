@@ -87,6 +87,9 @@ class Parametrization(Task):
                     #prop.set_initial_parameters_values(parameter_space.initial_optimizable_parameters_values_scaled)
                     pass
 
+        # Write restart file
+        Task.write_restart_file(parameter_space)
+
         # Print Initial Info of Objective Function
         objective_function.f(parameter_space.optimizable_parameters_values_scaled, opt_mode=False)
 
