@@ -190,7 +190,7 @@ class TorsionScan(Task):
             # ----------------------------------------------------------- #
             #                   Perform MM optimization                   #
             # ----------------------------------------------------------- #
-            print("Performing MM optimization.")
+            logging.info("Performing MM optimization.")
             LocalEnergyMinimizer.minimize(dummy_context)
             positions = dummy_context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(asNumpy=True)
 
@@ -232,14 +232,18 @@ class TorsionScan(Task):
 
             # Perform MM geometry optimization
             if optimize_mm:
-                print("Performing MM optimization.")
-                # Freeze torsion, reinitialize the context and set positions again
-                dummy_system = self.freeze_torsion(dummy_system, torsion_to_scan, torsion_value, 9999.0)
-                dummy_context.reinitialize()
-                dummy_context.setPositions(positions)
-                LocalEnergyMinimizer.minimize(dummy_context)
-                positions = dummy_context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(
+                # Freeze torsion
+                logging.info("Performing MM optimization with torsion {} frozen.".format(torsion_to_scan))
+                # We have to create temporary systems and context so that they do not affect they main ones
+                tmp_system = copy.deepcopy(dummy_system)
+                tmp_system = self.freeze_torsion(tmp_system, torsion_to_scan, torsion_value, 999.0)
+                tmp_context = Context(tmp_system, copy.deepcopy(dummy_integrator), dummy_platform)
+                tmp_context.setPositions(positions)
+                LocalEnergyMinimizer.minimize(tmp_context)
+                positions = tmp_context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(
                     asNumpy=True)
+
+                del tmp_system, tmp_context
 
             # ------------------------------------------------------------- #
             #                       Relaxed QM Scan                         #
@@ -392,14 +396,19 @@ class TorsionScan(Task):
 
                 # Perform MM geometry optimization
                 if optimize_mm:
-                    # Freeze torsion, reinitialize the context and set positions again
-                    dummy_system = self.freeze_torsion(dummy_system, torsion_to_scan_1, torsion_value_1, 9999.0)
-                    dummy_system = self.freeze_torsion(dummy_system, torsion_to_scan_2, torsion_value_2, 9999.0)
-                    dummy_context.reinitialize()
-                    dummy_context.setPositions(positions)
-                    LocalEnergyMinimizer.minimize(dummy_context)
-                    positions = dummy_context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(
+                    # Freeze torsions
+                    logging.info("Performing MM optimization with torsions {} and {} frozen.".format(torsion_to_scan_1,torsion_to_scan_2))
+                    # We have to create temporary systems and context so that they do not affect they main ones
+                    tmp_system = copy.deepcopy(dummy_system)
+                    dummy_system = self.freeze_torsion(dummy_system, torsion_to_scan_1, torsion_value_1, 999.0)
+                    dummy_system = self.freeze_torsion(dummy_system, torsion_to_scan_2, torsion_value_2, 999.0)
+                    tmp_context = Context(tmp_system, copy.deepcopy(dummy_integrator), dummy_platform)
+                    tmp_context.setPositions(positions)
+                    LocalEnergyMinimizer.minimize(tmp_context)
+                    positions = tmp_context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(
                         asNumpy=True)
+
+                    del tmp_system, tmp_context
 
                 # ------------------------------------------------------------- #
                 #                       Relaxed QM Scan                         #

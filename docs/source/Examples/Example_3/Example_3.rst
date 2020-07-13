@@ -24,3 +24,8 @@ For this purpose, we are going to use generate 1000 conformations obtained throu
     :language: python
 
 
+.. image:: caffeine_energies_dftb_no_wham.png
+    :align: center
+
+.. image:: caffeine_forces_dftb_no_wham.png
+    :align: center
