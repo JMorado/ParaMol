@@ -6,13 +6,13 @@ Description
 
 This module defines the :obj:`ParaMol.System.system.ParaMolSystem` class, which is a ParaMol representation of a chemical system.
 This object is used to store reference data such as:
-- coordinates,
-- reference energies,
-- reference forces,
-- number of atoms,
-- MM and QM engines,
-- the :obj:`ParaMol.Force_field.force_field.ForceField` associated with this system,
-- etc ...
+    - coordinates,
+    - reference energies,
+    - reference forces,
+    - number of atoms,
+    - MM and QM engines,
+    - the :obj:`ParaMol.Force_field.force_field.ForceField` associated with this system,
+    - etc ...
 
 It also contains methods that aid the calculation of ensemble properties.
 """
