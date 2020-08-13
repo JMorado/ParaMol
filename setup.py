@@ -6,7 +6,7 @@ setup(
     packages=['ParaMol', 'ParaMol.Tasks', 'ParaMol.Tasks.forces_parallel', 'ParaMol.Tests', 'ParaMol.Utils',
               'ParaMol.Utils.other_utils', 'ParaMol.System', 'ParaMol.MM_engines', 'ParaMol.Optimizers',
               'ParaMol.Optimizers.devel', 'ParaMol.QM_engines', 'ParaMol.Force_field', 'ParaMol.Parameter_space',
-              'ParaMol.Objective_function', 'ParaMol.Objective_function.Properties', 'ParaMol.deprecated_modules'],
+              'ParaMol.Objective_function', 'ParaMol.Objective_function.Properties'],
     url='https://github.com/JMorado/ParaMol',
     license='MIT',
     author='João Morado',
