@@ -597,6 +597,7 @@ class ParaMolSystem:
             data_forces = ncfile.createVariable('reference_forces', np.dtype('float64').char, ('n_structures', 'n_atoms', 'spatial_dim'))
             data_forces.units = "kilojoules/mol/nanometers"
             # first argument is name of variable, second is datatype, third is a tuple with the name of the dimensions
+            data_forces[:] = self.ref_forces
 
         if self.ref_energies is not None:
             data_energies = ncfile.createVariable('reference_energies', np.dtype('float64').char, ('n_structures'))
