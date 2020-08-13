@@ -12,7 +12,7 @@ openmm_system = OpenMMEngine(init_openmm=True, topology_format='AMBER', top_file
 # Create ParaMol System
 norfloxacin = ParaMolSystem(name="norfloxacin", engine=openmm_system, n_atoms=41)
 
-# Create ParaMol's force field representation and ask to parametrize bonds, angles and torsions
+# Create ParaMol's force field representation
 norfloxacin.force_field.create_force_field()
 
 # --------------------------------------------------------- #

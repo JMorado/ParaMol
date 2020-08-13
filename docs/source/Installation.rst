@@ -14,13 +14,13 @@ The easiest way to install ParaMol is via the conda package manager:
 
 .. code-block::
 
-    conda install -c jmorado paramol
+    conda install paramol -c jmorado -c ambermd -c conda-forge -c omnia -c rdkit -c anaconda
 
 For the development version use:
 
 .. code-block::
 
-    conda install -c jmorado paramol-dev
+    conda install paramol-dev -c jmorado -c ambermd -c conda-forge -c omnia -c rdkit -c anaconda
 
 Source Code
 ------------

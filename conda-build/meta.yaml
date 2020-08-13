@@ -1,7 +1,4 @@
 # ParaMol conda package builder
-#
-# conda-build . purge
-
 
 
 package:
