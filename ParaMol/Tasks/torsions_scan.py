@@ -19,6 +19,7 @@ from simtk.openmm.app import *
 import simtk.unit as unit
 
 import numpy as np
+import copy
 
 class TorsionScan(Task):
     """
@@ -456,6 +457,60 @@ class TorsionScan(Task):
     #                        STATIC METHODS                        #
     #                                                              #
     # ------------------------------------------------------------ #
+    @staticmethod
+    def get_mm_relaxed_conformations(system, torsions_to_freeze):
+        """
+        Method that creates and returns a RDKit Conformer instance and a RDKit Molecule instance of the ParaMol system passed
+        as an argument.
+
+        Parameters
+        ----------
+        system: :obj:`ParaMol.System.system.ParaMolSystem`
+            ParaMol system instance.
+        torsions_to_freeze : list of list of int
+            List of lists of wherein each inner list should contain 4 integers defining a torsion to be kept fixed (default is `None`)
+
+        Notes
+        -----
+        This method overwrites the ref_coordinates attribute of the system object. Hence, use this with care.
+
+        Returns
+        -------
+        mm_relaxed_conformations: np.array, shape=(n_conformations,n_atoms,3)
+            MM-relaxed conformations.
+        """
+        mm_relaxed_conformations = []
+
+        # Create RDKit mol and conf
+        rdkit_mol, rdkit_conf = TorsionScan.get_rdkit_mol_conf(system)
+
+        for conf in system.ref_coordinates:
+            # Set new position in RDKit conformation
+            TorsionScan.set_positions_rdkit_conf(rdkit_conf, conf)
+
+            # Fix torsions at the new dihedral angle value
+            logging.info("Performing MM optimization with torsion(s) {} frozen.".format(torsions_to_freeze))
+            tmp_system = copy.deepcopy(system.engine.system)
+            for torsion in torsions_to_freeze:
+                torsion_value = rdmt.GetDihedralDeg(rdkit_conf, *torsion)
+                tmp_system = TorsionScan.freeze_torsion(tmp_system, torsion, torsion_value, 999.0)
+
+            # Create temporary context and set the positions in it
+            tmp_context = Context(tmp_system, copy.deepcopy(system.engine.integrator), Platform.getPlatformByName(system.engine.platform_name))
+            tmp_context.setPositions(conf)
+            # Perform minimization
+            LocalEnergyMinimizer.minimize(tmp_context)
+
+            # Get MM-relaxed conformation and store it
+            positions = tmp_context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(
+                asNumpy=True)
+            mm_relaxed_conformations.append(positions)
+
+        mm_relaxed_conformations = np.asarray(mm_relaxed_conformations)
+
+        return mm_relaxed_conformations
+
+
     @staticmethod
     def get_rdkit_mol_conf(system, pdb_file_name="temp_file.pdb"):
         """
