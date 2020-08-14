@@ -7,6 +7,7 @@ from ParaMol.QM_engines.qm_engine import *
 from ParaMol.Tasks.parametrization import *
 from ParaMol.Tasks.torsions_scan import *
 from ParaMol.Utils.settings import *
+from ParaMol.Utils.amber_symmetrizer import *
 
 # --------------------------------------------------------- #
 #                         Preparation                       #
