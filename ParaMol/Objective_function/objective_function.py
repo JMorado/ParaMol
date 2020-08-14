@@ -174,7 +174,7 @@ class ObjectiveFunction:
 
         # Compute conformations weigths:
         for system in self.parameter_space.systems:
-            system.compute_conformations_weights(emm)
+            system.compute_conformations_weights(temperature=self._weighing_temperature, emm=emm, weighing_method=self._weighing_method)
 
         objective_function = 0.0
         for property in self.properties:
