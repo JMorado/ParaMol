@@ -458,7 +458,7 @@ class TorsionScan(Task):
     #                                                              #
     # ------------------------------------------------------------ #
     @staticmethod
-    def get_mm_relaxed_conformations(system, torsions_to_freeze):
+    def get_mm_relaxed_conformations(system, torsions_to_freeze, tolerance=1.0, max_iter=0):
         """
         Method that creates and returns a RDKit Conformer instance and a RDKit Molecule instance of the ParaMol system passed
         as an argument.
@@ -468,7 +468,11 @@ class TorsionScan(Task):
         system: :obj:`ParaMol.System.system.ParaMolSystem`
             ParaMol system instance.
         torsions_to_freeze : list of list of int
-            List of lists of wherein each inner list should contain 4 integers defining a torsion to be kept fixed (default is `None`)
+            List of lists of wherein each inner list should contain 4 integers defining a torsion to be kept fixed.
+        tolerance : float
+            Specifies how precisely the energy minimum must be located. Minimization will be halted once the root-mean-square value of all force components reaches this tolerance.
+        max_iter : int
+            Maximum number of iterations to perform. If this is 0, minimation is continued until the results converge without regard to how many iterations it takes. The default value is 0.
 
         Notes
         -----
@@ -499,7 +503,7 @@ class TorsionScan(Task):
             tmp_context = Context(tmp_system, copy.deepcopy(system.engine.integrator), Platform.getPlatformByName(system.engine.platform_name))
             tmp_context.setPositions(conf)
             # Perform minimization
-            LocalEnergyMinimizer.minimize(tmp_context)
+            LocalEnergyMinimizer.minimize(tmp_context, tolerance=tolerance, maxIterations=max_iter)
 
             # Get MM-relaxed conformation and store it
             positions = tmp_context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(
