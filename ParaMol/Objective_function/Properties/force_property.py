@@ -97,7 +97,7 @@ class ForceProperty(Property):
                     force_error.append(tmp)
 
                 force_error = np.asarray(force_error)
-                force_error = np.sum(system.weights * force_error) / (3 * system.n_atoms)
+                force_error = np.sum(system.weights * system.wham_weights * force_error) / (3 * system.n_atoms)
                 obj_fun_forces.append(force_error)
         elif term_type.lower() == "norm":
             obj_fun_forces = []
@@ -111,7 +111,7 @@ class ForceProperty(Property):
                 # \sum_j [ (F_i^{MM} - F_i^{QM}) - <F^{MM} - F^{QM}> ]^2 - sum along the conformations axis
                 obj_fun = np.sum(obj_fun, 1)
                 # \sum_i \omega_i [ (F_i^{MM} - F_i^{QM}) - <F^{MM} - F^{QM}> ]^2
-                obj_fun = np.sum(system.weights * obj_fun )
+                obj_fun = np.sum(system.weights * system.wham_weights * obj_fun )
                 # Normalize
                 obj_fun = obj_fun / (3 * system.n_atoms)
                 obj_fun_forces.append(obj_fun)
