@@ -131,7 +131,7 @@ class TorsionScan(Task):
 
         return systems
 
-    def scan_1d(self, system, rdkit_conf, torsion_to_scan, torsions_to_freeze, scan_settings, optimize_mm, optimize_qm_before_scan, ase_constraints):
+    def scan_1d(self, system, rdkit_conf, torsion_to_scan, torsions_to_freeze, scan_settings, optimize_mm, optimize_qm_before_scan, ase_constraints, force_constant=999999.0, threshold=1e-3):
         """
         Method that performs 1-dimensional torsional scans.
 
@@ -153,6 +153,10 @@ class TorsionScan(Task):
             Flag that controls whether a QM geometry optimization is performed before the scan.
         ase_constraints : list of ASE constraints.
             List of ASE constraints to be applied during the scans.
+        threshold : float
+            Conservation angle threshold.
+        force_constant : float
+            Force constant for the dihedral restrain (kJ/mol).
 
         Returns
         -------
@@ -237,7 +241,7 @@ class TorsionScan(Task):
                 logging.info("Performing MM optimization with torsion {} frozen.".format(torsion_to_scan))
                 # We have to create temporary systems and context so that they do not affect they main ones
                 tmp_system = copy.deepcopy(dummy_system)
-                tmp_system = self.freeze_torsion(tmp_system, torsion_to_scan, torsion_value, 999.0)
+                tmp_system = self.freeze_torsion(tmp_system, torsion_to_scan, torsion_value, force_constant)
                 tmp_context = Context(tmp_system, copy.deepcopy(dummy_integrator), dummy_platform)
                 tmp_context.setPositions(positions)
                 LocalEnergyMinimizer.minimize(tmp_context)
@@ -258,8 +262,8 @@ class TorsionScan(Task):
             self.set_positions_rdkit_conf(rdkit_conf, positions)
 
             new_torsion = rdmt.GetDihedralDeg(rdkit_conf, *torsion_to_scan)
-            assert (abs(old_torsion - new_torsion) < 1e-6) or (abs(old_torsion - new_torsion) - 360 < 1e-6), \
-                "Not conserving torsion angle."
+            assert (abs(old_torsion - new_torsion) < threshold) or (abs(abs(old_torsion - new_torsion) - 360) < threshold), \
+                "Not conserving torsion angle; old={} new={}".format(old_torsion,new_torsion)
 
             # Get new MM energy
             mm_energy = dummy_context.getState(getEnergy=True).getPotentialEnergy()
@@ -284,7 +288,7 @@ class TorsionScan(Task):
 
         return qm_energies_list, qm_forces_list, mm_energies_list, conformations_list, scan_angles
 
-    def scan_2d(self, system, rdkit_conf, torsion_to_scan_1, torsion_to_scan_2, torsions_to_freeze, scan_settings_1, scan_settings_2, optimize_mm, optimize_qm_before_scan, ase_constraints):
+    def scan_2d(self, system, rdkit_conf, torsion_to_scan_1, torsion_to_scan_2, torsions_to_freeze, scan_settings_1, scan_settings_2, optimize_mm, optimize_qm_before_scan, ase_constraints, force_constant=999999.0, threshold=1e-3):
         """
         Method that performs 2-dimensional torsional scans.
 
@@ -312,6 +316,10 @@ class TorsionScan(Task):
             Flag that controls whether a QM geometry optimization is performed before the scan.
         ase_constraints : list of ASE constraints.
             List of ASE constraints to be applied during the scans.
+        threshold : float
+            Conservation angle threshold.
+        force_constant : float
+            Force constant for the dihedral restrain (kJ/mol).
 
         Returns
         -------
@@ -401,8 +409,8 @@ class TorsionScan(Task):
                     logging.info("Performing MM optimization with torsions {} and {} frozen.".format(torsion_to_scan_1,torsion_to_scan_2))
                     # We have to create temporary systems and context so that they do not affect they main ones
                     tmp_system = copy.deepcopy(dummy_system)
-                    dummy_system = self.freeze_torsion(dummy_system, torsion_to_scan_1, torsion_value_1, 999.0)
-                    dummy_system = self.freeze_torsion(dummy_system, torsion_to_scan_2, torsion_value_2, 999.0)
+                    dummy_system = self.freeze_torsion(dummy_system, torsion_to_scan_1, torsion_value_1, force_constant)
+                    dummy_system = self.freeze_torsion(dummy_system, torsion_to_scan_2, torsion_value_2, force_constant)
                     tmp_context = Context(tmp_system, copy.deepcopy(dummy_integrator), dummy_platform)
                     tmp_context.setPositions(positions)
                     LocalEnergyMinimizer.minimize(tmp_context)
@@ -425,12 +433,12 @@ class TorsionScan(Task):
                 new_torsion_1 = rdmt.GetDihedralDeg(rdkit_conf, *torsion_to_scan_1)
                 new_torsion_2 = rdmt.GetDihedralDeg(rdkit_conf, *torsion_to_scan_2)
 
-                assert (abs(old_torsion_1 - new_torsion_1) < 1e-6) or (
-                        abs(old_torsion_1 - new_torsion_1) - 360 < 1e-6), \
-                    "Not conserving torsion angle."
-                assert (abs(old_torsion_2 - new_torsion_2) < 1e-6) or (
-                        abs(old_torsion_2 - new_torsion_2) - 360 < 1e-6), \
-                    "Not conserving torsion angle."
+                assert (abs(old_torsion_1 - new_torsion_1) < threshold) or (
+                            abs(abs(old_torsion_1 - new_torsion_1) - 360) < threshold), \
+                    "Not conserving torsion angle 1 ; old={} new={}".format(old_torsion_1, new_torsion_1)
+                assert (abs(old_torsion_2 - new_torsion_2) < threshold) or (
+                            abs(abs(old_torsion_2 - new_torsion_2) - 360) < threshold), \
+                    "Not conserving torsion angle 2; old={} new={}".format(old_torsion_2, new_torsion_2)
 
                 # Get new MM energy
                 dummy_context.setPositions(positions * unit.nanometers)
@@ -458,7 +466,7 @@ class TorsionScan(Task):
     #                                                              #
     # ------------------------------------------------------------ #
     @staticmethod
-    def get_mm_relaxed_conformations(system, torsions_to_freeze, tolerance=1.0, max_iter=0):
+    def get_mm_relaxed_conformations(system, torsions_to_freeze, tolerance=0.01, max_iter=0, force_constant=999999.0, threshold=1e-2):
         """
         Method that creates and returns a RDKit Conformer instance and a RDKit Molecule instance of the ParaMol system passed
         as an argument.
@@ -473,6 +481,10 @@ class TorsionScan(Task):
             Specifies how precisely the energy minimum must be located. Minimization will be halted once the root-mean-square value of all force components reaches this tolerance.
         max_iter : int
             Maximum number of iterations to perform. If this is 0, minimation is continued until the results converge without regard to how many iterations it takes. The default value is 0.
+        force_constant : float
+            Force constant for the dihedral restrain (kJ/mol).
+        threshold : float
+            Conservation angle threshold.
 
         Notes
         -----
@@ -496,8 +508,8 @@ class TorsionScan(Task):
             logging.info("Performing MM optimization with torsion(s) {} frozen.".format(torsions_to_freeze))
             tmp_system = copy.deepcopy(system.engine.system)
             for torsion in torsions_to_freeze:
-                torsion_value = rdmt.GetDihedralDeg(rdkit_conf, *torsion)
-                tmp_system = TorsionScan.freeze_torsion(tmp_system, torsion, torsion_value, 999.0)
+                old_torsion = rdmt.GetDihedralDeg(rdkit_conf, *torsion)
+                tmp_system = TorsionScan.freeze_torsion(tmp_system, torsion, old_torsion, force_constant)
 
             # Create temporary context and set the positions in it
             tmp_context = Context(tmp_system, copy.deepcopy(system.engine.integrator), Platform.getPlatformByName(system.engine.platform_name))
@@ -506,8 +518,16 @@ class TorsionScan(Task):
             LocalEnergyMinimizer.minimize(tmp_context, tolerance=tolerance, maxIterations=max_iter)
 
             # Get MM-relaxed conformation and store it
-            positions = tmp_context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(
-                asNumpy=True)
+            positions = tmp_context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(asNumpy=True)._value
+
+            # Set new position in RDKit conformation
+            TorsionScan.set_positions_rdkit_conf(rdkit_conf, positions)
+            for torsion in torsions_to_freeze:
+                new_torsion = rdmt.GetDihedralDeg(rdkit_conf, *torsion)
+
+            assert (abs(old_torsion - new_torsion) < threshold) or (abs(abs(old_torsion - new_torsion) - 360) < threshold), \
+                "Not conserving torsion angle; old={} new={}".format(old_torsion,new_torsion)
+
             mm_relaxed_conformations.append(positions)
 
         mm_relaxed_conformations = np.asarray(mm_relaxed_conformations)
