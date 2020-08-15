@@ -1,8 +1,9 @@
 # ParaMol imports
-from ParaMol.Utils.settings import *
 from ParaMol.System.system import *
 from ParaMol.MM_engines.openmm import *
 from ParaMol.Tasks.adaptive_parametrization import *
+from ParaMol.Utils.amber_symmetrizer import *
+from ParaMol.Utils.settings import *
 
 # --------------------------------------------------------- #
 #                         Preparation                       #

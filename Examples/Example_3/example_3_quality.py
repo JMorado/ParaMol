@@ -8,6 +8,7 @@ from ParaMol.MM_engines.openmm import *
 from ParaMol.QM_engines.qm_engine import *
 from ParaMol.Tasks.adaptive_parametrization import *
 from ParaMol.Utils.conformational_sampling import conformational_sampling
+from ParaMol.Utils.amber_symmetrizer import *
 
 # --------------------------------------------------------- #
 #                         Preparation                       #
