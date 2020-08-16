@@ -8,6 +8,7 @@ from ParaMol.MM_engines.openmm import *
 from ParaMol.QM_engines.qm_engine import *
 from ParaMol.Tasks.adaptive_parametrization import *
 from ParaMol.Utils.conformational_sampling import conformational_sampling
+from ParaMol.Utils.amber_symmetrizer import *
 
 # --------------------------------------------------------- #
 #                         Preparation                       #
@@ -43,7 +44,7 @@ adaptive_parametrization = AdaptiveParametrization()
 adaptive_parametrization.run_task(paramol_settings, [caffeine], rmsd_tol=0.0001, max_iter=100, structures_per_iter=100, )
 
 # Write ParaMol Force Field file with final parameters
-caffeine.force_field.write_ff_file("aniline_resp.ff")
+caffeine.force_field.write_ff_file("caffeine_adaptive_param.ff")
 
 # --------------------------------------------------------- #
 #               Quality of the Parametrization              #

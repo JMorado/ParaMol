@@ -54,6 +54,8 @@ class ParaMolSystem:
         Number of atoms of the system.
     weights : int or np.array
         Weight of each configuration.
+    wham_weights : int or np.array
+        WHAM weight of each configuration. It is equal to 1 unless adaptive parametrization is being performed with WHAM reweighing.
     n_structures : int
         Number of configurations.
     ref_coordinates : list or np.array
@@ -84,6 +86,7 @@ class ParaMolSystem:
         self.name = name
         self.n_atoms = n_atoms
         self.weights = 1.0
+        self.wham_weights = 1.0
 
         # Ensemble of conformations, energies and forces
         self.n_structures = 0
@@ -287,14 +290,14 @@ class ParaMolSystem:
             rmsd = np.sqrt( np.sum((final_weights[current_gen, :] - prev_weight)**2) / self.n_structures )
             prev_weight = final_weights[current_gen, :]
 
-        self.weights = final_weights[G, :]
+        self.wham_weights = final_weights[G, :]
 
         # Update parameters of the selfs and update the parameters in the OpenMM context back to the current values
         self.force_field.update_force_field(parameters_generation[current_gen])
         self.engine.set_bonded_parameters(self.force_field.force_field_optimizable)
         self.engine.set_nonbonded_parameters(self.force_field.force_field_optimizable)
 
-        return wham_weights
+        return self.wham_weights
 
     def get_forces_ensemble(self):
         """

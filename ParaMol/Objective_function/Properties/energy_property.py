@@ -103,7 +103,7 @@ class EnergyProperty(Property):
             # [ (E^{MM} - E^{QM}) - <E^{MM} - E^{QM}> ]^2
             obj_fun = obj_fun * obj_fun
             # \sum_i \omega_i [ (E_i^{MM} - E_i^{QM}) - <E^{MM} - E^{QM}> ]^2
-            obj_fun = np.sum(system.weights * obj_fun)
+            obj_fun = np.sum(system.weights * system.wham_weights *  obj_fun)
             # [ (E^{MM} - E^{QM}) - <E^{MM} - E^{QM}> ]^2 / [ var(E^{QM}) * Ns ]
             obj_fun_energies.append(obj_fun / var)
 
