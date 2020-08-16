@@ -54,6 +54,8 @@ class ParaMolSystem:
         Number of atoms of the system.
     weights : int or np.array
         Weight of each configuration.
+    wham_weights : int or np.array
+        WHAM weight of each configuration. It is equal to 1 unless adaptive parametrization is being performed with WHAM reweighing.
     n_structures : int
         Number of configurations.
     ref_coordinates : list or np.array
