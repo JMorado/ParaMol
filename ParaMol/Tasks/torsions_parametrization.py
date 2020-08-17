@@ -161,7 +161,7 @@ class TorsionsParametrization(Task):
                                     for bond in rotatable_dihedrals:
                                         for torsion in bond:
                                             if torsion.atoms is not rot_dihedral.atoms:
-                                                torsions_to_freeze_mod.append(torsion)
+                                                torsions_to_freeze_mod.append(torsion.atoms)
 
                                 else:
                                     torsions_to_freeze_mod = torsions_to_freeze
