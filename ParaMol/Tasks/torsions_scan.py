@@ -34,7 +34,8 @@ class TorsionScan(Task):
     #                                                              #
     # ------------------------------------------------------------ #
     def run_task(self, settings, systems, torsions_to_scan, scan_settings, torsions_to_freeze=None,
-                 ase_constraints=None, optimize_mm=False, optimize_qm_before_scan=False):
+                 ase_constraints=None, optimize_mm=False, optimize_mm_type="freeze_atoms",
+                 optimize_qm_before_scan=False, rdkit_conf=None):
         """
         Method that performs 1D or 2D torsional scans. Only a scan at a time.
 
@@ -65,8 +66,12 @@ class TorsionScan(Task):
             List of ASE constraints to be applied during the scans (default is `None`)
         optimize_mm : bool
             Flag that controls whether a MM geometry optimization is performed before every QM optimization (default is `False`).
+        optimize_mm_type : str
+            Constraint to be used when performing MM optimization. Available options are 'freeze_atoms' or 'freeze_dihedral'. 'freeze_atoms' is recommended.
         optimize_qm_before_scan : bool
             Flag that controls whether a QM geometry optimization is performed before the scan (default is False).
+        rdkit_conf : list of :obj:`rdkit.Chem.rdchem.Conformer`
+            List of RDKit conformer for each system. It should be provided with the desired starting conformation.
 
         Returns
         -------
@@ -95,7 +100,10 @@ class TorsionScan(Task):
         # Iterate over all systems and perform
         for system in systems:
             # Get RDKit mol and conf
-            mol, conf = self.get_rdkit_mol_conf(system)
+            if rdkit_conf is None:
+                mol, conf = self.get_rdkit_mol_conf(system)
+            else:
+                conf = rdkit_conf.pop(0)
 
             if len(torsions_to_scan) == 0:
                 print("No torsions to scan were provided.")
@@ -105,14 +113,14 @@ class TorsionScan(Task):
                 if torsional_scan_dim == 1:
                     # Perform 1D Scan
                     qm_energies_list, qm_forces_list, mm_energies_list, conformations_list, scan_angles = self.scan_1d(
-                        system, conf, torsions_to_scan[0], torsions_to_freeze, scan_settings[0], optimize_mm, optimize_qm_before_scan, ase_constraints)
+                        system, conf, torsions_to_scan[0], torsions_to_freeze, scan_settings[0], optimize_mm, optimize_mm_type, optimize_qm_before_scan, ase_constraints)
 
                     # File name buffer
                     file_name = "scan_{}d_torsion_{}_{}_{}_{}.dat".format(torsional_scan_dim, *torsions_to_scan[0])
                 elif torsional_scan_dim == 2:
                     # Perform 2D Scan
                     qm_energies_list, qm_forces_list, mm_energies_list, conformations_list, scan_angles =  self.scan_2d(
-                        system, conf, torsions_to_scan[0], torsions_to_scan[1], torsions_to_freeze, scan_settings[0], scan_settings[1], optimize_mm, optimize_qm_before_scan, ase_constraints)
+                        system, conf, torsions_to_scan[0], torsions_to_scan[1], torsions_to_freeze, scan_settings[0], scan_settings[1], optimize_mm, optimize_mm_type, optimize_qm_before_scan, ase_constraints)
 
                     # File name buffer
                     file_name = "scan_{}d_torsion_{}_{}_{}_{}_{}_{}_{}_{}.dat".format(torsional_scan_dim, *torsions_to_scan[0], *torsions_to_scan[1])
@@ -129,9 +137,9 @@ class TorsionScan(Task):
         print("!                      TORSIONAL SCAN TERMINATED SUCCESSFULLY :)                  !")
         print("!=================================================================================!")
 
-        return systems
+        return systems, qm_energies_list, qm_forces_list, mm_energies_list, conformations_list, scan_angles
 
-    def scan_1d(self, system, rdkit_conf, torsion_to_scan, torsions_to_freeze, scan_settings, optimize_mm, optimize_qm_before_scan, ase_constraints, force_constant=999999.0, threshold=1e-3):
+    def scan_1d(self, system, rdkit_conf, torsion_to_scan, torsions_to_freeze, scan_settings, optimize_mm, optimize_mm_type, optimize_qm_before_scan, ase_constraints, force_constant=999999999.0, threshold=1e-2):
         """
         Method that performs 1-dimensional torsional scans.
 
@@ -149,6 +157,8 @@ class TorsionScan(Task):
             List containing the settings of the scan in the following order: lower torsion angle, upper torsion angle, angle step (in degrees).
         optimize_mm : bool
             Flag that controls whether a MM geometry optimization is performed before every QM optimization.
+        optimize_mm_type : str
+            Constraint to be used when performing MM optimization. Available options are 'freeze_atoms' or 'freeze_dihedral'. 'freeze_atoms' is recommended.
         optimize_qm_before_scan : bool
             Flag that controls whether a QM geometry optimization is performed before the scan.
         ase_constraints : list of ASE constraints.
@@ -162,6 +172,8 @@ class TorsionScan(Task):
         -------
         qm_energies_list, qm_forces_list, mm_energies_list, conformations_list, scan_angles
         """
+        assert optimize_mm_type.upper() in ["FREEZE_ATOMS", "FREEZE_DIHEDRAL"], "Optimize MM type {} is unknown.".format(optimize_mm_type)
+
         print("ParaMol will perform 1-dimensional torsional scan.")
         print("ParaMol will sample the torsion formed by the quartet of atoms with indices {} {} {} {}.\n".format(*torsion_to_scan))
 
@@ -187,6 +199,9 @@ class TorsionScan(Task):
         positions = unit.Quantity(rdkit_conf.GetPositions(), unit.angstrom)
         positions_initial = copy.deepcopy(positions)
 
+        if optimize_mm and optimize_mm_type.upper() == "FREEZE_ATOMS":
+            dummy_system = self.freeze_atoms(dummy_system, torsion_to_scan)
+
         # Create OpenMM Context
         dummy_context = Context(dummy_system, dummy_integrator, dummy_platform)
         dummy_context.setPositions(positions)
@@ -198,6 +213,7 @@ class TorsionScan(Task):
             logging.info("Performing MM optimization.")
             LocalEnergyMinimizer.minimize(dummy_context)
             positions = dummy_context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(asNumpy=True)
+
 
         if optimize_qm_before_scan:
             # ----------------------------------------------------------- #
@@ -235,20 +251,32 @@ class TorsionScan(Task):
             # Get old value of torsion angle
             old_torsion = rdmt.GetDihedralDeg(rdkit_conf, *torsion_to_scan)
 
-            # Perform MM geometry optimization
+            # Set positions in OpenMM context (new dihedral angle)
+            dummy_context.setPositions(positions)
+            # ------------------------------------------------------------- #
+            #                     MM geometry optimization                  #
+            # ------------------------------------------------------------- #
             if optimize_mm:
-                # Freeze torsion
                 logging.info("Performing MM optimization with torsion {} frozen.".format(torsion_to_scan))
-                # We have to create temporary systems and context so that they do not affect they main ones
-                tmp_system = copy.deepcopy(dummy_system)
-                tmp_system = self.freeze_torsion(tmp_system, torsion_to_scan, torsion_value, force_constant)
-                tmp_context = Context(tmp_system, copy.deepcopy(dummy_integrator), dummy_platform)
-                tmp_context.setPositions(positions)
-                LocalEnergyMinimizer.minimize(tmp_context)
-                positions = tmp_context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(
-                    asNumpy=True)
+                if optimize_mm_type.upper() == "FREEZE_DIHEDRAL":
+                    # Freeze torsion
+                    # We have to create temporary systems and context so that they do not affect they main ones
+                    tmp_system = copy.deepcopy(dummy_system)
+                    tmp_system = self.freeze_torsion(tmp_system, torsion_to_scan, torsion_value, force_constant)
+                    tmp_context = Context(tmp_system, copy.deepcopy(dummy_integrator), dummy_platform)
+                    tmp_context.setPositions(positions)
+                    LocalEnergyMinimizer.minimize(tmp_context)
+                    positions = tmp_context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(
+                        asNumpy=True)
 
-                del tmp_system, tmp_context
+                    del tmp_system, tmp_context
+                elif optimize_mm_type.upper() == "FREEZE_ATOMS":
+                    logging.info("Performing MM optimization with torsion {} frozen.".format(torsion_to_scan))
+                    LocalEnergyMinimizer.minimize(dummy_context)
+                    positions = dummy_context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(
+                        asNumpy=True)
+                else:
+                    raise NotImplementedError("Optimize MM type {} is unknown.".format(optimize_mm_type.upper()))
 
             # ------------------------------------------------------------- #
             #                       Relaxed QM Scan                         #
@@ -288,7 +316,7 @@ class TorsionScan(Task):
 
         return qm_energies_list, qm_forces_list, mm_energies_list, conformations_list, scan_angles
 
-    def scan_2d(self, system, rdkit_conf, torsion_to_scan_1, torsion_to_scan_2, torsions_to_freeze, scan_settings_1, scan_settings_2, optimize_mm, optimize_qm_before_scan, ase_constraints, force_constant=999999.0, threshold=1e-3):
+    def scan_2d(self, system, rdkit_conf, torsion_to_scan_1, torsion_to_scan_2, torsions_to_freeze, scan_settings_1, scan_settings_2, optimize_mm, optimize_qm_before_scan, ase_constraints, force_constant=9999999.0, threshold=1e-3):
         """
         Method that performs 2-dimensional torsional scans.
 
@@ -409,8 +437,9 @@ class TorsionScan(Task):
                     logging.info("Performing MM optimization with torsions {} and {} frozen.".format(torsion_to_scan_1,torsion_to_scan_2))
                     # We have to create temporary systems and context so that they do not affect they main ones
                     tmp_system = copy.deepcopy(dummy_system)
-                    dummy_system = self.freeze_torsion(dummy_system, torsion_to_scan_1, torsion_value_1, force_constant)
-                    dummy_system = self.freeze_torsion(dummy_system, torsion_to_scan_2, torsion_value_2, force_constant)
+                    self.freeze_atoms(tmp_system)
+                    #dummy_system = self.freeze_torsion(dummy_system, torsion_to_scan_1, torsion_value_1, force_constant)
+                    #dummy_system = self.freeze_torsion(dummy_system, torsion_to_scan_2, torsion_value_2, force_constant)
                     tmp_context = Context(tmp_system, copy.deepcopy(dummy_integrator), dummy_platform)
                     tmp_context.setPositions(positions)
                     LocalEnergyMinimizer.minimize(tmp_context)
@@ -597,68 +626,6 @@ class TorsionScan(Task):
 
         return rdkit_conf
 
-    @staticmethod
-    def get_rotatable_bonds(rdkit_mol):
-        """
-        Method that determines the indices of the atoms which form rotatable (soft) bonds.
-
-        Parameters
-        ----------
-        rdkit_mol:
-            RDKit Molecule
-
-        Returns
-        -------
-        rotatable_bonds: tuple of tuples
-            Tuple of tuples containing the indexes of the atoms forming rotatable (soft) bonds.
-        """
-        rotatable_bond_mol = Chem.MolFromSmarts('[!$(*#*)&!D1]-&!@[!$(*#*)&!D1]')
-        rotatable_bonds = rdkit_mol.GetSubstructMatches(rotatable_bond_mol)
-        assert len(rotatable_bonds) == rdmd.CalcNumRotatableBonds(
-            rdkit_mol), "Incosistency in the number of rotatable bonds."
-
-        return rotatable_bonds
-
-    @staticmethod
-    def get_rotatable_torsions(system, rotatable_bonds):
-        """
-        Method that determines the quartets that form rotatable (soft) torsions.
-
-        Parameters
-        ----------
-        system: :obj:`ParaMol.System.system.ParaMolSystem`
-            Instance of ParaMol System.
-        rotatable_bonds: tuple of tuples
-            Tuple of tuples containing the indexes of the atoms forming rotatable (soft) bonds.
-
-        Returns
-        -------
-        rotatable_torsions : list of lists
-            List of lists containing quartet of indices that correspond to rotatable (soft) torsions.
-        """
-
-        rotatable_torsions = []
-
-        for bond in rotatable_bonds:
-            tmp = []
-            for force_field_term in system.force_field.force_field['PeriodicTorsionForce']:
-                if (force_field_term.atoms[1] == bond[0] or force_field_term.atoms[1] == bond[1]) and (
-                        force_field_term.atoms[2] == bond[0] or force_field_term.atoms[2] == bond[1]):
-                    if force_field_term.atoms not in rotatable_torsions:
-                        tmp.append(force_field_term)
-
-            # Remove duplicates
-            torsion_atoms = []
-            rotatable_torsions_bond = []
-            for torsion in tmp:
-                if torsion.atoms not in torsion_atoms:
-                    torsion_atoms.append(torsion.atoms)
-                    rotatable_torsions_bond.append(torsion)
-
-            # Append unique rotatable torsion
-            rotatable_torsions.append(rotatable_torsions_bond)
-
-        return rotatable_torsions
 
     @staticmethod
     def freeze_torsion(system, torsion_to_freeze, torsion_angle, k):

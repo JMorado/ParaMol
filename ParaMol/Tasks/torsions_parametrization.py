@@ -5,14 +5,18 @@ Description
 This module defines the :obj:`ParaMol.Objective_function.Tasks.task.TorsionsParametrization` class used to perform parametrization of rotatable (soft) dihedrals.
 """
 
+import simtk.unit as unit
+import logging
+
 # ParaMol modules
 from .task import *
+from .torsions_scan import *
 from .parametrization import *
 from .torsions_scan import *
 from ..Utils.interface import *
 
 
-class TorsionsParametrization(TorsionScan, Task):
+class TorsionsParametrization(Task):
     pdb_file = "dihedral_scan.pdb"
 
     def __init__(self):
@@ -23,7 +27,7 @@ class TorsionsParametrization(TorsionScan, Task):
     #                       PUBLIC  METHODS                        #
     #                                                              #
     # ------------------------------------------------------------ #
-    def run_task(self, settings, systems, parameter_space=None, objective_function=None, optimizer=None, scan_settings=[-180.0,180.0,10], torsions_to_freeze=None, ase_constraints=None, optimize_mm=False, optimize_qm_before_scan=False, parametrization_type="SIMULATENOUS"):
+    def run_task(self, settings, systems, parameter_space=None, objective_function=None, optimizer=None, scan_settings=[-180.0,180.0,10], torsions_to_freeze=None, ase_constraints=None, optimize_mm=False, optimize_mm_type="FREEZE_ATOMS", optimize_qm_before_scan=False, parametrization_type="SIMULTANEOUS"):
         """
         Method that can be used to perform automatic parametrization of the rotatable (soft) torsions using 1-D scans.
 
@@ -45,15 +49,18 @@ class TorsionsParametrization(TorsionScan, Task):
             Instance of the objective function.
         optimizer : one of the optimizers defined in the subpackage :obj:`ParaMol.Optimizers`
             Instance of the optimizer.
-        scan_settings: list of float
-            The list should contain 3 floats defining the settings of the scans to be performed and in the following order: lower torsion angle, upper torsion angle, angle step (in degrees). All scans will be performed using this settings.
-            Example: 1D-Scan  [180.0,-180.0,-10.0]
+        scan_settings: list of list of float
+            List of lists wherein each the most inner list should contain 3 floats defining the settings of the scan in the
+            to be performed and in the following order: lower torsion angle, upper torsion angle, angle step (in degrees).
+            Example: 1D-Scan  [ [180.0,-180.0,-10.0] ].
         torsions_to_freeze : list of list of int
             List of lists of wherein each inner list should contain 4 integers defining a torsion to be kept fixed (default is None)
         ase_constraints : list of ASE constraints.
             List of ASE constraints to be applied during the scans (default is None)
         optimize_mm : bool
             Flag that controls whether a MM geometry optimization is performed before every QM optimization (default is False).
+        optimize_mm_type : str
+            Constraint to be used when performing MM optimization. Available options are 'freeze_atoms' or 'freeze_dihedral'. 'freeze_atoms' is recommended.
         optimize_qm_before_scan : bool
             Flag that controls whether a QM geometry optimization is performed before the scan (default is False).
         parametrization_type : str
@@ -67,7 +74,8 @@ class TorsionsParametrization(TorsionScan, Task):
         print("!                            TORSIONS PARAMETRIZATION                             !")
         print("!=================================================================================!")
 
-        assert parametrization_type.upper() in ["SIMULATENOUS", "SEQUENTIAL"], "Parametrization type {} not recognized. Available options are 'simultanenous' (default) or 'sequential'.".format(parametrization_type)
+        assert parametrization_type.upper() in ["SIMULTANEOUS", "SEQUENTIAL"], \
+            "Parametrization type {} not recognized. Available options are 'simultanenous' (default) or 'sequential'.".format(parametrization_type)
 
         if torsions_to_freeze is None:
             torsions_to_freeze = []
@@ -81,28 +89,49 @@ class TorsionsParametrization(TorsionScan, Task):
 
             system.create_qm_engines(settings.qm_engine["qm_engine"], settings.qm_engine[settings.qm_engine["qm_engine"].lower()])
 
-        # Iterate over all systems and perform
         for system in systems:
+            # Create TorsionScan instance
+            torsions_scan = TorsionScan()
+
             # Get RDKit mol and conf
-            mol, conf = self.get_rdkit_mol_conf(system)
+            rdkit_mol, rdkit_conf = torsions_scan.get_rdkit_mol_conf(system)
 
             # Get rotatable bonds
-            rotatable_bonds = self.get_rotatable_bonds(mol)
+            rotatable_bonds = self.get_rotatable_bonds(rdkit_mol, methyl=False)
+            rotatable_bonds = rotatable_bonds[2:]
+
             # Get rotatable dihedral
-            rotatable_dihedrals = self.get_rotatable_dihedrals(system, rotatable_bonds)
+            rotatable_dihedrals = self.get_rotatable_torsions(system, rotatable_bonds)
 
             if rotatable_dihedrals is []:
-                print("No rotatable dihedrals.")
+                print("No rotatable dihedrals were found.")
                 return systems, parameter_space, objective_function, optimizer
             else:
-                print("{} rotatable bonds and {} rotatable torsions.".format(len(rotatable_bonds), len(rotatable_bonds)))
+                print("Found {} rotatable bonds and {} rotatable torsions.".format(len(rotatable_bonds), len(rotatable_bonds)))
+
+                if optimize_qm_before_scan:
+                    logging.info("Performing QM optimization before starting torsions parametrization.")
+                    # ----------------------------------------------------------- #
+                    #                   Perform QM optimization                   #
+                    # ----------------------------------------------------------- #
+                    positions = system.engine.context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(
+                        asNumpy=True)
+
+                    # Get optimized geometry
+                    positions, _, _ = system.qm_engine.qm_engine.run_calculation(
+                        coords=positions.in_units_of(unit.angstrom)._value,
+                        label=0, calc_type="optimization")
+                    positions = positions * unit.nanometers
+
+                    # Set optimized geometry in RDKit conf
+                    torsions_scan.set_positions_rdkit_conf(rdkit_conf, positions.in_units_of(unit.angstrom)._value)
 
                 # Perform sampling of dihedral
                 bond_symm_global = []
                 bond_id = 0
                 dihedrals_to_optimize = []
                 for bond in rotatable_dihedrals:
-                    print("\nPerform sampling of torsions of bond with atoms {} {}".format(*rotatable_bonds[bond_id]))
+                    print("\nPerform sampling of torsions of bond with atoms {} {}.".format(*rotatable_bonds[bond_id]))
 
                     # Assert whether to optimize this bond
                     bond_symm = []
@@ -113,7 +142,7 @@ class TorsionsParametrization(TorsionScan, Task):
 
                     if bond_symm in bond_symm_global:
                         # If bond has the same number of dihedral types
-                        print("This bond is equivalent. No sampling will be performed")
+                        print("This bond is equivalent. No sampling will be performed.")
                         continue
 
                     else:
@@ -124,7 +153,7 @@ class TorsionsParametrization(TorsionScan, Task):
                                 # If this dihedral type was not yet sampled for this rotatable bond
                                 print("Sampling torsion with atoms {} {} {} {} belonging to symmetry group {}".format(*rot_dihedral.atoms, rot_dihedral.parameters["torsion_phase"].symmetry_group))
 
-                                if parametrization_type.upper() is "SEQUENTIAL":
+                                if parametrization_type.upper() == "SEQUENTIAL":
                                     # Define torsions to freeze as the ones given by the user plus all the other soft torsions not being scanned
                                     torsions_to_freeze_mod = torsions_to_freeze
 
@@ -137,20 +166,22 @@ class TorsionsParametrization(TorsionScan, Task):
                                 else:
                                     torsions_to_freeze_mod = torsions_to_freeze
 
-
-                                # Perform 1D Scan
-                                qm_energies_list, qm_forces_list, mm_energies_list, conformations_list, scan_angles = self.scan_1d(
-                                    system, conf, rot_dihedral.atoms, torsions_to_freeze_mod, scan_settings,
-                                    optimize_mm, optimize_qm_before_scan, ase_constraints)
+                                # Perform 1D scan and append data to system instance
+                                systems, qm_energies_list, qm_forces_list, \
+                                mm_energies_list, conformations_list, scan_angles \
+                                    = torsions_scan.run_task(settings, systems, [rot_dihedral.atoms], scan_settings,
+                                                             torsions_to_freeze=torsions_to_freeze_mod,
+                                                             ase_constraints=None,
+                                                             optimize_mm=optimize_mm,
+                                                             optimize_mm_type=optimize_mm_type,
+                                                             optimize_qm_before_scan=False,
+                                                             rdkit_conf=[rdkit_conf])
 
                                 # Add to sampled torsions
                                 dihedral_types_sampled.append(rot_dihedral.parameters["torsion_phase"].symmetry_group)
                                 dihedrals_to_optimize.append(rot_dihedral.atoms)
 
-                                # Append data to system instance
-                                system.append_data_to_system(conformations_list, qm_energies_list, qm_forces_list)
-
-                                if parametrization_type.upper() is "SEQUENTIAL":
+                                if parametrization_type.upper() == "SEQUENTIAL":
                                     # Save system reference data in a buffer
                                     tmp_coordinates = copy.deepcopy(system.ref_coordinates)
                                     tmp_energies = copy.deepcopy(system.ref_energies)
@@ -177,14 +208,13 @@ class TorsionsParametrization(TorsionScan, Task):
                                     system.n_structures = len(system.ref_coordinates)
 
                     bond_id += 1
+                if parametrization_type.upper() == "SIMULTANEOUS":
+                    # Only optimize dihedral types scanned
+                    system.force_field.optimize_torsions_by_symmetry(dihedrals_to_optimize, change_other_torsions=True, change_other_parameters=True)
 
-                    if parametrization_type.upper() is "SIMULTAENOUS":
-                        # Only optimize dihedral types scanned
-                        system.force_field.optimize_torsions_by_symmetry(dihedrals_to_optimize, change_other_torsions=True, change_other_parameters=True)
-
-                        # Perform parametrization of all rotatable dihedral simultaneously
-                        parametrization = Parametrization()
-                        systems, parameter_space, objective_function, optimizer = parametrization.run_task(settings, systems, None, None, None)
+                    # Perform parametrization of all rotatable dihedral simultaneously
+                    parametrization = Parametrization()
+                    systems, parameter_space, objective_function, optimizer = parametrization.run_task(settings, systems, None, None, None)
 
         print("!=================================================================================!")
         print("!             TORSIONS PARAMETRIZATION TERMINATED SUCCESSFULLY :)                 !")
@@ -193,7 +223,82 @@ class TorsionsParametrization(TorsionScan, Task):
 
     # ------------------------------------------------------------ #
     #                                                              #
+    #                        STATIC METHODS                        #
+    #                                                              #
+    # ------------------------------------------------------------ #
+    @staticmethod
+    def get_rotatable_bonds(rdkit_mol, methyl=True):
+        """
+        Method that determines the indices of the atoms which form rotatable (soft) bonds.
+
+        Parameters
+        ----------
+        rdkit_mol:
+            RDKit Molecule
+        methyl : bool
+            If true, also includes rotatable bonds of methyl groups.
+
+        Returns
+        -------
+        rotatable_bonds: tuple of tuples
+            Tuple of tuples containing the indexes of the atoms forming rotatable (soft) bonds.
+        """
+        if methyl:
+            smart_to_add = ""
+        else:
+            smart_to_add = ""
+
+        rotatable_bond_mol = Chem.MolFromSmarts("[!$(*#*)&!D1]-&!@[!$(*#*)&!D1]" + smart_to_add)
+        rotatable_bonds = rdkit_mol.GetSubstructMatches(rotatable_bond_mol)
+        assert len(rotatable_bonds) == rdmd.CalcNumRotatableBonds(
+            rdkit_mol), "Incosistency in the number of rotatable bonds."
+
+        return rotatable_bonds
+
+    @staticmethod
+    def get_rotatable_torsions(system, rotatable_bonds):
+        """
+        Method that determines the quartets that form rotatable (soft) torsions.
+
+        Parameters
+        ----------
+        system: :obj:`ParaMol.System.system.ParaMolSystem`
+            Instance of ParaMol System.
+        rotatable_bonds: tuple of tuples
+            Tuple of tuples containing the indexes of the atoms forming rotatable (soft) bonds.
+
+        Returns
+        -------
+        rotatable_torsions : list of lists
+            List of lists containing quartet of indices that correspond to rotatable (soft) torsions.
+        """
+
+        rotatable_torsions = []
+
+        for bond in rotatable_bonds:
+            tmp = []
+            for force_field_term in system.force_field.force_field['PeriodicTorsionForce']:
+                if (force_field_term.atoms[1] == bond[0] or force_field_term.atoms[1] == bond[1]) and (
+                        force_field_term.atoms[2] == bond[0] or force_field_term.atoms[2] == bond[1]):
+                    if force_field_term.atoms not in rotatable_torsions:
+                        tmp.append(force_field_term)
+
+            # Remove duplicates
+            torsion_atoms = []
+            rotatable_torsions_bond = []
+            for torsion in tmp:
+                if torsion.atoms not in torsion_atoms:
+                    torsion_atoms.append(torsion.atoms)
+                    rotatable_torsions_bond.append(torsion)
+
+            # Append unique rotatable torsion
+            rotatable_torsions.append(rotatable_torsions_bond)
+
+        return rotatable_torsions
+
+
+    # ------------------------------------------------------------ #
+    #                                                              #
     #                       PRIVATE METHODS                        #
     #                                                              #
     # ------------------------------------------------------------ #
-
