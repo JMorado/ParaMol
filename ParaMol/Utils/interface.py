@@ -12,7 +12,7 @@ import os
 
 class ParaMolInterface:
     """
-    This class defines method that h as, for example, moving between and creating new directories, running subprocesses, etc...
+    This class defines method that has, for example, moving between and creating new directories, running subprocesses, etc...
 
     Parameters
     ----------

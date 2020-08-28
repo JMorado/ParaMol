@@ -2,7 +2,10 @@ import numpy as np
 import simtk.unit as unit
 import logging
 
-def conformational_sampling(systems, n_conf, steps_integrator):
+from ..Utils.interface import *
+
+
+def conformational_sampling(settings, systems, n_conf, steps_integrator, interface=None):
     """
     Function that performs conformational sampling on a given ParaMol system and calculated the ab initio properties (energies and forces).
 
@@ -25,6 +28,12 @@ def conformational_sampling(systems, n_conf, steps_integrator):
         List containing instances of ParaMol systems (updated).
     """
     for system in systems:
+        # Create QM Engines
+        if system.interface is None:
+            system.interface = ParaMolInterface()
+
+        system.create_qm_engines(settings.qm_engine["qm_engine"], settings.qm_engine[settings.qm_engine["qm_engine"].lower()])
+
         system.ref_coordinates = []
         system.ref_energies = []
         system.ref_forces = []

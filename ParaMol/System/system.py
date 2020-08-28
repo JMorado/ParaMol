@@ -519,7 +519,7 @@ class ParaMolSystem:
 
         if 'reference_coordinates' in ncfile.variables:
             ref_coordinates = ncfile.variables["reference_coordinates"]
-            
+
             if append:
                 self.ref_coordinates = np.concatenate((self.ref_coordinates,ref_coordinates))
             else:

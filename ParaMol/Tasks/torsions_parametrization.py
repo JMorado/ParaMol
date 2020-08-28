@@ -99,7 +99,6 @@ class TorsionsParametrization(Task):
 
             # Get rotatable bonds
             rotatable_bonds = self.get_rotatable_bonds(rdkit_mol, methyl=False)
-            rotatable_bonds = rotatable_bonds[3 :]
 
             # Get rotatable dihedral
             rotatable_dihedrals = self.get_rotatable_torsions(system, rotatable_bonds)
