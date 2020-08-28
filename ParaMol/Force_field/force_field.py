@@ -766,7 +766,7 @@ class ForceField:
 
         return self.force_field
 
-    def optimize_torsions_by_symmetry(self, torsions, change_other_torsions=False, change_other_parameters=False):
+    def optimize_torsions_by_symmetry(self, torsions, change_other_torsions=False, change_other_parameters=False, set_zero=False):
         """
         Methods that sets as optimizable all parameters of the torsions with the same symmetry groups as the ones contained in the listed passed as an argument.
 
@@ -778,6 +778,8 @@ class ForceField:
             Whether or not the remaining torsions's optimization state is to be set to False. (default is False, i.e., their optimization state is not changed)
         change_other_parameters : bool
             Whether or not the remaining parameters's optimization state is to be set to False. (default is False, i.e., their optimization state is not changed)
+        set_zero : bool
+            Whether or not to set the force constant of the optimizable torsions to 0.
 
         Returns
         -------
@@ -808,6 +810,8 @@ class ForceField:
                         if parameter.param_key != "torsion_periodicity":
                             if parameter.symmetry_group in dihedral_types:
                                 parameter.optimize = 1
+                                if parameter.param_key == "torsion_k" and set_zero:
+                                    parameter.value = 0.0
                             elif change_other_torsions:
                                 parameter.optimize = 0
             elif change_other_parameters:

@@ -74,6 +74,7 @@ class TorsionsParametrization(Task):
         print("!                            TORSIONS PARAMETRIZATION                             !")
         print("!=================================================================================!")
 
+        torsions_to_freeze = [[1,3,4,5],[1,3,4,9]]
         assert parametrization_type.upper() in ["SIMULTANEOUS", "SEQUENTIAL"], \
             "Parametrization type {} not recognized. Available options are 'simultanenous' (default) or 'sequential'.".format(parametrization_type)
 
@@ -98,7 +99,7 @@ class TorsionsParametrization(Task):
 
             # Get rotatable bonds
             rotatable_bonds = self.get_rotatable_bonds(rdkit_mol, methyl=False)
-            rotatable_bonds = rotatable_bonds[2:]
+            rotatable_bonds = rotatable_bonds[3 :]
 
             # Get rotatable dihedral
             rotatable_dihedrals = self.get_rotatable_torsions(system, rotatable_bonds)
@@ -158,7 +159,7 @@ class TorsionsParametrization(Task):
                                     torsions_to_freeze_mod = torsions_to_freeze
 
                                     # Iterate over all torsions and pick the ones that will not be scanned
-                                    for bond in rotatable_dihedrals:
+                                    for bond in rotatable_dihedrals[:bond_id]:
                                         for torsion in bond:
                                             if torsion.atoms is not rot_dihedral.atoms:
                                                 torsions_to_freeze_mod.append(torsion.atoms)
@@ -166,6 +167,7 @@ class TorsionsParametrization(Task):
                                 else:
                                     torsions_to_freeze_mod = torsions_to_freeze
 
+                                print(torsions_to_freeze_mod)
                                 # Perform 1D scan and append data to system instance
                                 systems, qm_energies_list, qm_forces_list, \
                                 mm_energies_list, conformations_list, scan_angles \
@@ -181,7 +183,7 @@ class TorsionsParametrization(Task):
                                 dihedral_types_sampled.append(rot_dihedral.parameters["torsion_phase"].symmetry_group)
                                 dihedrals_to_optimize.append(rot_dihedral.atoms)
 
-                                if parametrization_type.upper() == "SEQUENTIAL":
+                                if parametrization_type.upper() == "SEQUENTIAL" or parametrization_type.upper() == "SIMULTANEOUS":
                                     # Save system reference data in a buffer
                                     tmp_coordinates = copy.deepcopy(system.ref_coordinates)
                                     tmp_energies = copy.deepcopy(system.ref_energies)
@@ -194,9 +196,9 @@ class TorsionsParametrization(Task):
                                     system.n_structures = len(system.ref_coordinates)
 
                                     # Only optimize dihedral types scanned
-                                    system.force_field.optimize_torsions(rot_dihedral.atoms, change_other_torsions=True, change_other_parameters=True)
+                                    system.force_field.optimize_torsions([rot_dihedral.atoms], change_other_torsions=True, change_other_parameters=True)
                                     # Perform parametrization of all rotatable dihedral simultaneously
-                                    # self.set_zero(system, rotatable_bonds)
+                                    #self.set_zero(system, rotatable_bonds)
                                     parametrization = Parametrization()
                                     systems, parameter_space, objective_function, optimizer = parametrization.run_task(
                                         settings, systems, None, None, None)
