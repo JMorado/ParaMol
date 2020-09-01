@@ -37,6 +37,17 @@ The current development version can be installed via conda:
  - Parallel and serial computation of the objective .</li>
  - Optimization algorithms: Scipy Optimizers, Monte Carlo, Gradient Descent, Simulated Annealing.</li>
  - QM engines: ASE, DFTB+, AMBER.</li>
+ 
+# Tests
+ ParaMol uses the [pytest](https://docs.pytest.org/en/stable/) framework to test the code. pytest can be install though pip:
+    
+    pip install -U pytest
+
+ Once pytest is installed, the tests can be run by simply typing
+ 
+    pytest
+    
+ in ParaMol's root directory.
 
 # Contact
 
