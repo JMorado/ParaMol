@@ -5,8 +5,6 @@
 
 ParaMol is a Python library that aims to ease the process of force field parametrization of molecules. 
 
-It can be used both as a stand-alone package or as an API to build customizable parametrization protocols.
-
 Release Date: 09.07.2020
  
 Current Version: 1.0.0
@@ -39,11 +37,11 @@ The current development version can be installed via conda:
  - QM engines: ASE, DFTB+, AMBER.</li>
  
 # Tests
- ParaMol uses the [pytest](https://docs.pytest.org/en/stable/) framework to test the code. pytest can be install though pip:
+ ParaMol uses the [pytest](https://docs.pytest.org/en/stable/) framework to test the code. pytest can be install through pip:
     
     pip install -U pytest
 
- Once pytest is installed, the tests can be run by simply typing
+ Once pytest is installed, the tests can be run by simply typing:
  
     pytest
     
