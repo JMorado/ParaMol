@@ -74,12 +74,12 @@ class RESPFitting(Task):
 
             # Perform parametrization
             parametrization = Parametrization()
-            parametrization.run_task(settings=settings,
-                                     systems=systems,
-                                     parameter_space=parameter_space,
-                                     objective_function=objective_function,
-                                     optimizer=optimizer,
-                                     adaptive_parametrization=False)
+            systems, parameter_space, objective_function, optimizer = parametrization.run_task(settings=settings,
+                                                                                               systems=systems,
+                                                                                               parameter_space=parameter_space,
+                                                                                               objective_function=objective_function,
+                                                                                               optimizer=optimizer,
+                                                                                               adaptive_parametrization=False)
 
         elif solver.lower() == "explicit":
             logging.info("ParaMol will solve RESP equations explicitly.")

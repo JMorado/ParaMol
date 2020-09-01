@@ -357,7 +357,6 @@ class OpenMMEngine:
         positions_tmp = self.context.getState(getPositions=True).getPositions()
         self.context.reinitialize()
         self.context.setPositions(positions_tmp)
-        self.context.setPositions(positions_tmp)
 
         return self.context
 
