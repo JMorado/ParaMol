@@ -60,6 +60,9 @@ paramol_settings.qm_engine["ase"]["calculator"] = calc
 ab_initio = AbInitioProperties()
 ab_initio.run_task(paramol_settings, [co])
 
+# Save coordinates, energies and forces into .nc file
+co.write_data("co_scan.nc")
+
 # --------------------------------------------------------- #
 #                   Parametrize the CO bond                 #
 # --------------------------------------------------------- #

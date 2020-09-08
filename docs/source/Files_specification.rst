@@ -128,7 +128,7 @@ NetCDF File Specification
 This is a specification for the NetCDF 4 based store file format used by ParaMol.
 
 .. code-block:: text
-    :caption: File used to restart paramol. restart_paramol.nc
+    :caption: NetCDF File that stores system data such as coordinates, energies and forces.
 
     netcdf paramol_data_sc_iter_40 {
     dimensions:
@@ -149,7 +149,7 @@ This is a specification for the NetCDF 4 based store file format used by ParaMol
 
 
 .. code-block:: text
-    :caption: File used to restart ParaMol (restart_paramol.nc).
+    :caption: NetCDF file used to restart ParaMol (usually restart_paramol.nc).
 
     netcdf restart_paramol {
     dimensions:
