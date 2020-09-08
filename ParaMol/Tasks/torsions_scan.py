@@ -20,13 +20,20 @@ import simtk.unit as unit
 
 import numpy as np
 import copy
+import pickle
+import os
+import logging
 
 class TorsionScan(Task):
     """
     ParaMol implementation of torsion scans.
     """
     def __init__(self):
-        pass
+        self.qm_energies_list = None
+        self.mm_energies_list = None
+        self.qm_forces_list = None
+        self.conformations_list = None
+        self.scan_angles = None
 
     # ------------------------------------------------------------ #
     #                                                              #
@@ -35,7 +42,7 @@ class TorsionScan(Task):
     # ------------------------------------------------------------ #
     def run_task(self, settings, systems, torsions_to_scan, scan_settings, torsions_to_freeze=None,
                  ase_constraints=None, optimize_mm=False, optimize_mm_type="freeze_atoms",
-                 optimize_qm_before_scan=False, rdkit_conf=None):
+                 optimize_qm_before_scan=False, rdkit_conf=None, restart=False):
         """
         Method that performs 1D or 2D torsional scans. Only a scan at a time.
 
@@ -72,6 +79,8 @@ class TorsionScan(Task):
             Flag that controls whether a QM geometry optimization is performed before the scan (default is False).
         rdkit_conf : list of :obj:`rdkit.Chem.rdchem.Conformer`
             List of RDKit conformer for each system. It should be provided with the desired starting conformation.
+        restart : bool
+            Flag that controls whether or not to perform a restart.
 
         Returns
         -------
@@ -81,7 +90,6 @@ class TorsionScan(Task):
         print("!=================================================================================!")
         print("!                                TORSIONAL SCAN                                   !")
         print("!=================================================================================!")
-
         # Assert that number of torsional scans to performed has an equal number of scan settings
         assert len(torsions_to_scan) == len(scan_settings), "Number of scan to perform does not match number of scan settings provided."
 
@@ -113,14 +121,14 @@ class TorsionScan(Task):
                 if torsional_scan_dim == 1:
                     # Perform 1D Scan
                     qm_energies_list, qm_forces_list, mm_energies_list, conformations_list, scan_angles = self.scan_1d(
-                        system, conf, torsions_to_scan[0], torsions_to_freeze, scan_settings[0], optimize_mm, optimize_mm_type, optimize_qm_before_scan, ase_constraints)
+                        settings.restart, system, conf, torsions_to_scan[0], torsions_to_freeze, scan_settings[0], optimize_mm, optimize_mm_type, optimize_qm_before_scan, ase_constraints, restart)
 
                     # File name buffer
-                    file_name = "scan_{}d_torsion_{}_{}_{}_{}.dat".format(torsional_scan_dim, *torsions_to_scan[0])
+                    file_name = "{}_scan_{}d_torsion_{}_{}_{}_{}".format(system.name, torsional_scan_dim, *torsions_to_scan[0])
                 elif torsional_scan_dim == 2:
                     # Perform 2D Scan
                     qm_energies_list, qm_forces_list, mm_energies_list, conformations_list, scan_angles =  self.scan_2d(
-                        system, conf, torsions_to_scan[0], torsions_to_scan[1], torsions_to_freeze, scan_settings[0], scan_settings[1], optimize_mm, optimize_mm_type, optimize_qm_before_scan, ase_constraints)
+                        settings.restart, system, conf, torsions_to_scan[0], torsions_to_scan[1], torsions_to_freeze, scan_settings[0], scan_settings[1], optimize_mm, optimize_mm_type, optimize_qm_before_scan, ase_constraints, restart)
 
                     # File name buffer
                     file_name = "scan_{}d_torsion_{}_{}_{}_{}_{}_{}_{}_{}.dat".format(torsional_scan_dim, *torsions_to_scan[0], *torsions_to_scan[1])
@@ -131,7 +139,10 @@ class TorsionScan(Task):
                 system.append_data_to_system(conformations_list, qm_energies_list, qm_forces_list)
 
                 # Write readable scan data to file
-                self.write_scan_data(scan_angles, qm_energies_list, file_name, torsional_scan_dim)
+                self.write_scan_data(scan_angles, qm_energies_list, file_name + ".dat", torsional_scan_dim)
+
+                # Write system data
+                system.write_data(file_name + ".nc")
 
         print("!=================================================================================!")
         print("!                      TORSIONAL SCAN TERMINATED SUCCESSFULLY :)                  !")
@@ -139,12 +150,14 @@ class TorsionScan(Task):
 
         return systems, qm_energies_list, qm_forces_list, mm_energies_list, conformations_list, scan_angles
 
-    def scan_1d(self, system, rdkit_conf, torsion_to_scan, torsions_to_freeze, scan_settings, optimize_mm, optimize_mm_type, optimize_qm_before_scan, ase_constraints, force_constant=999999999.0, threshold=1e-2):
+    def scan_1d(self, restart_settings, system, rdkit_conf, torsion_to_scan, torsions_to_freeze, scan_settings, optimize_mm, optimize_mm_type, optimize_qm_before_scan, ase_constraints, restart, force_constant=999999999.0, threshold=1e-2):
         """
         Method that performs 1-dimensional torsional scans.
 
         Parameters
         ----------
+        restart_settings : dict
+            Dictionary containing restart ParaMol settings.
         system : :obj:`ParaMol.System.system.ParaMolSystem`
             Instance of a ParaMol System.
         rdkit_conf : :obj:`rdkit.Chem.rdchem.Conformer`
@@ -167,6 +180,8 @@ class TorsionScan(Task):
             Conservation angle threshold.
         force_constant : float
             Force constant for the dihedral restrain (kJ/mol).
+        restart : bool
+            Flag that controls whether or not to perform a restart.
 
         Returns
         -------
@@ -183,13 +198,6 @@ class TorsionScan(Task):
         step = scan_settings[2]
         torsion_scan_values = np.arange(min_angle, max_angle, step)
 
-        # Temporary buffers
-        qm_energies_list = []
-        mm_energies_list = []
-        qm_forces_list = []
-        conformations_list = []
-        scan_angles = []
-
         # Create temporary OpenMM System, Context and Platform
         dummy_system = copy.deepcopy(system.engine.system)
         dummy_integrator = copy.deepcopy(system.engine.integrator)
@@ -199,14 +207,38 @@ class TorsionScan(Task):
         positions = unit.Quantity(rdkit_conf.GetPositions(), unit.angstrom)
         positions_initial = copy.deepcopy(positions)
 
+        # Create OpenMM Context
+        dummy_context = Context(dummy_system, dummy_integrator, dummy_platform)
+
         if optimize_mm and optimize_mm_type.upper() == "FREEZE_ATOMS":
             dummy_system = self.freeze_atoms(dummy_system, torsion_to_scan)
 
-        # Create OpenMM Context
-        dummy_context = Context(dummy_system, dummy_integrator, dummy_platform)
-        dummy_context.setPositions(positions)
+        # ----------------------------------------------------------- #
+        #                           Restart                           #
+        # ----------------------------------------------------------- #
+        if restart:
+            self._read_restart_scan(restart_settings, system)
+            # Set positions
+            dummy_context.setPositions(self.conformations_list[-1] * unit.nanometers)
+            # Get new list of torsion scan values
+            torsion_scan_values = [item for item in torsion_scan_values if item not in self.scan_angles]
+        else:
+            # Create dir
+            self.qm_energies_list = []
+            self.mm_energies_list = []
+            self.qm_forces_list = []
+            self.conformations_list = []
+            self.scan_angles = []
 
-        if optimize_mm:
+            # Set positions
+            dummy_context.setPositions(positions)
+
+            restart_dir = os.path.join(system.interface.base_dir, restart_settings["restart_dir_prefix"] + system.name)
+            # Create restart if it does not exist
+            if not os.path.exists(restart_dir):
+                os.makedirs(restart_dir)
+
+        if optimize_mm and (not restart):
             # ----------------------------------------------------------- #
             #                   Perform MM optimization                   #
             # ----------------------------------------------------------- #
@@ -215,7 +247,7 @@ class TorsionScan(Task):
             positions = dummy_context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(asNumpy=True)
 
 
-        if optimize_qm_before_scan:
+        if optimize_qm_before_scan and (not restart):
             # ----------------------------------------------------------- #
             #                   Perform QM optimization                   #
             # ----------------------------------------------------------- #
@@ -284,7 +316,10 @@ class TorsionScan(Task):
             # Perform QM optimization and get positions, QM forces and energies.
             positions, qm_energy, qm_force = system.qm_engine.qm_engine.run_calculation(
                 coords=positions.in_units_of(unit.angstrom)._value,
-                label=0, calc_type="optimization", dihedral_freeze=[torsion_to_scan] + torsions_to_freeze, ase_constraints=ase_constraints)
+                label=0,
+                calc_type="optimization",
+                dihedral_freeze=[torsion_to_scan] + torsions_to_freeze,
+                ase_constraints=ase_constraints)
 
             # Check if torsion angle was conserved during QM optimization
             self.set_positions_rdkit_conf(rdkit_conf, positions)
@@ -297,14 +332,17 @@ class TorsionScan(Task):
             mm_energy = dummy_context.getState(getEnergy=True).getPotentialEnergy()
 
             # Append to list
-            qm_energies_list.append(qm_energy)
-            qm_forces_list.append(qm_force)
-            mm_energies_list.append(mm_energy._value)
-            conformations_list.append(positions)
-            scan_angles.append(torsion_value)
+            self.qm_energies_list.append(qm_energy)
+            self.qm_forces_list.append(qm_force)
+            self.mm_energies_list.append(mm_energy._value)
+            self.conformations_list.append(positions)
+            self.scan_angles.append(torsion_value)
 
             # Attribute units to the positions array (useful for next iteration)
             positions = positions * unit.nanometers
+
+            # Write scan restart
+            self._write_restart_scan(restart_settings, system)
 
         # Set positions of context to last position
         dummy_context.setPositions(positions * unit.nanometers)
@@ -314,14 +352,16 @@ class TorsionScan(Task):
 
         del dummy_system, dummy_integrator, dummy_platform, dummy_context
 
-        return qm_energies_list, qm_forces_list, mm_energies_list, conformations_list, scan_angles
+        return self.qm_energies_list, self.qm_forces_list, self.mm_energies_list, self.conformations_list, self.scan_angles
 
-    def scan_2d(self, system, rdkit_conf, torsion_to_scan_1, torsion_to_scan_2, torsions_to_freeze, scan_settings_1, scan_settings_2, optimize_mm, optimize_qm_before_scan, ase_constraints, force_constant=9999999.0, threshold=1e-3):
+    def scan_2d(self, restart_settings, system, rdkit_conf, torsion_to_scan_1, torsion_to_scan_2, torsions_to_freeze, scan_settings_1, scan_settings_2, optimize_mm, optimize_qm_before_scan, ase_constraints, restart, force_constant=9999999.0, threshold=1e-3):
         """
         Method that performs 2-dimensional torsional scans.
 
         Parameters
         ----------
+        restart_settings : dict
+            Dictionary containing restart ParaMol settings.
         system : :obj:`ParaMol.System.system.ParaMolSystem`
             Instance of a ParaMol System.
         rdkit_conf : :obj:`rdkit.Chem.rdchem.Conformer`
@@ -348,6 +388,8 @@ class TorsionScan(Task):
             Conservation angle threshold.
         force_constant : float
             Force constant for the dihedral restrain (kJ/mol).
+        restart : bool
+            Flag that controls whether or not to perform a restart.
 
         Returns
         -------
@@ -369,6 +411,9 @@ class TorsionScan(Task):
         step_2 = scan_settings_2[2]
         torsion_scan_values_2 = np.arange(min_angle_2, max_angle_2, step_2)
 
+        # Merge both ranges into a list
+        torsion_scan_values = [[i,j] for i in torsion_scan_values_1 for j in torsion_scan_values_2]
+
         # Temporary buffers
         qm_energies_list = []
         mm_energies_list = []
@@ -387,13 +432,32 @@ class TorsionScan(Task):
 
         # Create OpenMM Context
         dummy_context = Context(dummy_system, dummy_integrator, dummy_platform)
-        dummy_context.setPositions(positions)
 
-        if optimize_mm:
+        # ----------------------------------------------------------- #
+        #                           Restart                           #
+        # ----------------------------------------------------------- #
+        if restart:
+            self._read_restart_scan(restart_settings, system)
+            # Set positions
+            dummy_context.setPositions(self.conformations_list[-1] * unit.nanometers)
+            # Get new list of torsion scan values
+            torsion_scan_values = [item for item in torsion_scan_values if item not in self.scan_angles]
+            # Set restart optimization flag
+        else:
+            self.qm_energies_list = []
+            self.mm_energies_list = []
+            self.qm_forces_list = []
+            self.conformations_list = []
+            self.scan_angles = []
+            # Set positions
+            dummy_context.setPositions(positions)
+            # Set restart optimization flag
+
+        if optimize_mm and (not restart):
             LocalEnergyMinimizer.minimize(dummy_context)
             positions = dummy_context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(asNumpy=True)
 
-        if optimize_qm_before_scan:
+        if optimize_qm_before_scan and (not restart):
             # ----------------------------------------------------------- #
             #                   Perform QM optimization                   #
             # ----------------------------------------------------------- #
@@ -408,77 +472,82 @@ class TorsionScan(Task):
         # ----------------------------------------------------------- #
         #                       Perform 2D Scan                       #
         # ----------------------------------------------------------- #
-        for torsion_value_1 in torsion_scan_values_1:
-            for torsion_value_2 in torsion_scan_values_2:
-                print("Step for torsion angle 1 with value {}.".format(torsion_value_1))
-                print("step for torsion angle 2 with value {}.".format(torsion_value_2))
+        for torsion_value_1, torsion_value_2 in torsion_scan_values:
+            print("Step for torsion angle 1 with value {}.".format(torsion_value_1))
+            print("step for torsion angle 2 with value {}.".format(torsion_value_2))
 
-                # Set positions in OpenMM context
-                dummy_context.setPositions(positions)
+            # Set positions in OpenMM context
+            dummy_context.setPositions(positions)
 
-                # Set RDKit geometry to the current in the OpenMM context
-                positions = dummy_context.getState(getPositions=True).getPositions()
-                self.set_positions_rdkit_conf(rdkit_conf, positions.in_units_of(unit.angstrom)._value)
+            # Set RDKit geometry to the current in the OpenMM context
+            positions = dummy_context.getState(getPositions=True).getPositions()
+            self.set_positions_rdkit_conf(rdkit_conf, positions.in_units_of(unit.angstrom)._value)
 
-                # Rotate torsion i-j-k-l; all atoms bonded to atom l are moved
-                rdmt.SetDihedralDeg(rdkit_conf, *torsion_to_scan_1, torsion_value_1)
-                rdmt.SetDihedralDeg(rdkit_conf, *torsion_to_scan_2, torsion_value_2)
+            # Rotate torsion i-j-k-l; all atoms bonded to atom l are moved
+            rdmt.SetDihedralDeg(rdkit_conf, *torsion_to_scan_1, torsion_value_1)
+            rdmt.SetDihedralDeg(rdkit_conf, *torsion_to_scan_2, torsion_value_2)
 
-                # Get position with new torsion angle
-                positions = unit.Quantity(rdkit_conf.GetPositions(), unit.angstrom)
+            # Get position with new torsion angle
+            positions = unit.Quantity(rdkit_conf.GetPositions(), unit.angstrom)
 
-                # Get old value of torsion angle
-                old_torsion_1 = rdmt.GetDihedralDeg(rdkit_conf, *torsion_to_scan_1)
-                old_torsion_2 = rdmt.GetDihedralDeg(rdkit_conf, *torsion_to_scan_2)
+            # Get old value of torsion angle
+            old_torsion_1 = rdmt.GetDihedralDeg(rdkit_conf, *torsion_to_scan_1)
+            old_torsion_2 = rdmt.GetDihedralDeg(rdkit_conf, *torsion_to_scan_2)
 
-                # Perform MM geometry optimization
-                if optimize_mm:
-                    # Freeze torsions
-                    logging.info("Performing MM optimization with torsions {} and {} frozen.".format(torsion_to_scan_1,torsion_to_scan_2))
-                    # We have to create temporary systems and context so that they do not affect they main ones
-                    tmp_system = copy.deepcopy(dummy_system)
-                    self.freeze_atoms(tmp_system)
-                    #dummy_system = self.freeze_torsion(dummy_system, torsion_to_scan_1, torsion_value_1, force_constant)
-                    #dummy_system = self.freeze_torsion(dummy_system, torsion_to_scan_2, torsion_value_2, force_constant)
-                    tmp_context = Context(tmp_system, copy.deepcopy(dummy_integrator), dummy_platform)
-                    tmp_context.setPositions(positions)
-                    LocalEnergyMinimizer.minimize(tmp_context)
-                    positions = tmp_context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(
-                        asNumpy=True)
+            # Perform MM geometry optimization
+            if optimize_mm:
+                # Freeze torsions
+                logging.info("Performing MM optimization with torsions {} and {} frozen.".format(torsion_to_scan_1,torsion_to_scan_2))
+                # We have to create temporary systems and context so that they do not affect they main ones
+                tmp_system = copy.deepcopy(dummy_system)
+                #self.freeze_atoms(tmp_system)
+                dummy_system = self.freeze_torsion(dummy_system, torsion_to_scan_1, torsion_value_1, force_constant)
+                dummy_system = self.freeze_torsion(dummy_system, torsion_to_scan_2, torsion_value_2, force_constant)
+                tmp_context = Context(tmp_system, copy.deepcopy(dummy_integrator), dummy_platform)
+                tmp_context.setPositions(positions)
+                LocalEnergyMinimizer.minimize(tmp_context)
+                positions = tmp_context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(
+                    asNumpy=True)
 
-                    del tmp_system, tmp_context
+                del tmp_system, tmp_context
 
-                # ------------------------------------------------------------- #
-                #                       Relaxed QM Scan                         #
-                # ------------------------------------------------------------- #
-                # Perform QM optimization and get positions, QM forces and energies.
-                positions, qm_energy, qm_force = system.qm_engine.qm_engine.run_calculation(
-                    coords=positions.in_units_of(unit.angstrom)._value,
-                    label=0, calc_type="optimization", dihedral_freeze=[torsion_to_scan_1, torsion_to_scan_2] + torsions_to_freeze, ase_constraints=ase_constraints)
+            # ------------------------------------------------------------- #
+            #                       Relaxed QM Scan                         #
+            # ------------------------------------------------------------- #
+            # Perform QM optimization and get positions, QM forces and energies.
+            positions, qm_energy, qm_force = system.qm_engine.qm_engine.run_calculation(
+                coords=positions.in_units_of(unit.angstrom)._value,
+                label=0,
+                calc_type="optimization",
+                dihedral_freeze=[torsion_to_scan_1, torsion_to_scan_2] + torsions_to_freeze,
+                ase_constraints=ase_constraints)
 
-                # Check if torsion angle was conserved during QM optimization
-                self.set_positions_rdkit_conf(rdkit_conf, positions)
+            # Check if torsion angle was conserved during QM optimization
+            self.set_positions_rdkit_conf(rdkit_conf, positions)
 
-                new_torsion_1 = rdmt.GetDihedralDeg(rdkit_conf, *torsion_to_scan_1)
-                new_torsion_2 = rdmt.GetDihedralDeg(rdkit_conf, *torsion_to_scan_2)
+            new_torsion_1 = rdmt.GetDihedralDeg(rdkit_conf, *torsion_to_scan_1)
+            new_torsion_2 = rdmt.GetDihedralDeg(rdkit_conf, *torsion_to_scan_2)
 
-                assert (abs(old_torsion_1 - new_torsion_1) < threshold) or (
-                            abs(abs(old_torsion_1 - new_torsion_1) - 360) < threshold), \
-                    "Not conserving torsion angle 1 ; old={} new={}".format(old_torsion_1, new_torsion_1)
-                assert (abs(old_torsion_2 - new_torsion_2) < threshold) or (
-                            abs(abs(old_torsion_2 - new_torsion_2) - 360) < threshold), \
-                    "Not conserving torsion angle 2; old={} new={}".format(old_torsion_2, new_torsion_2)
+            assert (abs(old_torsion_1 - new_torsion_1) < threshold) or (
+                    abs(abs(old_torsion_1 - new_torsion_1) - 360) < threshold), \
+                "Not conserving torsion angle 1 ; old={} new={}".format(old_torsion_1, new_torsion_1)
+            assert (abs(old_torsion_2 - new_torsion_2) < threshold) or (
+                    abs(abs(old_torsion_2 - new_torsion_2) - 360) < threshold), \
+                "Not conserving torsion angle 2; old={} new={}".format(old_torsion_2, new_torsion_2)
 
-                # Get new MM energy
-                dummy_context.setPositions(positions * unit.nanometers)
-                mm_energy = dummy_context.getState(getEnergy=True).getPotentialEnergy()
+            # Get new MM energy
+            dummy_context.setPositions(positions * unit.nanometers)
+            mm_energy = dummy_context.getState(getEnergy=True).getPotentialEnergy()
 
-                # Append to list
-                qm_energies_list.append(qm_energy)
-                qm_forces_list.append(qm_force)
-                mm_energies_list.append(mm_energy._value)
-                conformations_list.append(positions)
-                scan_angles.append([torsion_value_1, torsion_value_2])
+            # Append to list
+            self.qm_energies_list.append(qm_energy)
+            self.qm_forces_list.append(qm_force)
+            self.mm_energies_list.append(mm_energy._value)
+            self.conformations_list.append(positions)
+            self.scan_angles.append([torsion_value_1, torsion_value_2])
+
+            # Write scan restart
+            self._write_restart_scan(restart_settings, system)
 
         print("!=================================================================================!\n")
 
@@ -589,9 +658,7 @@ class TorsionScan(Task):
         # Write out PDB file to be read by RDKit
         file_to_write = open(pdb_file_name, 'w')
         pdbfile.PDBFile.writeFile(topology=system.engine.topology,
-                                  positions=system.engine.context.getState(getPositions=True,
-                                                                           enforcePeriodicBox=True).getPositions(
-                                      asNumpy=True),
+                                  positions=system.engine.context.getState(getPositions=True,enforcePeriodicBox=True).getPositions(asNumpy=True),
                                   file=file_to_write)
         file_to_write.close()
 
@@ -759,5 +826,65 @@ class TorsionScan(Task):
     #                       PRIVATE METHODS                        #
     #                                                              #
     # ------------------------------------------------------------ #
-    pass
+    def _read_restart_scan(self, restart_settings, system):
+        """
+        Method that reads restart pickle.
 
+        Parameters
+        ----------
+        restart_settings: dict
+            Dictionary containing global ParaMol settings.
+        system: :obj:`ParaMol.System.system.ParaMolSystem`
+            ParaMol system instance.
+
+        Returns
+        -------
+        system: :obj:`ParaMol.System.system.ParaMolSystem`
+            ParaMol system instance.
+        """
+        # Check restart directory exists
+        restart_dir = os.path.join(system.interface.base_dir, restart_settings["restart_dir_prefix"] + system.name)
+        system.interface.check_dir_exists(restart_dir)
+        # Check restart_paramol file exists
+        scan_restart_file = os.path.join(restart_dir, restart_settings["restart_files_prefix"] + system.name + ".pickle")
+        system.interface.check_file_exists(scan_restart_file)
+
+        logging.info("Reading scan restart file from file {}".format(scan_restart_file))
+
+        with open(scan_restart_file, 'rb') as restart_file:
+            self.__dict__ = pickle.load(restart_file)
+
+        return system
+
+    def _write_restart_scan(self, restart_settings, system):
+        """
+        Method that writes restart pickle.
+
+        Parameters
+        ----------
+        restart_settings: dict
+            Dictionary containing global ParaMol settings.
+        system: :obj:`ParaMol.System.system.ParaMolSystem`
+            ParaMol system instance.
+
+        Returns
+        -------
+        system: :obj:`ParaMol.System.system.ParaMolSystem`
+            ParaMol system instance.
+        """
+        # Create restart if it does not exist
+        restart_dir = os.path.join(system.interface.base_dir, restart_settings["restart_dir_prefix"] + system.name)
+        if not os.path.exists(restart_dir):
+            os.makedirs(restart_dir)
+
+        # Check restart directory exists
+        system.interface.check_dir_exists(restart_dir)
+        # Define name of restart file
+        scan_restart_file = os.path.join(restart_dir, restart_settings["restart_files_prefix"] + system.name + ".pickle")
+
+        logging.info("Writing scan restart file to file {}".format(scan_restart_file))
+
+        with open(scan_restart_file, 'wb') as restart_file:
+                pickle.dump(self.__dict__, restart_file, protocol=pickle.HIGHEST_PROTOCOL)
+
+        return system

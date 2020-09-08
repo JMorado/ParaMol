@@ -9,7 +9,10 @@ import ase
 import copy
 import logging
 import os
+import shutil
 import numpy as np
+
+# ASE imports
 from ase.optimize import BFGS
 
 # ParaMol imports
@@ -169,8 +172,7 @@ class ASEWrapper:
                 for constraint in ase_constraints:
                     atoms.set_constraint(constraint)
 
-            # Perform Optimization
-            opt = self._optimizer(atoms, trajectory='opt_{}.traj'.format(label), logfile=self._opt_logfile)
+            opt = self._optimizer(atoms, trajectory=self._opt_traj_prefix+".traj", logfile=self._opt_logfile)
             opt.run(fmax=self._opt_fmax)
 
             if dihedral_freeze is not None:
@@ -181,7 +183,7 @@ class ASEWrapper:
                 view(atoms)
 
             # Get data
-            coord = atoms.get_positions() * 0.1
+            coord = atoms.get_positions() * 0.1 # Angstrom to nm
             energy = atoms.get_potential_energy() * 96.48530749925794  # eV to kJ/mol
             forces = atoms.get_forces() * 96.48530749925794 * 10.0 # eV/A to kJ/mol/nm
 

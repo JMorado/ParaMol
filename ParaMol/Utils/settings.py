@@ -154,6 +154,7 @@ class Settings:
         #                     TASK GLOBAL SETTINGS                   #
         #                                                            #
         # ---------------------------------------------------------- #
-        self.restart = {"restart_file": None,
+        self.restart = {"restart_dir_prefix": "restart_",
+                        "restart_files_prefix": "restart_",
                         "parameters_generation_pickle": None}
 
