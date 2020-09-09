@@ -64,6 +64,9 @@ scan_settings = [[-180.0, 180.0, 90.0]]
 torsion_scan = TorsionScan()
 torsion_scan.run_task(paramol_settings, [norfloxacin], torsion_to_scan, scan_settings, optimize_qm_before_scan=True)
 
+# Save coordinates and energies into .nc file
+norfloxacin.write_data("norfloxacin_scan.nc")
+
 # --------------------------------------------------------- #
 #                   Parametrize the Torsion                 #
 # --------------------------------------------------------- #

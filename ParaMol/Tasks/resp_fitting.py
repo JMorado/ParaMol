@@ -61,7 +61,7 @@ class RESPFitting(Task):
         print("!                               RESP CHARGE FITTING                               !")
         print("!=================================================================================!")
 
-        assert total_charge is not None, "System's total charge was not specified."
+        assert total_charge is not None, "System's total charge was not specified." 
 
         if solver.lower() == "scipy":
             logging.info("ParaMol will solve fit to ESP using a SciPy optimimzer.")
@@ -111,7 +111,6 @@ class RESPFitting(Task):
 
                 # Update system
                 parameter_space.update_systems(charges)
-
         else:
             raise NotImplementedError("RESP solver {} is not implemented.".format(solver))
 

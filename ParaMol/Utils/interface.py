@@ -261,8 +261,8 @@ class ParaMolInterface:
         Returns
         -------
         bool or list of bool or Exception:
-            If not_exists is False, returns `True` if dir exists and Raises an Exception if it does not exist.
-            If not_exists is True, returns `True` if dir does not exist and Raises an Exception if it exists.
+            If not_exists is False, returns `True` if file exists and Raises an Exception if it does not exist.
+            If not_exists is True, returns `True` if file does not exist and Raises an Exception if it exists.
         """
         if type(files) is str:
             files = [files]

@@ -577,7 +577,7 @@ class ParaMolSystem:
         import netCDF4 as nc
 
         if output_file_name is None:
-            output_file_name = '{}_parmol.nc'.format(self.name)
+            output_file_name = '{}_paramol.nc'.format(self.name)
 
         print("\nWriting {} file for system {}.".format(output_file_name, self.name))
 
