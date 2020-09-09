@@ -6,9 +6,10 @@ This module defines the :obj:`ParaMol.Tasks.resp.RESPFitting` class, which is a 
 """
 import logging
 
-from ParaMol.Tasks.task import *
-from ParaMol.Tasks.parametrization import *
-from ParaMol.MM_engines.resp import *
+from .task import *
+from .parametrization import *
+from ..MM_engines.resp import *
+from ..Utils.interface import *
 
 
 # ------------------------------------------------------------ #
@@ -30,7 +31,7 @@ class RESPFitting(Task):
     #                          PUBLIC METHODS                      #
     #                                                              #
     # ------------------------------------------------------------ #
-    def run_task(self, settings, systems, parameter_space=None, objective_function=None, optimizer=None, solver="SCIPY", total_charge=None, constraint_tolerance=1e-6):
+    def run_task(self, settings, systems, parameter_space=None, objective_function=None, optimizer=None, interface=None, solver="SCIPY", total_charge=None, constraint_tolerance=1e-6):
         """
         Method that performs a RESP calculation.
 
@@ -46,6 +47,8 @@ class RESPFitting(Task):
             Instance of the objective function.
         optimizer : one of the optimizers defined in the subpackage :obj:`ParaMol.Optimizers`
             Instance of the optimizer.
+        interface: :obj:`ParaMol.Utils.interface.ParaMolInterface`
+            ParaMol system instance.
         solver : str
             RESP solver. Options are "EXPLICTI" or "SCIPY" (default is "SCIPY").
         total_charge : int
@@ -61,7 +64,8 @@ class RESPFitting(Task):
         print("!                               RESP CHARGE FITTING                               !")
         print("!=================================================================================!")
 
-        assert total_charge is not None, "System's total charge was not specified." 
+        assert total_charge is not None, "System's total charge was not specified."
+        assert len(systems) == 1, "RESP task currently only supports fitting of one system at once."
 
         if solver.lower() == "scipy":
             logging.info("ParaMol will solve fit to ESP using a SciPy optimimzer.")
@@ -79,14 +83,19 @@ class RESPFitting(Task):
                                                                                                parameter_space=parameter_space,
                                                                                                objective_function=objective_function,
                                                                                                optimizer=optimizer,
+                                                                                               interface=interface,
                                                                                                adaptive_parametrization=False)
 
         elif solver.lower() == "explicit":
             logging.info("ParaMol will solve RESP equations explicitly.")
 
+            # Create interface
+            if interface is None:
+                interface = ParaMolInterface()
+
             # Create Parameter Space
             if parameter_space is None:
-                parameter_space = self.create_parameter_space(settings.parameter_space, settings.restart, systems, preconditioning=False)
+                parameter_space = self.create_parameter_space(settings, systems, preconditioning=False)
             else:
                 assert type(parameter_space) is ParameterSpace
 
@@ -110,7 +119,7 @@ class RESPFitting(Task):
                 charges = system.resp_engine.fit_resp_charges_explicitly(system)
 
                 # Update system
-                parameter_space.update_systems(charges)
+                parameter_space.update_systems(systems, charges)
         else:
             raise NotImplementedError("RESP solver {} is not implemented.".format(solver))
 
