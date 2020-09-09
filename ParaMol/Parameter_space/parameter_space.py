@@ -374,7 +374,7 @@ class ParameterSpace:
         # Update optimizable_parameters_values_by_system
         self.optimizable_parameters_values_by_system = [[parameter.value for parameter in optimizable_parameters] for optimizable_parameters in self.optimizable_parameters_by_system]
 
-            # Update ParaMol ForceField and MM engine
+        # Update ParaMol ForceField and MM engine
         for system, optimizable_parameters_values in zip(systems, self.optimizable_parameters_values_by_system):
             # Update the parameters in the system's ParaMolForce Field
             system.force_field.update_force_field(optimizable_parameters_values)
