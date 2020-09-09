@@ -217,7 +217,6 @@ class ForceField:
         self.create_periodic_torsion_force_field(opt_torsions)
         self.create_nonbonded_force_field(opt_charges, opt_lj, opt_sc)
 
-
         return self.force_field
 
     def create_force_field_optimizable(self):

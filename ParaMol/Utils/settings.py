@@ -151,12 +151,10 @@ class Settings:
 
         # ---------------------------------------------------------- #
         #                                                            #
-        #                     TASK GLOBAL SETTINGS                   #
+        #                      RESTART SETTINGS                      #
         #                                                            #
         # ---------------------------------------------------------- #
-        self.restart = {"restart_dir_prefix": "restart_",
-                        "restart_files_prefix": "restart_",
+        self.restart = {"restart_dir": "restart_paramol",
                         "restart_scan_file": "restart_scan.pickle",
                         "restart_adaptive_parametrization_file": "restart_adaptive_parametrization.pickle",
-                        "parameters_generation_pickle": None}
-
+                        "restart_parameter_space_file": "restart_parameter_space.pickle"}

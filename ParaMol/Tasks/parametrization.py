@@ -12,7 +12,7 @@ from .task import *
 from ..Optimizers.optimizer import *
 from ..Parameter_space.parameter_space import *
 from ..Objective_function.objective_function import *
-
+from ..Utils.interface import *
 
 # ------------------------------------------------------------
 #                                                            #
@@ -32,7 +32,7 @@ class Parametrization(Task):
     #                       PUBLIC METHODS                       #
     #                                                            #
     # ---------------------------------------------------------- #
-    def run_task(self, settings, systems, parameter_space=None, objective_function=None, optimizer=None, adaptive_parametrization=False):
+    def run_task(self, settings, systems, parameter_space=None, objective_function=None, optimizer=None, interface=None, adaptive_parametrization=False, restart=False):
         """
         Method that performs the standard ParaMol parametrization.
         
@@ -43,13 +43,17 @@ class Parametrization(Task):
         systems : list of :obj:`ParaMol.System.system.ParaMolSystem`
             List containing instances of ParaMol systems.
         parameter_space : :obj:`ParaMol.Parameter_space.parameter_space.ParameterSpace`
-            Instance of the parameter space.
+            Instances of ParameterSpace.
         objective_function : :obj:`ParaMol.Objective_function.objective_function.ObjectiveFunction`
             Instance of the objective function.
         optimizer : one of the optimizers defined in the subpackage :obj:`ParaMol.Optimizers`
             Instance of the optimizer.
+        interface: :obj:`ParaMol.Utils.interface.ParaMolInterface`
+            ParaMol system instance.
         adaptive_parametrization: bool
             Flag that signals if this parametrization is being done inside a an adaptive parametrization loop. If `False` the sytem xml file is not written in this method (default is `False`).
+        restart : bool
+            Flag that controls whether or not to perform a restart.
 
         Returns
         -------
@@ -65,30 +69,30 @@ class Parametrization(Task):
             # Create force field optimizable for every system
             system.force_field.create_force_field_optimizable()
 
-        # Create Parameter Space
+        # Create IO Interface
+        if interface is None:
+            interface = ParaMolInterface()
+
+        # Create ParameterSpace
         if parameter_space is None:
-            parameter_space = self.create_parameter_space(settings.parameter_space, settings.restart, systems)
+            parameter_space = self.create_parameter_space(settings, systems, interface, restart=restart)
         else:
             assert type(parameter_space) is ParameterSpace
 
         # Create properties and objective function
-        if objective_function is None or parameter_space is None:
+        if objective_function is None:
             properties = self.create_properties(settings.properties, systems, parameter_space)
-            objective_function = self.create_objective_function(settings.objective_function, parameter_space, properties)
+            objective_function = self.create_objective_function(settings.objective_function, parameter_space, properties, systems)
         else:
             assert type(objective_function) is ObjectiveFunction
             if settings.objective_function["parallel"]:
-                # Number of structures might have been changed and therefore it is necessary to re-initialize
-                # the parallel objective function
+                # Number of structures might have been changed and therefore it is necessary to re-initialize the parallel objective function
                 objective_function.init_parallel()
             for prop in objective_function.properties:
                 if prop.name == "REGULARIZATION":
                     # TODO: if commented, reg in adaptive parametrization is done w.r.t. to the initial parameters at iter 0
                     #prop.set_initial_parameters_values(parameter_space.initial_optimizable_parameters_values_scaled)
                     pass
-
-        # Write restart file
-        Task.write_restart_file(parameter_space)
 
         # Print Initial Info of Objective Function
         objective_function.f(parameter_space.optimizable_parameters_values_scaled, opt_mode=False)
@@ -100,31 +104,43 @@ class Parametrization(Task):
         else:
             assert type(optimizer) is Optimizer
 
-        # Charge correction
+        # ================================================================================= #
+        #                                APPLY CHARGE CORRECTION                            #
+        # ================================================================================= #
         for system in systems:
             # Apply charge correction
             self._apply_charge_correction(system)
             # Create optimizable force field
             system.force_field.create_force_field_optimizable()
-            # Get optimizable parameters
-            parameter_space.get_optimizable_parameters()
-            # Calculate prior widths, scaling constants and apply jacobi preconditioning (they may have changes if charges changed).
-            # Otherwise, we may assume that the change is so small that this has no effect... quite good approximation, hence these lines may be commented
-            #parameter_space.calculate_scaling_constants()
-            #parameter_space.calculate_prior_widths()
-            parameter_space.jacobi_preconditioning()
-            # Update the OpenMM context
-            parameter_space.update_systems(parameter_space.optimizable_parameters_values_scaled)
 
+        # Get optimizable parameters
+        parameter_space.get_optimizable_parameters(systems)
+        # Calculate prior widths, scaling constants and apply jacobi preconditioning (they may have changes if charges changed).
+        # Otherwise, we may assume that the change is so small that this has no effect... quite good approximation, hence these lines may be commented
+        # parameter_space.calculate_scaling_constants()
+        # parameter_space.calculate_prior_widths()
+        parameter_space.jacobi_preconditioning()
+        # Update the OpenMM context
+        parameter_space.update_systems(systems, parameter_space.optimizable_parameters_values_scaled)
+        # ================================================================================= #
+        #                             END APPLY CHARGE CORRECTION                           #
+        # ================================================================================= #
+
+        # ================================================================================= #
+        #                                PARAMETERS OPTIMZIATION                            #
+        # ================================================================================= #
         # Perform Optimization
-        print("Using {} structures in the optimization.".format(system.n_structures))
+        print("Using {} structures in the optimization.".format(np.sum([system.n_structures for system in systems])))
         parameters_values = self._perform_optimization(settings, optimizer, objective_function, parameter_space)
 
         # Print Final Info of Objective Function
         objective_function.f(parameters_values, opt_mode=False)
 
         # Update the parameters in the force field
-        parameter_space.update_systems(parameters_values)
+        parameter_space.update_systems(systems, parameters_values)
+
+        # Write ParameterSpace restart file
+        self.write_restart_pickle(settings.restart, interface, "restart_parameter_space_file", parameter_space.__dict__)
 
         # Write final system to xml file
         if not adaptive_parametrization:
@@ -141,82 +157,6 @@ class Parametrization(Task):
     #                       PRIVATE METHODS                      #
     #                                                            #
     # -----------------------------------------------------------#
-    def _perform_assertions(self, settings, system):
-        """
-        Method that asserts if the parametrization asked by the user contains the necessary data (coordinates, forces, energies, esp).
-
-        Parameters
-        ----------
-        settings : dict
-            Dictionary containing global ParaMol settings.
-        system : :obj:`ParaMol.System.system.ParaMolSystem`
-            Instance of ParaMol System.
-
-        Returns
-        -------
-        True
-        """
-        assert system.ref_coordinates is not None, "Conformations data was not set."
-
-        if settings.properties["include_energies"]:
-            assert system.ref_energies is not None, "Energies were not set."
-        if settings.properties["include_forces"]:
-            assert system.ref_forces is not None, "Forces were not set."
-        if settings.properties["include_esp"]:
-            assert system.ref_esp is not None, "ESP was not set."
-            assert system.ref_esp_grid is not None, "ESP was not set."
-
-        return True
-
-    def _get_constraints(self, scipy_method, parameter_space, total_charge=0.0, threshold=1e-8):
-        """
-        Method that gets the constraints to be passed into the SciPy optimizer.
-
-        Parameters
-        ----------
-        scipy_method : str
-            SciPy method. Should be "COBYLA", SLSQP" or "trust-consr".
-        parameter_space : :obj:`ParaMol.Parameter_space.parameter_space.ParameterSpace`
-            Instance of parameter space.
-        total_charge : float
-            System's total charge
-        threshold : float
-            Constraint's threshold.
-
-        Returns
-        -------
-        list
-            List with constraints.
-        """
-
-        if scipy_method == "COBYLA":
-            # Constraint functions must all be >=0 (a single function if only 1 constraint).
-            # Each function takes the parameters x as its first argument, and it can return either a single number or an array or list of numbers.
-
-            constraint_vector_charges = [param.multiplicity if param.param_key == "charge" else 0 for param in parameter_space.optimizable_parameters]
-
-            constraints = [{'type': 'ineq', 'fun': lambda x, b: x.dot(np.asarray(b)*parameter_space.scaling_constants_dict["charge"]) - total_charge + threshold, 'args': (constraint_vector_charges,)},
-                           {'type': 'ineq', 'fun': lambda x, b: -x.dot(np.asarray(b)*parameter_space.scaling_constants_dict["charge"]) + total_charge + threshold, 'args': (constraint_vector_charges,)}]
-
-            return constraints
-
-        elif scipy_method == "SLSQP":
-            # Total charge constraint defined as an equality
-            constraint_vector_charges = [param.multiplicity if param.param_key == "charge" else 0 for param in parameter_space.optimizable_parameters]
-
-            constraints = [{'type': 'ineq', 'fun': lambda x, b: x.dot(np.asarray(b)*parameter_space.scaling_constants_dict["charge"]) - total_charge + threshold, 'args': (constraint_vector_charges,)},
-                           {'type': 'ineq', 'fun': lambda x, b: -x.dot(np.asarray(b)*parameter_space.scaling_constants_dict["charge"]) + total_charge + threshold, 'args': (constraint_vector_charges,)}]
-
-            return constraints
-
-        elif scipy_method == "trust-constr":
-            from scipy.optimize import LinearConstraint
-            constraint_vector = [param.multiplicity if param.param_key == "charge" else 0 for param in parameter_space.optimizable_parameters]
-
-            return LinearConstraint(constraint_vector, [total_charge-threshold], [total_charge+threshold])
-        else:
-            raise NotImplementedError("SciPy method {} does not support constraints.".format(scipy_method))
-
     def _perform_optimization(self, settings, optimizer, objective_function, parameter_space):
         """
         Method that wraps the functions used to perform the optimization of the parameters.
@@ -328,4 +268,84 @@ class Parametrization(Task):
                 total_charge += nonbonded_term.parameters["charge"].value
 
         return total_charge
+
+    @staticmethod
+    def _perform_assertions(settings, system):
+        """
+        Method that asserts if the parametrization asked by the user contains the necessary data (coordinates, forces, energies, esp).
+
+        Parameters
+        ----------
+        settings : dict
+            Dictionary containing global ParaMol settings.
+        system : :obj:`ParaMol.System.system.ParaMolSystem`
+            Instance of ParaMol System.
+
+        Returns
+        -------
+        True
+        """
+        assert system.ref_coordinates is not None, "Conformations data was not set."
+
+        if settings.properties["include_energies"]:
+            assert system.ref_energies is not None, "Energies were not set."
+        if settings.properties["include_forces"]:
+            assert system.ref_forces is not None, "Forces were not set."
+        if settings.properties["include_esp"]:
+            assert system.ref_esp is not None, "ESP was not set."
+            assert system.ref_esp_grid is not None, "ESP was not set."
+
+        return True
+
+    @staticmethod
+    def _get_constraints(scipy_method, parameter_space, total_charge=0.0, threshold=1e-8):
+        """
+        Method that gets the constraints to be passed into the SciPy optimizer.
+
+        Parameters
+        ----------
+        scipy_method : str
+            SciPy method. Should be "COBYLA", SLSQP" or "trust-consr".
+        parameter_space : :obj:`ParaMol.Parameter_space.parameter_space.ParameterSpace`
+            Instance of parameter space.
+        total_charge : float
+            System's total charge
+        threshold : float
+            Constraint's threshold.
+
+        Returns
+        -------
+        list
+            List with constraints.
+        """
+
+        if scipy_method == "COBYLA":
+            # Constraint functions must all be >=0 (a single function if only 1 constraint).
+            # Each function takes the parameters x as its first argument, and it can return either a single number or an array or list of numbers.
+
+            constraint_vector_charges = [param.multiplicity if param.param_key == "charge" else 0 for param in parameter_space.optimizable_parameters]
+
+            constraints = [
+                {'type': 'ineq', 'fun': lambda x, b: x.dot(np.asarray(b) * parameter_space.scaling_constants_dict["charge"]) - total_charge + threshold, 'args': (constraint_vector_charges,)},
+                {'type': 'ineq', 'fun': lambda x, b: -x.dot(np.asarray(b) * parameter_space.scaling_constants_dict["charge"]) + total_charge + threshold, 'args': (constraint_vector_charges,)}]
+
+            return constraints
+
+        elif scipy_method == "SLSQP":
+            # Total charge constraint defined as an equality
+            constraint_vector_charges = [param.multiplicity if param.param_key == "charge" else 0 for param in parameter_space.optimizable_parameters]
+
+            constraints = [
+                {'type': 'ineq', 'fun': lambda x, b: x.dot(np.asarray(b) * parameter_space.scaling_constants_dict["charge"]) - total_charge + threshold, 'args': (constraint_vector_charges,)},
+                {'type': 'ineq', 'fun': lambda x, b: -x.dot(np.asarray(b) * parameter_space.scaling_constants_dict["charge"]) + total_charge + threshold, 'args': (constraint_vector_charges,)}]
+
+            return constraints
+
+        elif scipy_method == "trust-constr":
+            from scipy.optimize import LinearConstraint
+            constraint_vector = [param.multiplicity if param.param_key == "charge" else 0 for param in parameter_space.optimizable_parameters]
+
+            return LinearConstraint(constraint_vector, [total_charge - threshold], [total_charge + threshold])
+        else:
+            raise NotImplementedError("SciPy method {} does not support constraints.".format(scipy_method))
 

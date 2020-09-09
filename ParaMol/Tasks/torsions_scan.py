@@ -20,12 +20,24 @@ import simtk.unit as unit
 
 import numpy as np
 import copy
-import os
 import logging
 
 class TorsionScan(Task):
     """
     ParaMol implementation of torsion scans.
+
+    Attributes
+    ----------
+    qm_energies_list : list
+        Array containing the QM energies of the scan.
+    mm_energies_list : list
+        Array containing the MM energies of the scan.
+    qm_forces_list : list
+        List containing the QM Forces of the scan.
+    conformations_list : list
+        List containing the conformations of the scan.
+    scan_angles : list of float
+        Array containing the dihedral angles scanned so far.
     """
     def __init__(self):
         self.qm_energies_list = None
@@ -39,7 +51,7 @@ class TorsionScan(Task):
     #                       PUBLIC  METHODS                        #
     #                                                              #
     # ------------------------------------------------------------ #
-    def run_task(self, settings, systems, torsions_to_scan, scan_settings, torsions_to_freeze=None,
+    def run_task(self, settings, systems, torsions_to_scan, scan_settings, interface=None, torsions_to_freeze=None,
                  ase_constraints=None, optimize_mm=False, optimize_mm_type="freeze_atoms",
                  optimize_qm_before_scan=False, rdkit_conf=None, restart=False):
         """
@@ -56,6 +68,7 @@ class TorsionScan(Task):
         ----------
         settings : dict
             Dictionary containing global ParaMol settings.
+
         systems : list of :obj:`ParaMol.System.system.ParaMolSystem`
             List containing instances of ParaMol systems.
         torsions_to_scan : list of list of int
@@ -66,6 +79,8 @@ class TorsionScan(Task):
             List of lists wherein each the most inner list should contain 3 floats defining the settings of the scan in the
             to be performed and in the following order: lower torsion angle, upper torsion angle, angle step (in degrees).
             Example: 1D-Scan  [ [180.0,-180.0,-10.0] ]; 2D-Scan  [ [180.0,-180.0,-10.0],[60.0,-180.0,-10.0] ]
+        interface: :obj:`ParaMol.Utils.interface.ParaMolInterface`
+            ParaMol system instance.
         torsions_to_freeze : list of list of int
             List of lists of wherein each inner list should contain 4 integers defining a torsion to be kept fixed (default is `None`)
         ase_constraints : list of ASE constraints.
@@ -104,6 +119,10 @@ class TorsionScan(Task):
 
             system.create_qm_engines(settings.qm_engine["qm_engine"], settings.qm_engine[settings.qm_engine["qm_engine"].lower()])
 
+        # Create IO Interface
+        if interface is None:
+            interface = ParaMolInterface()
+
         # Iterate over all systems and perform
         for system in systems:
             # Get RDKit mol and conf
@@ -120,14 +139,14 @@ class TorsionScan(Task):
                 if torsional_scan_dim == 1:
                     # Perform 1D Scan
                     qm_energies_list, qm_forces_list, mm_energies_list, conformations_list, scan_angles = self.scan_1d(
-                        settings.restart, system, conf, torsions_to_scan[0], torsions_to_freeze, scan_settings[0], optimize_mm, optimize_mm_type, optimize_qm_before_scan, ase_constraints, restart)
+                        interface, settings.restart, system, conf, torsions_to_scan[0], torsions_to_freeze, scan_settings[0], optimize_mm, optimize_mm_type, optimize_qm_before_scan, ase_constraints, restart)
 
                     # File name buffer
                     file_name = "{}_scan_{}d_torsion_{}_{}_{}_{}".format(system.name, torsional_scan_dim, *torsions_to_scan[0])
                 elif torsional_scan_dim == 2:
                     # Perform 2D Scan
                     qm_energies_list, qm_forces_list, mm_energies_list, conformations_list, scan_angles =  self.scan_2d(
-                        settings.restart, system, conf, torsions_to_scan[0], torsions_to_scan[1], torsions_to_freeze, scan_settings[0], scan_settings[1], optimize_mm, optimize_mm_type, optimize_qm_before_scan, ase_constraints, restart)
+                        interface, settings.restart, system, conf, torsions_to_scan[0], torsions_to_scan[1], torsions_to_freeze, scan_settings[0], scan_settings[1], optimize_mm, optimize_mm_type, optimize_qm_before_scan, ase_constraints, restart)
 
                     # File name buffer
                     file_name = "scan_{}d_torsion_{}_{}_{}_{}_{}_{}_{}_{}.dat".format(torsional_scan_dim, *torsions_to_scan[0], *torsions_to_scan[1])
@@ -149,12 +168,14 @@ class TorsionScan(Task):
 
         return systems, qm_energies_list, qm_forces_list, mm_energies_list, conformations_list, scan_angles
 
-    def scan_1d(self, restart_settings, system, rdkit_conf, torsion_to_scan, torsions_to_freeze, scan_settings, optimize_mm, optimize_mm_type, optimize_qm_before_scan, ase_constraints, restart, force_constant=999999999.0, threshold=1e-2):
+    def scan_1d(self, interface, restart_settings, system, rdkit_conf, torsion_to_scan, torsions_to_freeze, scan_settings, optimize_mm, optimize_mm_type, optimize_qm_before_scan, ase_constraints, restart, force_constant=999999999.0, threshold=1e-2):
         """
         Method that performs 1-dimensional torsional scans.
 
         Parameters
         ----------
+        interface: :obj:`ParaMol.Utils.interface.ParaMolInterface`
+            ParaMol system instance.
         restart_settings : dict
             Dictionary containing restart ParaMol settings.
         system : :obj:`ParaMol.System.system.ParaMolSystem`
@@ -216,7 +237,7 @@ class TorsionScan(Task):
         #                           Restart                           #
         # ----------------------------------------------------------- #
         if restart:
-            self.__dict__ = self._read_restart_pickle(restart_settings, system, "restart_scan_file")
+            self.__dict__ = self.read_restart_pickle(restart_settings, interface, "restart_scan_file")
             # Set positions
             positions = self.conformations_list[-1] * unit.nanometers
             dummy_context.setPositions(positions)
@@ -336,7 +357,7 @@ class TorsionScan(Task):
             positions = positions * unit.nanometers
 
             # Write scan restart
-            self._write_restart_pickle(restart_settings, system, "restart_scan_file", self.__dict__)
+            self.write_restart_pickle(restart_settings, interface, "restart_scan_file", self.__dict__)
 
         # Set positions of context to last position
         dummy_context.setPositions(positions * unit.nanometers)
@@ -348,12 +369,14 @@ class TorsionScan(Task):
 
         return self.qm_energies_list, self.qm_forces_list, self.mm_energies_list, self.conformations_list, self.scan_angles
 
-    def scan_2d(self, restart_settings, system, rdkit_conf, torsion_to_scan_1, torsion_to_scan_2, torsions_to_freeze, scan_settings_1, scan_settings_2, optimize_mm, optimize_qm_before_scan, ase_constraints, restart, force_constant=9999999.0, threshold=1e-3):
+    def scan_2d(self, interface, restart_settings, system, rdkit_conf, torsion_to_scan_1, torsion_to_scan_2, torsions_to_freeze, scan_settings_1, scan_settings_2, optimize_mm, optimize_qm_before_scan, ase_constraints, restart, force_constant=9999999.0, threshold=1e-3):
         """
         Method that performs 2-dimensional torsional scans.
 
         Parameters
         ----------
+        interface: :obj:`ParaMol.Utils.interface.ParaMolInterface`
+            ParaMol system instance.
         restart_settings : dict
             Dictionary containing restart ParaMol settings.
         system : :obj:`ParaMol.System.system.ParaMolSystem`
@@ -431,7 +454,7 @@ class TorsionScan(Task):
         #                           Restart                           #
         # ----------------------------------------------------------- #
         if restart:
-            self.__dict__ = self._read_restart_pickle(restart_settings, system, "restart_scan_file")
+            self.__dict__ = self.read_restart_pickle(restart_settings, interface, "restart_scan_file")
             # Set positions
             positions = self.conformations_list[-1] * unit.nanometers
             dummy_context.setPositions(positions)
@@ -540,7 +563,7 @@ class TorsionScan(Task):
             self.scan_angles.append([torsion_value_1, torsion_value_2])
 
             # Write scan restart
-            self._write_restart_pickle(restart_settings, system, "restart_scan_file", self.__dict__)
+            self.write_restart_pickle(restart_settings, interface, "restart_scan_file", self.__dict__)
 
         print("!=================================================================================!\n")
 

@@ -22,12 +22,12 @@ from ..MM_engines.openmm import *
 class ParameterSpace:
     """
     ParaMol representation of the set of mathematical parameters that are used in the optimization.
-    This class aggregates information about the ParameterSubSpaces of all systems.
 
     Parameters
     ----------
     parameters_magnitudes : dict
-        Dictionary containing the default parameter's magnitudes.
+        Dictionary containing the mapping between parameter keys and their natural magnitude values.
+        This is used to calculate the scaling constants and prior widths if the 'default' option is chosen.
     prior_widths_method : str
         Method used to calculate the scaling constants. Available methods are 'default', 'arithmetic' and 'geometric'.
     scaling_constants_method : str
@@ -41,12 +41,6 @@ class ParameterSpace:
         Array containing the unscaled optimizable parameters values.
     optimizable_parameters : list or np.array
         Array that contains instances of :obj:`ParaMol.Force_field.force_field_term_parameter.Parameter` that are optimizable,
-    optimizable_parameters_by_system: list of list of :obj:`ParaMol.Force_field.force_field_term_parameter.Parameter
-        Array containing the  optimizable ParaMol parameters separated by system.
-    optimizable_parameters_values_by_system : list of list of float
-        Array containing the unscaled optimizable parameters values separated by system.
-    optimizable_parameters_by_symmetry : list of list of :obj:`ParaMol.Force_field.force_field_term_parameter.Parameter
-        Array that contains instances of :obj:`ParaMol.Force_field.force_field_term_parameter.Parameter` separated by symmetry and term type.
     initial_optimizable_parameters_values_scaled : list or np.array
         Array containing the initial scaled optimizable parameters values.
     initial_optimizable_parameters_values : list or np.array
@@ -61,21 +55,15 @@ class ParameterSpace:
         Dictionary that maps a param_key to the correspondent scaling constants used to perform the Jacobi preconditioning.
     """
 
-    symmetry_group_default = "X"
-
     def __init__(self, parameters_magnitudes={'charge': 0.5, 'lj_sigma': 0.30, 'lj_eps': 0.20,
                                               'torsion_phase': np.pi, 'torsion_k': 4 * 4.184,
                                               'bond_eq': 0.05, 'bond_k': 100000, 'angle_eq': np.pi / 16.0,
                                               'angle_k': 100.0, 'scee': 1.0, 'scnb': 1.0},
                  prior_widths_method="default", scaling_constants_method="default"):
 
-
         self.optimizable_parameters_values_scaled = None
         self.optimizable_parameters_values = None
         self.optimizable_parameters = None
-        self.optimizable_parameters_by_system = None
-        self.optimizable_parameters_values_by_system = None
-        self.optimizable_parameters_by_symmetry = None
 
         self.parameters_magnitudes = parameters_magnitudes
         # Prior widths
@@ -97,11 +85,11 @@ class ParameterSpace:
         # Indicates whether preconditioning was already performed or not
         self.preconditioned = False
 
-        # ------------------------------------------------------------ #
-        #                                                              #
-        #                          PUBLIC METHODS                      #
-        #                                                              #
-        # ------------------------------------------------------------ #
+    # ------------------------------------------------------------ #
+    #                                                              #
+    #                          PUBLIC METHODS                      #
+    #                                                              #
+    # ------------------------------------------------------------ #
 
     def calculate_scaling_constants(self, method=None):
         """
@@ -262,84 +250,34 @@ class ParameterSpace:
 
         return self.optimizable_parameters_values_scaled
 
-    # ------------------------------------------------------------ #
-    #                                                              #
-    #                          PUBLIC METHODS                      #
-    #                                                              #
-    # ------------------------------------------------------------ #
-    def get_optimizable_parameters(self, systems, symmetry_constrained=True):
+    def get_optimizable_parameters(self, system, symmetry_constrained=True):
         """
         Method that returns a list with the optimizable parameters to be passed to the optimization.
 
         Parameters
         ----------
-        systems: list of `ParaMol.System.system.ParaMolSystem`
-            List of ParaMol System instance.
         symmetry_constrained : bool
             Flag that signal if there are any symmetry constraints.
+        system: `ParaMol.System.system.ParaMolSystem`
+            ParaMol System instance.
 
         Returns
         -------
         optimizable_parameters, optimizable_parameters_values : np.array(n_parameters), np.array(n_parameters)
             array that contains instances of :obj:`ParaMol.Force_field.force_field_term_parameter.Parameter` that are optimizable, array containing the  optimizable parameters values.
         """
-        # Optimizable parameters divided separted by system
-        self.optimizable_parameters_by_system = []
-        self.optimizable_parameters_values_by_system = []
-        # Optimizable parameters separated by symmetry
-        self.optimizable_parameters_by_symmetry = []
-        # Optimizable parameters used in the optimization
+        # Get parameters for optimization:
         self.optimizable_parameters = []
         self.optimizable_parameters_values = []
 
-        for system in systems:
-            optimizable_parameters, optimizable_parameters_values = system.force_field.get_optimizable_parameters(symmetry_constrained=symmetry_constrained)
-            self.optimizable_parameters_by_system.append(optimizable_parameters)
-            self.optimizable_parameters_values_by_system.append(optimizable_parameters_values)
-
-        # Store symmetry groups, param_keys and indexes of where these parameters are stored in self.optimizable_parameters_by_symmetry
-        symm_groups = {}
-
-        if symmetry_constrained:
-            for system_parameters in self.optimizable_parameters_by_system:
-                for parameter in system_parameters:
-                    if parameter.symmetry_group == self.symmetry_group_default:
-                        # If symmetry group is the default ("X")
-                        self.optimizable_parameters.append(parameter)
-                        self.optimizable_parameters_values.append(parameter.value)
-                        self.optimizable_parameters_by_symmetry.append([parameter])
-                    elif parameter.symmetry_group in symm_groups.keys():
-                        # If group is not the default one ("X")
-                        # but that symmetry_group is already in symm_groups
-                        if parameter.param_key not in symm_groups[parameter.symmetry_group].keys():
-                            # Add missing param_key
-                            symm_groups[parameter.symmetry_group][parameter.param_key] = len(self.optimizable_parameters_by_symmetry)
-                            self.optimizable_parameters.append(parameter)
-                            self.optimizable_parameters_values.append(parameter.value)
-                            self.optimizable_parameters_by_symmetry.append([parameter])
-                        else:
-                            # Add parameter to list of parameters with same
-                            self.optimizable_parameters_by_symmetry[symm_groups[parameter.symmetry_group][parameter.param_key]].append(parameter)
-                    else:
-                        # If group is not the default one ("X") and not in symm_groups
-                        symm_groups[parameter.symmetry_group] = {}
-                        symm_groups[parameter.symmetry_group][parameter.param_key] = len(self.optimizable_parameters_by_symmetry)
-                        self.optimizable_parameters.append(parameter)
-                        self.optimizable_parameters_values.append(parameter.value)
-                        self.optimizable_parameters_by_symmetry.append([parameter])
-        else:
-            for system_parameters in self.optimizable_parameters_by_system:
-                for parameter in system_parameters:
-                    # If symmetry group is the default ("X")
-                    self.optimizable_parameters.append(parameter)
-                    self.optimizable_parameters_values.append(parameter.value)
-                    self.optimizable_parameters_by_symmetry.append([parameter])
-
-        del symm_groups
+        system.force_field.get_optimizable_parameters(symmetry_constrained=symmetry_constrained)
+        # Concatenate lists
+        self.optimizable_parameters += system.force_field.optimizable_parameters
+        self.optimizable_parameters_values += system.force_field.optimizable_parameters_values
 
         return self.optimizable_parameters, self.optimizable_parameters_values
 
-    def update_systems(self, systems, parameters_values):
+    def update_system(self, system, parameters_values):
         """
         Method that defines defines the point of contact with the external world.
 
@@ -347,8 +285,8 @@ class ParameterSpace:
         ----------
         parameters_values : list of floats
             1D list with the adimensional mathematical parameters used in the optimization.
-        systems: list of `ParaMol.System.system.ParaMolSystem`
-            List of ParaMol System instance.
+        system: `ParaMol.System.system.ParaMolSystem`
+            ParaMol System instance.
 
         Notes
         -----
@@ -366,22 +304,12 @@ class ParameterSpace:
         else:
             self.optimizable_parameters_values = parameters_values
 
-        # Update self.optimizable_parameters_values_by_system
-        for i in range(len(self.optimizable_parameters_by_symmetry)):
-            for parameter in self.optimizable_parameters_by_symmetry[i]:
-                parameter.value = self.optimizable_parameters_values[i]
+        # Update the parameters in the system's ParaMolForce Field
+        system.force_field.update_force_field(self.optimizable_parameters_values)
 
-        # Update optimizable_parameters_values_by_system
-        self.optimizable_parameters_values_by_system = [[parameter.value for parameter in optimizable_parameters] for optimizable_parameters in self.optimizable_parameters_by_system]
-
-            # Update ParaMol ForceField and MM engine
-        for system, optimizable_parameters_values in zip(systems, self.optimizable_parameters_values_by_system):
-            # Update the parameters in the system's ParaMolForce Field
-            system.force_field.update_force_field(optimizable_parameters_values)
-
-            # Update the parameters in the OpenMM context
-            system.engine.set_bonded_parameters(system.force_field.force_field_optimizable)
-            system.engine.set_nonbonded_parameters(system.force_field.force_field_optimizable)
+        # Update the parameters in the OpenMM context
+        system.engine.set_bonded_parameters(system.force_field.force_field_optimizable)
+        system.engine.set_nonbonded_parameters(system.force_field.force_field_optimizable)
 
         if type(system.resp_engine) is RESP:
             system.resp_engine.set_charges(system.force_field.force_field)
@@ -389,4 +317,3 @@ class ParameterSpace:
             raise NotImplementedError("MM RESP Engine {} is not implemented.".format(type(system.resp_engine)))
 
         return self.optimizable_parameters_values
-

@@ -52,20 +52,22 @@ class Task:
         raise NotImplementedError("Task {} is not implemented yet.". format(self._task_name))
 
     @staticmethod
-    def create_parameter_space(parameter_space_settings, restart_settings, systems, preconditioning=True, ):
+    def create_parameter_space(settings, systems, interface, preconditioning=True, restart=False):
         """
         Method that created the ParameterSpace object instance.
 
         Parameters
         ----------
-        parameter_space_settings : dict
-            Parameter Space ParaMol settings dictionary.
-        restart_settings : dict
-            Restart ParaMol settings dictionary.
+        settings : dict
+            Dictionary containing global ParaMol settings.
         systems : list of :obj:`ParaMol.System.system.ParaMolSystem`
             List containing instances of ParaMol systems.
+        interface: :obj:`ParaMol.Utils.interface.ParaMolInterface`
+            ParaMol system instance.
         preconditioning : bool
             Flag that signal whether or not the preconditioning of the parameters is done when this method is run.
+        restart : bool
+            Flag that controls whether or not to perform a restart.
 
         Returns
         -------
@@ -74,19 +76,27 @@ class Task:
         for system in systems:
             assert type(system) is ParaMolSystem, "ParaMol System provided is invalid."
 
-        parameter_space = ParameterSpace(systems, **parameter_space_settings)
-        parameter_space.get_optimizable_parameters()
+        parameter_space = ParameterSpace(**settings.parameter_space)
 
-        if restart_settings["restart_file"] is None:
+        if restart:
+            for system in systems:
+                system.force_field.get_optimizable_parameters(symmetry_constrained=True)
+
+            parameter_space.__dict__ = Task.read_restart_pickle(settings.restart, interface, "restart_parameter_space_file")
+
+            if parameter_space.preconditioned:
+                parameter_space.update_systems(systems, parameter_space.optimizable_parameters_values_scaled)
+            else:
+                parameter_space.update_systems(systems, parameter_space.optimizable_parameters_values)
+        else:
+            parameter_space.get_optimizable_parameters(systems)
+
             if preconditioning:
                 parameter_space.calculate_scaling_constants()
                 parameter_space.jacobi_preconditioning()
             
             parameter_space.initial_optimizable_parameters_values = copy.deepcopy(parameter_space.optimizable_parameters_values)
             parameter_space.initial_optimizable_parameters_values_scaled = copy.deepcopy(parameter_space.optimizable_parameters_values_scaled)
-        else:
-            # Read restart file
-            Task.read_restart_file(parameter_space, restart_settings["restart_file"])
 
         return parameter_space
 
@@ -94,7 +104,6 @@ class Task:
     def create_properties(properties_settings, systems, parameter_space):
         """
         Method that creates the Property instances
-
         Parameters
         ----------
         properties_settings : dict
@@ -102,8 +111,7 @@ class Task:
         systems : list of :obj:`ParaMol.System.system.ParaMolSystem`
             List containing instances of ParaMol systems.
         parameter_space : :obj:`ParaMol.Parameter_space.parameter_space.ParameterSpace`
-            Instance of the parameter space.
-
+            Instance of the ParameterSpace.
         Returns
         -------
         properties : list of ParaMol properties
@@ -138,161 +146,57 @@ class Task:
         return properties
 
     @staticmethod
-    def create_objective_function(objective_function_settings, parameter_space, properties):
-        assert type(parameter_space) is ParameterSpace, "Parameter space provided is invalid."
+    def create_objective_function(objective_function_settings, parameter_space, properties, systems):
+        """
+        Method that creates the ObjectiveFunction instances
+
+        Parameters
+        ----------
+        objective_function_settings : dict
+            ObjectiveFunction settings dictionary.
+        parameter_space: :obj:`ParaMol.Parameter_space.parameter_space.ParameterSpace`
+            Instance of the ParameterSpace.
+        properties : list of ParaMol properties
+            List containing the instances of the properties that will enter the objective function.
+        systems : list of :obj:`ParaMol.System.system.ParaMolSystem`
+            List containing instances of ParaMol systems.
+
+        Returns
+        -------
+        properties : list of ParaMol properties
+            List containing the instances of the properties that will enter the objective function.
+        """
+
+        assert type(parameter_space) is ParameterSpace, "ParameterSpace provided is invalid."
 
         objective_function = ObjectiveFunction(parameter_space=parameter_space,
                                                properties=properties,
+                                               systems=systems,
                                                **objective_function_settings)
 
         return objective_function
 
     @staticmethod
     def create_optimizer(method, optimizer_settings):
+        """
+        Method that creates the Optimizer instance.
+
+        Parameters
+        ----------
+        method: `str`
+            Optimizer method.
+        optimizer_settings: dict
+            Dictionary containing the optimizer settings.
+
+        Returns
+        -------
+        optimizer
+        """
         # Create optimizer
         optimizer = Optimizer(method=method,
                               settings=optimizer_settings)
 
         return optimizer
-    
-    @staticmethod
-    def write_restart_file(parameter_space, restart_file_name=None):
-        import netCDF4 as nc
-
-        if restart_file_name is None:
-            restart_file_name = 'restart_paramol.nc'
-
-        logging.info("Writing restart file {}.".format(restart_file_name))
-
-        # Open a new netCDF file for writing.
-        ncfile = nc.Dataset(restart_file_name, 'w')
-
-        #
-        n_parameters = len(parameter_space.optimizable_parameters)
-
-        # Create parameters dimension
-        ncfile.createDimension('n_parameters', n_parameters)
-
-        data_optimizable_parameters_values = ncfile.createVariable('optimizable_parameters_values', np.dtype('float64').char,
-                                                            ('n_parameters'))
-        data_optimizable_parameters_values.units = "standard_paramol_units"
-        if parameter_space.optimizable_parameters_values is not None:
-            data_optimizable_parameters_values[:] = parameter_space.optimizable_parameters_values
-        else:
-            logging.info("There are no optimizable parameters to be written.")
-            data_optimizable_parameters_values[:] = np.empty(n_parameters)
-
-        data_optimizable_parameters_values_scaled = ncfile.createVariable('optimizable_parameters_values_scaled',
-                                                                   np.dtype('float64').char, ('n_parameters'))
-        data_optimizable_parameters_values_scaled.units = "adimensional"
-        if parameter_space.optimizable_parameters_values_scaled is not None:
-            data_optimizable_parameters_values_scaled[:] = parameter_space.optimizable_parameters_values_scaled
-        else:
-            logging.info("There are no scaled optimizable parameters to be written.")
-            data_optimizable_parameters_values_scaled[:] = np.empty(n_parameters)
-
-        data_initial_optimizable_parameters_values = ncfile.createVariable('initial_optimizable_parameters_values',
-                                                                   np.dtype('float64').char,
-                                                                   ('n_parameters'))
-        data_initial_optimizable_parameters_values.units = "standard_paramol_units"
-        if parameter_space.initial_optimizable_parameters_values is not None:
-            data_initial_optimizable_parameters_values[:] = parameter_space.initial_optimizable_parameters_values
-        else:
-            logging.info("There are no initial optimizable parameters to be written.")
-            data_initial_optimizable_parameters_values[:] = np.empty(n_parameters)
-
-        data_initial_optimizable_parameters_values_scaled = ncfile.createVariable('initial_optimizable_parameters_values_scaled',
-                                                                          np.dtype('float64').char, ('n_parameters'))
-        data_initial_optimizable_parameters_values_scaled.units = "adimensional"
-        if parameter_space.initial_optimizable_parameters_values is not None:
-            data_initial_optimizable_parameters_values_scaled[:] = parameter_space.initial_optimizable_parameters_values_scaled
-        else:
-            logging.info("There are no scaled initial optimizable parameters to be written.")
-            data_initial_optimizable_parameters_values_scaled[:] = np.empty(n_parameters)
-
-        data_scaling_constants = ncfile.createVariable('scaling_constants', np.dtype('float64').char, ('n_parameters'))
-        data_scaling_constants.units = "standard_paramol_units"
-        if parameter_space.scaling_constants is not None:
-            data_scaling_constants[:] = parameter_space.scaling_constants
-        else:
-            logging.info("There are no scaling constants to be written.")
-            data_scaling_constants[:] = np.empty(n_parameters)
-
-        data_prior_widths = ncfile.createVariable('prior_widths', np.dtype('float64').char, ('n_parameters'))
-        data_prior_widths.units = "standard_paramol_units"
-        if parameter_space.prior_widths is not None:
-            data_prior_widths[:] = parameter_space.prior_widths
-        else:
-            logging.info("There are no prior widths to be written.")
-            data_prior_widths[:] = np.empty(n_parameters)
-
-        logging.info("SUCCESS! Restart file was written to file {}".format(restart_file_name))
-
-        return ncfile.close()
-
-    @staticmethod
-    def read_restart_file(parameter_space, restart_file_name=None):
-        import netCDF4 as nc
-
-        if restart_file_name is None:
-            restart_file_name = 'restart_paramol.nc'
-
-        logging.info("\nReading restart file {}.".format(restart_file_name))
-
-        # Open a new netCDF file for writing.
-        ncfile = nc.Dataset(restart_file_name, 'r')
-
-        if 'optimizable_parameters_values' in ncfile.variables:
-            if all(ncfile.variables["optimizable_parameters_values"] == np.empty(ncfile.variables["optimizable_parameters_values"].shape)):
-                parameter_space.optimizable_parameters_values = None
-            else:
-                parameter_space.optimizable_parameters_values = np.asarray(parameter_space.optimizable_parameters_values)
-        else:
-            logging.info("{} does not contain optimizable parameters data.".format(restart_file_name))
-
-        if 'optimizable_parameters_values_scaled' in ncfile.variables:
-            if all(ncfile.variables["optimizable_parameters_values_scaled"] == np.empty(ncfile.variables["optimizable_parameters_values_scaled"].shape)):
-                parameter_space.optimizable_parameters_values_scaled = None
-            else:
-                parameter_space.optimizable_parameters_values_scaled = np.asarray(parameter_space.optimizable_parameters_values_scaled)
-        else:
-            logging.info("{} does not contain scaled optimizable parameters data.".format(restart_file_name))
-
-        if 'scaling_constants' in ncfile.variables:
-            if all(ncfile.variables["scaling_constants"] == np.empty(ncfile.variables["scaling_constants"].shape)):
-                parameter_space.scaling_constants = None
-            else:
-                parameter_space.scaling_constants = np.asarray(parameter_space.scaling_constants)
-        else:
-            logging.info("{} does not contain scaling constants data.".format(restart_file_name))
-
-        if 'prior_widths' in ncfile.variables:
-            if all(ncfile.variables["prior_widths"] == np.empty(ncfile.variables["prior_widths"].shape)):
-                parameter_space.prior_widths = None
-            else:
-                parameter_space.prior_widths = np.asarray(parameter_space.prior_widths)
-        else:
-            logging.info("{} does not contain scaling constants data.".format(restart_file_name))
-
-        if 'initial_optimizable_parameters_values' in ncfile.variables:
-            if all(ncfile.variables["initial_optimizable_parameters_values"] == np.empty(ncfile.variables["initial_optimizable_parameters_values"].shape)):
-                parameter_space.initial_optimizable_parameters_values = None
-            else:
-                parameter_space.initial_optimizable_parameters_values = np.asarray(parameter_space.initial_optimizable_parameters_values)
-        else:
-            logging.info("{} does not contain initial optimizable parameters data.".format(restart_file_name))
-
-        if 'initial_optimizable_parameters_values_scaled' in ncfile.variables:
-            if all(ncfile.variables["initial_optimizable_parameters_values_scaled"] == np.empty(ncfile.variables["initial_optimizable_parameters_values_scaled"].shape)):
-                parameter_space.initial_optimizable_parameters_values_scaled = None
-            else:
-                parameter_space.initial_optimizable_parameters_values_scaled = np.asarray(parameter_space.initial_optimizable_parameters_values_scaled)
-        else:
-            logging.info("{} does not contain scaled initial optimizable parameters data.".format(restart_file_name))
-
-        logging.info("SUCCESS! Restart file was read from file {}".format(restart_file_name))
-
-        return ncfile.close()
 
     # ------------------------------------------------------------ #
     #                                                              #
@@ -300,7 +204,7 @@ class Task:
     #                                                              #
     # ------------------------------------------------------------ #
     @staticmethod
-    def _read_restart_pickle(restart_settings, system, restart_dict_key):
+    def read_restart_pickle(restart_settings, interface, restart_dict_key):
         """
         Method that reads restart pickle.
 
@@ -308,7 +212,7 @@ class Task:
         ----------
         restart_settings: dict
             Dictionary containing global ParaMol settings.
-        system: :obj:`ParaMol.System.system.ParaMolSystem`
+        interface: :obj:`ParaMol.Utils.interface.ParaMolInterface`
             ParaMol system instance.
         restart_dict_key: `str`
             Key that defines the name of the restart file.
@@ -316,16 +220,16 @@ class Task:
         Returns
         -------
         class_dict : dict
-            self.__dict__ of the class from which this method is being called.
+            self.__dict__ of the class to be stored into a pickle.
         """
         # Check restart directory exists
-        restart_dir = os.path.join(system.interface.base_dir, restart_settings["restart_dir_prefix"] + system.name)
-        system.interface.check_dir_exists(restart_dir)
+        restart_dir = os.path.join(interface.base_dir, restart_settings["restart_dir"])
+        interface.check_dir_exists(restart_dir)
 
         # Check restart file exists
         if restart_dict_key in restart_settings:
             scan_restart_file = os.path.join(restart_dir, restart_settings[restart_dict_key])
-            system.interface.check_file_exists(scan_restart_file)
+            interface.check_file_exists(scan_restart_file)
         else:
             raise KeyError("{} does not exist.".format(restart_dict_key))
 
@@ -337,7 +241,7 @@ class Task:
         return class_dict
 
     @staticmethod
-    def _write_restart_pickle(restart_settings, system, restart_dict_key, class_dict):
+    def write_restart_pickle(restart_settings, interface, restart_dict_key, class_dict):
         """
         Method that writes restart pickle.
 
@@ -345,25 +249,25 @@ class Task:
         ----------
         restart_settings: dict
             Dictionary containing global ParaMol settings.
-        system: :obj:`ParaMol.System.system.ParaMolSystem`
+        interface: :obj:`ParaMol.Utils.interface.ParaMolInterface`
             ParaMol system instance.
         restart_dict_key: `str`
             Key that defines the name of the restart file.
         class_dict : dict
-            self.__dict__ of the class from which this method is being called.
+            self.__dict__ of the class to be stored into a pickle.
 
         Returns
         -------
         class_dict : dict
-            self.__dict__ of the class from which this method is being called.
+            self.__dict__ of the class to be stored into a pickle.
         """
         # Create restart if it does not exist
-        restart_dir = os.path.join(system.interface.base_dir, restart_settings["restart_dir_prefix"] + system.name)
+        restart_dir = os.path.join(interface.base_dir, restart_settings["restart_dir"])
         if not os.path.exists(restart_dir):
             os.makedirs(restart_dir)
 
         # Check restart directory exists
-        system.interface.check_dir_exists(restart_dir)
+        interface.check_dir_exists(restart_dir)
 
         # Check restart file exists
         if restart_dict_key in restart_settings:

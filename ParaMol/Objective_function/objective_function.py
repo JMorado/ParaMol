@@ -28,9 +28,11 @@ class ObjectiveFunction:
     Parameters
     ----------
     parameter_space : :obj:`ParaMol.Parameter_space.parameter_space.ParameterSpace`
-        ParaMol representation of the parameter space:
+        ParaMol representation of ParameterSpace.
     properties : list of :obj:`ParaMol.ObjectiveFunction.Properties`
         List of property object instances.
+    systems : list of :obj:`ParaMol.System.system.ParaMolSystem`
+        List containing instances of ParaMol systems.
     platform_name :
         Name of the OpenMM platform. Only options are 'Reference', 'CPU' and 'OpenCL'.
     parallel : bool, default=`False`
@@ -45,14 +47,18 @@ class ObjectiveFunction:
     Attributes
     ----------
     parameter_space : :obj:`ParaMol.Parameter_space.parameter_space.ParameterSpace`
-        ParaMol representation of the parameter space:
+        ParaMol representation of ParameterSpace.
     properties : list of :obj:`ParaMol.ObjectiveFunction.Properties`
-        List of property objects.
+        List of property object instances.
+    systems : list of :obj:`ParaMol.System.system.ParaMolSystem`
+        List containing instances of ParaMol systems.
     """
-    def __init__(self, parameter_space, properties, platform_name, parallel=False, weighing_method="uniform", weighing_temperature=300*unit.kelvin, checkpoint_freq=1000):
+    def __init__(self, parameter_space, properties, systems, platform_name, parallel=False, weighing_method="uniform", weighing_temperature=300*unit.kelvin, checkpoint_freq=1000):
         # OpenMM platform used to compute the objective function
         self.parameter_space = parameter_space
         self.properties = properties
+        self.systems = systems
+        # Private variables
         self._platform = platform_name
         self._parallel = parallel
         self._checkpoint_freq = checkpoint_freq
@@ -110,7 +116,7 @@ class ObjectiveFunction:
 
         logging.info("Initializing parallel objective function.")
         logging.info("System / Number of cpus")
-        for system in self.parameter_space.systems:
+        for system in self.systems:
             logging.info("{} {}".format(system.name, system.n_cpus))
 
         # Create Parallel Objective Function Object and set values of shared variables
@@ -125,7 +131,7 @@ class ObjectiveFunction:
         self._parallel_function.batch_lims = []
         self._parallel_function.calculate_energies = []
         self._parallel_function.calculate_forces = []
-        for system in self.parameter_space.systems:
+        for system in self.systems:
             # Append shared data for this system
             self._parallel_function.X.append(system.ref_coordinates)
             self._parallel_function.n_atoms.append(system.n_atoms)
@@ -148,7 +154,7 @@ class ObjectiveFunction:
 
         return self._total_n_batches
 
-    def calculate_objective_function(self, fmm, emm, esp):
+    def calculate_objective_function(self, parameters_values, fmm, emm, esp):
         """
         Method that performs the necessary steps to calculate the objective function.
 
@@ -159,6 +165,8 @@ class ObjectiveFunction:
 
         Parameters
         ----------
+        parameters_values : list of floats
+            Lists containing the optimizable values of the parameters.
         fmm : np.array
             Forces array.
         emm : np.array
@@ -173,10 +181,11 @@ class ObjectiveFunction:
         """
 
         # Compute conformations weigths:
-        for system in self.parameter_space.systems:
+        objective_function = 0.0
+
+        for system in self.systems:
             system.compute_conformations_weights(temperature=self._weighing_temperature, emm=emm, weighing_method=self._weighing_method)
 
-        objective_function = 0.0
         for property in self.properties:
             if property.name == "ENERGY":
                 energy_decomposed = property.calculate_property(emm)
@@ -188,27 +197,27 @@ class ObjectiveFunction:
                 esp_decomposed = property.calculate_property(esp)
                 objective_function += property.weight * np.sum(esp_decomposed)
             elif property.name == "REGULARIZATION":
-                objective_function += property.weight * property.calculate_property(self.parameter_space.optimizable_parameters_values_scaled)
+                objective_function += property.weight * property.calculate_property(parameters_values)
 
-            """
-            # TODO: neat this print
-            print("!=================================================================================!")
-            print("!                               Properties Analysis                               !")
-            print("! {:<13s}{:<13s}{:<13s} {:<13s}{:<13s}{:<13s} !".format("System", "Property", "Units", "(Ref-Obs)", "RMS", "(Ref-Obs)/RMS"))
-            print("!---------------------------------------------------------------------------------!")
-            for property in self.properties:
-                if property.systems is not None:
-                    for system in property.systems:
-                        if property.name == "ENERGY":
-                            num, denom, ratio = system.energy_statistics(emm)
-                        elif property.name == "FORCE":
-                            num, denom, ratio = system.force_statistics(fmm)
-                        print("! {:<13s}{:<13s}{:<13s} {:<13.8f}{:<13.8f}{:<13.8f} !".format(system.name,
-                                                                                             property.name,
-                                                                                             property.units.get_name()[:13],
-                                                                                             num, denom, ratio))
-            print("!=================================================================================!\n")
-            """
+        """
+        # TODO: neat this print
+        print("!=================================================================================!")
+        print("!                               Properties Analysis                               !")
+        print("! {:<13s}{:<13s}{:<13s} {:<13s}{:<13s}{:<13s} !".format("System", "Property", "Units", "(Ref-Obs)", "RMS", "(Ref-Obs)/RMS"))
+        print("!---------------------------------------------------------------------------------!")
+        for property in self.properties:
+            if property.systems is not None:
+                for system in property.systems:
+                    if property.name == "ENERGY":
+                        num, denom, ratio = system.energy_statistics(emm)
+                    elif property.name == "FORCE":
+                        num, denom, ratio = system.force_statistics(fmm)
+                    print("! {:<13s}{:<13s}{:<13s} {:<13.8f}{:<13.8f}{:<13.8f} !".format(system.name,
+                                                                                         property.name,
+                                                                                         property.units.get_name()[:13],
+                                                                                         num, denom, ratio))
+        print("!=================================================================================!\n")
+        """
         return objective_function
 
     # ------------------------------------------------------------------------------------------------------- #
@@ -258,21 +267,21 @@ class ObjectiveFunction:
 
             if self._platform in ["CPU", "Reference"]:
                 args = []
-                for system_id in range(len(self.parameter_space.systems)):
+                for system_id in range(len(self.systems)):
                     # Create a pickalable context for this system
-                    pickalable_context = PickalableContext(self.parameter_space.systems[system_id].engine.system,
-                                                           copy.deepcopy(self.parameter_space.systems[system_id].engine.integrator))
+                    pickalable_context = PickalableContext(self.systems[system_id].engine.system,
+                                                           copy.deepcopy(self.systems[system_id].engine.integrator))
 
-                    args = args + [[pickalable_context, system_id, worker_id] for worker_id in range(self.parameter_space.systems[system_id].n_cpus)]
+                    args = args + [[pickalable_context, system_id, worker_id] for worker_id in range(self.systems[system_id].n_cpus)]
 
             elif self._platform in ["CUDA", "OpenCL"]:
                 args = []
-                for system_id in range(len(self.parameter_space.systems)):
+                for system_id in range(len(self.systems)):
                     # Create a pickalable context for this system
-                    args = args + [[self.parameter_space.systems[system_id].engine.system,
-                                    self.parameter_space.systems[system_id].engine.integrator,
+                    args = args + [[self.systems[system_id].engine.system,
+                                    self.systems[system_id].engine.integrator,
                                     system_id,
-                                    worker_id] for worker_id in range(self.parameter_space.systems[system_id].n_cpus)]
+                                    worker_id] for worker_id in range(self.systems[system_id].n_cpus)]
             else:
                 raise NotImplementedError("Platform {} not implemented for the calculation of the objective function.".format(self._platform))
 
@@ -288,7 +297,7 @@ class ObjectiveFunction:
             fmm_data = []
             data = np.asarray(data)
             start_batch = 0
-            for system in self.parameter_space.systems:
+            for system in self.systems:
                 end_batch = start_batch + system.n_cpus
                 emm_data.append(np.concatenate(data[start_batch:end_batch, 0]))
                 fmm_data.append(np.concatenate(data[start_batch:end_batch, 1]))
@@ -296,8 +305,8 @@ class ObjectiveFunction:
 
             return fmm_data, emm_data
 
-        # Update the parameters
-        self.parameter_space.update_systems(parameters_values)
+        # Update the parameters in the force field
+        self.parameter_space.update_systems(self.systems, parameters_values)
 
         if opt_mode:
             self._f_count += 1
@@ -308,14 +317,14 @@ class ObjectiveFunction:
         else:
             fmm, emm, esp = run_serial()
 
-        objective_function = self.calculate_objective_function(fmm, emm, esp)
+        objective_function = self.calculate_objective_function(parameters_values, fmm, emm, esp)
 
         if np.isnan(objective_function):
             # Set objective function to a very high value so that the parameters are discarded
             objective_function = 1e16
 
         if self._f_count % self._checkpoint_freq == 1:
-            for system in self.parameter_space.systems:
+            for system in self.systems:
                 system.engine.write_system_xml("{}_checkpoint.xml".format(system.name))
 
         if not opt_mode:
