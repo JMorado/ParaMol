@@ -52,7 +52,7 @@ class Task:
         raise NotImplementedError("Task {} is not implemented yet.". format(self._task_name))
 
     @staticmethod
-    def create_parameter_space(settings, systems, interface, preconditioning=True, restart=False):
+    def create_parameter_space(settings, systems, interface=None, preconditioning=True, restart=False):
         """
         Method that created the ParameterSpace object instance.
 
@@ -79,6 +79,8 @@ class Task:
         parameter_space = ParameterSpace(**settings.parameter_space)
 
         if restart:
+            assert interface is not None
+
             for system in systems:
                 system.force_field.get_optimizable_parameters(symmetry_constrained=True)
 
