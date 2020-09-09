@@ -25,6 +25,7 @@ import logging
 from ParaMol.Force_field.force_field import *
 from ..MM_engines.openmm import *
 from ..QM_engines.qm_engine import *
+from ..Utils.interface import *
 
 
 class ParaMolSystem:
@@ -144,6 +145,8 @@ class ParaMolSystem:
         if interface is None:
             assert self.interface is not None, "System's ParaMol interface was not set."
             interface = self.interface
+        else:
+            assert type(interface) is ParaMolInterface
 
         if self.qm_engine is None:
             # If there are no QM engine associated with this stystem

@@ -122,6 +122,8 @@ class TorsionScan(Task):
         # Create IO Interface
         if interface is None:
             interface = ParaMolInterface()
+        else:
+            assert type(interface) is ParaMolInterface
 
         # Iterate over all systems and perform
         for system in systems:

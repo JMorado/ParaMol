@@ -92,6 +92,8 @@ class RESPFitting(Task):
             # Create interface
             if interface is None:
                 interface = ParaMolInterface()
+            else:
+                assert type(interface) is ParaMolInterface
 
             # Create Parameter Space
             if parameter_space is None:

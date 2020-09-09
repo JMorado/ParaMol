@@ -72,6 +72,8 @@ class Parametrization(Task):
         # Create IO Interface
         if interface is None:
             interface = ParaMolInterface()
+        else:
+            assert type(interface) is ParaMolInterface
 
         # Create ParameterSpace
         if parameter_space is None:
