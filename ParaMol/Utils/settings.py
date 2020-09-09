@@ -156,5 +156,7 @@ class Settings:
         # ---------------------------------------------------------- #
         self.restart = {"restart_dir_prefix": "restart_",
                         "restart_files_prefix": "restart_",
+                        "restart_scan_file": "restart_scan.pickle",
+                        "restart_adaptive_parametrization_file": "restart_adaptive_parametrization.pickle",
                         "parameters_generation_pickle": None}
 

@@ -6,6 +6,8 @@ This module defines the :obj:`ParaMol.Objective_function.Tasks.task.Task` class,
 """
 
 import logging
+import pickle
+
 # ParaMol libraries
 from ..System.system import *
 from ..Optimizers.optimizer import *
@@ -291,3 +293,87 @@ class Task:
         logging.info("SUCCESS! Restart file was read from file {}".format(restart_file_name))
 
         return ncfile.close()
+
+    # ------------------------------------------------------------ #
+    #                                                              #
+    #                       PRIVATE METHODS                        #
+    #                                                              #
+    # ------------------------------------------------------------ #
+    @staticmethod
+    def _read_restart_pickle(restart_settings, system, restart_dict_key):
+        """
+        Method that reads restart pickle.
+
+        Parameters
+        ----------
+        restart_settings: dict
+            Dictionary containing global ParaMol settings.
+        system: :obj:`ParaMol.System.system.ParaMolSystem`
+            ParaMol system instance.
+        restart_dict_key: `str`
+            Key that defines the name of the restart file.
+
+        Returns
+        -------
+        class_dict : dict
+            self.__dict__ of the class from which this method is being called.
+        """
+        # Check restart directory exists
+        restart_dir = os.path.join(system.interface.base_dir, restart_settings["restart_dir_prefix"] + system.name)
+        system.interface.check_dir_exists(restart_dir)
+
+        # Check restart file exists
+        if restart_dict_key in restart_settings:
+            scan_restart_file = os.path.join(restart_dir, restart_settings[restart_dict_key])
+            system.interface.check_file_exists(scan_restart_file)
+        else:
+            raise KeyError("{} does not exist.".format(restart_dict_key))
+
+        logging.info("Reading restart file from file {}".format(scan_restart_file))
+
+        with open(scan_restart_file, 'rb') as restart_file:
+            class_dict = pickle.load(restart_file)
+
+        return class_dict
+
+    @staticmethod
+    def _write_restart_pickle(restart_settings, system, restart_dict_key, class_dict):
+        """
+        Method that writes restart pickle.
+
+        Parameters
+        ----------
+        restart_settings: dict
+            Dictionary containing global ParaMol settings.
+        system: :obj:`ParaMol.System.system.ParaMolSystem`
+            ParaMol system instance.
+        restart_dict_key: `str`
+            Key that defines the name of the restart file.
+        class_dict : dict
+            self.__dict__ of the class from which this method is being called.
+
+        Returns
+        -------
+        class_dict : dict
+            self.__dict__ of the class from which this method is being called.
+        """
+        # Create restart if it does not exist
+        restart_dir = os.path.join(system.interface.base_dir, restart_settings["restart_dir_prefix"] + system.name)
+        if not os.path.exists(restart_dir):
+            os.makedirs(restart_dir)
+
+        # Check restart directory exists
+        system.interface.check_dir_exists(restart_dir)
+
+        # Check restart file exists
+        if restart_dict_key in restart_settings:
+            scan_restart_file = os.path.join(restart_dir, restart_settings[restart_dict_key])
+        else:
+            raise KeyError("{} does not exist.".format(restart_dict_key))
+
+        logging.info("Writing restart file to file {}".format(scan_restart_file))
+
+        with open(scan_restart_file, 'wb') as restart_file:
+            pickle.dump(class_dict, restart_file, protocol=pickle.HIGHEST_PROTOCOL)
+
+        return class_dict

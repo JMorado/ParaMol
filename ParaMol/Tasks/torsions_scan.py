@@ -20,7 +20,6 @@ import simtk.unit as unit
 
 import numpy as np
 import copy
-import pickle
 import os
 import logging
 
@@ -217,13 +216,13 @@ class TorsionScan(Task):
         #                           Restart                           #
         # ----------------------------------------------------------- #
         if restart:
-            self._read_restart_scan(restart_settings, system)
+            self.__dict__ = self._read_restart_pickle(restart_settings, system, "restart_scan_file")
             # Set positions
-            dummy_context.setPositions(self.conformations_list[-1] * unit.nanometers)
+            positions = self.conformations_list[-1] * unit.nanometers
+            dummy_context.setPositions(positions)
             # Get new list of torsion scan values
             torsion_scan_values = [item for item in torsion_scan_values if item not in self.scan_angles]
         else:
-            # Create dir
             self.qm_energies_list = []
             self.mm_energies_list = []
             self.qm_forces_list = []
@@ -232,11 +231,6 @@ class TorsionScan(Task):
 
             # Set positions
             dummy_context.setPositions(positions)
-
-            restart_dir = os.path.join(system.interface.base_dir, restart_settings["restart_dir_prefix"] + system.name)
-            # Create restart if it does not exist
-            if not os.path.exists(restart_dir):
-                os.makedirs(restart_dir)
 
         if optimize_mm and (not restart):
             # ----------------------------------------------------------- #
@@ -342,7 +336,7 @@ class TorsionScan(Task):
             positions = positions * unit.nanometers
 
             # Write scan restart
-            self._write_restart_scan(restart_settings, system)
+            self._write_restart_pickle(restart_settings, system, "restart_scan_file", self.__dict__)
 
         # Set positions of context to last position
         dummy_context.setPositions(positions * unit.nanometers)
@@ -437,12 +431,12 @@ class TorsionScan(Task):
         #                           Restart                           #
         # ----------------------------------------------------------- #
         if restart:
-            self._read_restart_scan(restart_settings, system)
+            self.__dict__ = self._read_restart_pickle(restart_settings, system, "restart_scan_file")
             # Set positions
-            dummy_context.setPositions(self.conformations_list[-1] * unit.nanometers)
+            positions = self.conformations_list[-1] * unit.nanometers
+            dummy_context.setPositions(positions)
             # Get new list of torsion scan values
             torsion_scan_values = [item for item in torsion_scan_values if item not in self.scan_angles]
-            # Set restart optimization flag
         else:
             self.qm_energies_list = []
             self.mm_energies_list = []
@@ -451,7 +445,6 @@ class TorsionScan(Task):
             self.scan_angles = []
             # Set positions
             dummy_context.setPositions(positions)
-            # Set restart optimization flag
 
         if optimize_mm and (not restart):
             LocalEnergyMinimizer.minimize(dummy_context)
@@ -547,7 +540,7 @@ class TorsionScan(Task):
             self.scan_angles.append([torsion_value_1, torsion_value_2])
 
             # Write scan restart
-            self._write_restart_scan(restart_settings, system)
+            self._write_restart_pickle(restart_settings, system, "restart_scan_file", self.__dict__)
 
         print("!=================================================================================!\n")
 
@@ -821,70 +814,4 @@ class TorsionScan(Task):
             raise NotImplementedError("{}-d scan type is not implemented.".format(scan_dim))
 
         return
-    # ------------------------------------------------------------ #
-    #                                                              #
-    #                       PRIVATE METHODS                        #
-    #                                                              #
-    # ------------------------------------------------------------ #
-    def _read_restart_scan(self, restart_settings, system):
-        """
-        Method that reads restart pickle.
 
-        Parameters
-        ----------
-        restart_settings: dict
-            Dictionary containing global ParaMol settings.
-        system: :obj:`ParaMol.System.system.ParaMolSystem`
-            ParaMol system instance.
-
-        Returns
-        -------
-        system: :obj:`ParaMol.System.system.ParaMolSystem`
-            ParaMol system instance.
-        """
-        # Check restart directory exists
-        restart_dir = os.path.join(system.interface.base_dir, restart_settings["restart_dir_prefix"] + system.name)
-        system.interface.check_dir_exists(restart_dir)
-        # Check restart_paramol file exists
-        scan_restart_file = os.path.join(restart_dir, restart_settings["restart_files_prefix"] + system.name + ".pickle")
-        system.interface.check_file_exists(scan_restart_file)
-
-        logging.info("Reading scan restart file from file {}".format(scan_restart_file))
-
-        with open(scan_restart_file, 'rb') as restart_file:
-            self.__dict__ = pickle.load(restart_file)
-
-        return system
-
-    def _write_restart_scan(self, restart_settings, system):
-        """
-        Method that writes restart pickle.
-
-        Parameters
-        ----------
-        restart_settings: dict
-            Dictionary containing global ParaMol settings.
-        system: :obj:`ParaMol.System.system.ParaMolSystem`
-            ParaMol system instance.
-
-        Returns
-        -------
-        system: :obj:`ParaMol.System.system.ParaMolSystem`
-            ParaMol system instance.
-        """
-        # Create restart if it does not exist
-        restart_dir = os.path.join(system.interface.base_dir, restart_settings["restart_dir_prefix"] + system.name)
-        if not os.path.exists(restart_dir):
-            os.makedirs(restart_dir)
-
-        # Check restart directory exists
-        system.interface.check_dir_exists(restart_dir)
-        # Define name of restart file
-        scan_restart_file = os.path.join(restart_dir, restart_settings["restart_files_prefix"] + system.name + ".pickle")
-
-        logging.info("Writing scan restart file to file {}".format(scan_restart_file))
-
-        with open(scan_restart_file, 'wb') as restart_file:
-                pickle.dump(self.__dict__, restart_file, protocol=pickle.HIGHEST_PROTOCOL)
-
-        return system
