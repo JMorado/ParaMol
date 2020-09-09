@@ -133,10 +133,9 @@ QM Engine parameters (qm_engine)
 
 Restart parameters (qm_engine)
 ---------------------------------
-* **restart_dir_prefix** (`str`, "restart_"): Prefix given to the restart directory.
-* **restart_file** (`str`, None): Name of the NETCDF restart file.
+* **restart_dir** (`str`, "restart_paramol"): Name of the directory used to stored restart files.
+* **restart_adaptive_parametrization_file** (`str`, "restart_adaptive_parametrization.pickle"): Name of the file used to restart an adaptive parametrization calculation.
 * **restart_scan_file** (`str`, "restart_scan.pickle"): Name of the file used to restart a dihedral scan.
-* **parameters_generation_pickle** (`str`, "Reference"): Pickle file with the parameters of every generation.
-
+* **restart_parameter_space_file** (`str`, "restart_parameter_space.pickle"): Name of the file used to restart the parameter space.
 
 
