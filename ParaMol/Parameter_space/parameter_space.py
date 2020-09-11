@@ -69,7 +69,6 @@ class ParameterSpace:
                                               'angle_k': 100.0, 'scee': 1.0, 'scnb': 1.0},
                  prior_widths_method="default", scaling_constants_method="default"):
 
-
         self.optimizable_parameters_values_scaled = None
         self.optimizable_parameters_values = None
         self.optimizable_parameters = None

@@ -90,12 +90,13 @@ class Parametrization(Task):
             if settings.objective_function["parallel"]:
                 # Number of structures might have been changed and therefore it is necessary to re-initialize the parallel objective function
                 objective_function.init_parallel()
+            '''
             for prop in objective_function.properties:
                 if prop.name == "REGULARIZATION":
                     # TODO: if commented, reg in adaptive parametrization is done w.r.t. to the initial parameters at iter 0
                     #prop.set_initial_parameters_values(parameter_space.initial_optimizable_parameters_values_scaled)
                     pass
-
+            '''
         # Print Initial Info of Objective Function
         objective_function.f(parameter_space.optimizable_parameters_values_scaled, opt_mode=False)
 

@@ -28,7 +28,7 @@ class ObjectiveFunctionPlot(Task):
     #                       PUBLIC METHODS                       #
     #                                                            #
     # ---------------------------------------------------------- #
-    def run_task(self, settings, systems, grid_1, grid_2=None, parameter_space=None, objective_function=None, write_data=False, plot=True):
+    def run_task(self, settings, systems, grid_1, grid_2=None, parameter_space=None, objective_function=None, interface=None, write_data=False, plot=True):
         """
         This method can be used to generate plots of the objective function.
 
@@ -46,6 +46,8 @@ class ObjectiveFunctionPlot(Task):
             Instance of parameter space. (default is `None`).
         objective_function : :obj:`ParaMol.Objective_function.objective_function.ObjectiveFunction`
             Instance of ` (default is `None`).
+        interface: :obj:`ParaMol.Utils.interface.ParaMolInterface`
+            ParaMol system instance.
         write_data : bool
             Flag that signal whether the data is going to be written to a file.
         plot : bool
@@ -72,23 +74,27 @@ class ObjectiveFunctionPlot(Task):
                 ab_initio = AbInitioProperties()
                 ab_initio.run_task([system])
 
+        # Create IO Interface
+        if interface is None:
+            interface = ParaMolInterface()
+        else:
+            assert type(interface) is ParaMolInterface
+
         # Create Parameter Space
         if parameter_space is None:
-            parameter_space = self.create_parameter_space(settings.parameter_space, settings.restart, systems, preconditioning=True)
+            parameter_space = self.create_parameter_space(settings, systems, interface, preconditioning=True)
         else:
             assert type(parameter_space) is ParameterSpace
 
         # Create properties and objective function
-        if objective_function is None or parameter_space is None:
-            properties = self.create_properties(objective_function_settings=settings.properties,
-                                                systems=systems,
-                                                parameter_space=parameter_space)
-
-            objective_function = self.create_objective_function(objective_function_settings=settings.objective_function,
-                                                                parameter_space=parameter_space,
-                                                                properties=properties)
+        if objective_function is None:
+            properties = self.create_properties(settings.properties, systems, parameter_space)
+            objective_function = self.create_objective_function(settings.objective_function, parameter_space, properties, systems)
         else:
             assert type(objective_function) is ObjectiveFunction
+            if settings.objective_function["parallel"]:
+                # Number of structures might have been changed and therefore it is necessary to re-initialize the parallel objective function
+                objective_function.init_parallel()
 
         print("Parameter 1: {}.".format(parameter_space.optimizable_parameters[0]))
         print("Grid parameter 1: \n {}".format(grid_1))
@@ -109,17 +115,19 @@ class ObjectiveFunctionPlot(Task):
                 parameter_space.optimizable_parameters[0].value = x
 
                 # Get optimizable parameters after change
-                parameter_space.get_optimizable_parameters()
+                parameter_space.get_optimizable_parameters(systems)
                 parameter_space.jacobi_preconditioning()
-                parameter_space.update_systems(parameter_space.optimizable_parameters_values_scaled)
+                parameter_space.update_system(systems, parameter_space.optimizable_parameters_values_scaled)
 
                 # Print Initial Info of Objective Function
                 f_val = objective_function.f(parameter_space.optimizable_parameters_values_scaled, opt_mode=True)
                 data.append([x, f_val])
                 print("{:^17.8f}  {:^17.8f}".format(x,  f_val))
 
-            #self._write_data()
             data = np.asarray(data)
+
+            if write_data:
+                self._write_data(data)
             if plot:
                 self._plot(data[:, 0], data[:, 1])
 
@@ -139,19 +147,21 @@ class ObjectiveFunctionPlot(Task):
                     parameter_space.optimizable_parameters[1].value = y
 
                     # Get optimizable parameters after change
-                    parameter_space.get_optimizable_parameters()
+                    parameter_space.get_optimizable_parameters(systems)
                     parameter_space.jacobi_preconditioning()
-                    parameter_space.update_systems(parameter_space.optimizable_parameters_values_scaled)
+                    parameter_space.update_systems(systems, parameter_space.optimizable_parameters_values_scaled)
 
                     # Print Initial Info of Objective Function
                     f_val = objective_function.f(parameter_space.optimizable_parameters_values_scaled, opt_mode=True)
-                    data.append([x *  parameter_space.scaling_constants[0], y * parameter_space.scaling_constants[1], f_val])
+                    data.append([x * parameter_space.scaling_constants[0], y * parameter_space.scaling_constants[1], f_val])
                     print("{:^17.8f} {:^17.8f} {:^17.8f}".format(x, y, f_val))
 
-            #self._write_data(data)
             data = np.asarray(data)
+
+            if write_data:
+                self._write_data(data)
             if plot:
-                self._plot(data[:, 0], data[:, 1],data[:, 2])
+                self._plot(data[:, 0], data[:, 1], data[:, 2])
 
         # Re-set original parameters in ParaMol's ForceField representation and in OpenMM engine
         for system_idx in range(len(systems)):
@@ -173,13 +183,25 @@ class ObjectiveFunctionPlot(Task):
     #                                                            #
     # ---------------------------------------------------------- #
     @staticmethod
-    def _write_data(data=None):
-        pass
+    def _write_data(data):
+        """
+        Method that writes objective function plot data to a file.
+
+        Parameters
+        ----------
+        data: np.array
+
+        Returns
+        -------
+        None
+        """
+        return np.savetxt("objfunplot.dat", data)
 
     @staticmethod
     def _plot(x, y, z=None):
         """
         Method that plots the objective function.
+
         Parameters
         ----------
         x : list or np.array
@@ -191,8 +213,7 @@ class ObjectiveFunctionPlot(Task):
 
         Returns
         -------
-        `None`
-
+        None
         """
         import matplotlib.pyplot as plt
         from mpl_toolkits.mplot3d import axes3d
