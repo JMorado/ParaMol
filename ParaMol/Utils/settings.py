@@ -156,5 +156,6 @@ class Settings:
         # ---------------------------------------------------------- #
         self.restart = {"restart_dir": "restart_paramol",
                         "restart_scan_file": "restart_scan.pickle",
+                        "restart_soft_torsions_file": "restart_soft_torsions.pickle",
                         "restart_adaptive_parametrization_file": "restart_adaptive_parametrization.pickle",
                         "restart_parameter_space_file": "restart_parameter_space.pickle"}
