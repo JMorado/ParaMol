@@ -18,7 +18,7 @@ from ..Utils.interface import *
 
 class TorsionsParametrization(Task):
     """
-    ParaMol implementation of automatic identification, scan and parametrization of soft torsion.
+    ParaMol implementation of the algorithm that automatically identifies, scans and parametrizes soft torsions.
 
     Attributes
     ----------
@@ -38,7 +38,7 @@ class TorsionsParametrization(Task):
     force_field_current : dict
         Current force field dictionary. Used for the intermediate optimizations.
     force_field_original : dict
-        Original force field dictionary. Only used if method="SIMULATENOUS" to recover the original FF parameters.
+        Original force field dictionary. Only used if method="SIMULTANEOUS" to recover the original FF parameters.
     """
     pdb_file = "dihedral_scan.pdb"
 
@@ -64,7 +64,8 @@ class TorsionsParametrization(Task):
     # ------------------------------------------------------------ #
     def run_task(self, settings, systems, parameter_space=None, objective_function=None, optimizer=None, interface=None, scan_settings=[-180.0,180.0,10], torsions_to_freeze=None, ase_constraints=None, optimize_mm=False, optimize_mm_type="FREEZE_ATOMS", optimize_qm_before_scan=False, parametrization_type="SIMULTANEOUS", restart=False):
         """
-        Method that can be used to perform automatic parametrization of the rotatable (soft) torsions using 1-D scans. "SIMULATENOUS" is preferred as "SEQUENTIAL" is still being tested.
+        Method that can be used to perform automatic parametrization of the rotatable (soft) torsions using 1-D scans.
+        "SIMULTANEOUS" is preferred as "SEQUENTIAL" is still being tested.
 
         Notes
         -----
@@ -155,9 +156,6 @@ class TorsionsParametrization(Task):
                     # Write restart file
                     self.__dict__ = self.read_restart_pickle(settings.restart, interface, "restart_soft_torsions_file")
 
-                    bonds_to_scan = [item for item in rotatable_dihedrals if item not in self.bonds_scanned]
-
-
                     # Read data into system
                     if self.dihedrals_to_optimize:
                         system.read_data(os.path.join(settings.restart["restart_dir"], "{}_data_restart.nc".format(system.name)))
@@ -167,7 +165,7 @@ class TorsionsParametrization(Task):
                 else:
                     print("Found {} soft bonds and {} soft torsions.".format(len(rotatable_bonds), sum(len(x) for x in rotatable_dihedrals)))
                     if optimize_qm_before_scan:
-                        logging.info("Performing QM optimization before starting torsions parametrization.")
+                        logging.info("Performing QM optimization before starting soft dihedrals' scans and parametrization.")
                         # ----------------------------------------------------------- #
                         #                   Perform QM optimization                   #
                         # ----------------------------------------------------------- #
@@ -188,12 +186,12 @@ class TorsionsParametrization(Task):
                     self.dihedrals_to_optimize = []
                     self.bond_id = 0
 
-                    bonds_to_scan = rotatable_dihedrals
-
                     self.force_field_original = copy.deepcopy(system.force_field.force_field)
 
-                for bond in bonds_to_scan:
-                    print("\nPerform sampling of torsions of bond with atoms {} {}.".format(*rotatable_bonds[self.bond_id]))
+                for i in range(self.bond_id,len(rotatable_dihedrals)):
+                    print("\nPerform scan of torsions of the bond with atoms {} {}.".format(*rotatable_bonds[self.bond_id]))
+
+                    bond = rotatable_dihedrals[i]
 
                     # Assert whether to optimize this bond
                     bond_symm = []
@@ -204,10 +202,10 @@ class TorsionsParametrization(Task):
 
                     if bond_symm in self.bond_symm_global:
                         # If bond has the same number of dihedral types
-                        print("This bond is equivalent. No sampling will be performed.")
+                        print("This bond is equivalent to a previous one already scanned. No scan will be performed.")
 
                         # Add bond symmetry to type of bonds scanned
-                        self.bonds_scanned.append(bond)
+                        self.bond_symm_global.append(bond_symm)
                         self.bond_id += 1
 
                         # Update restart data
@@ -227,7 +225,7 @@ class TorsionsParametrization(Task):
                         for rot_dihedral in dihedrals_to_scan:
                             if rot_dihedral.parameters["torsion_phase"].symmetry_group not in self.dihedral_types_scanned:
                                 # If this dihedral type was not yet sampled for this rotatable bond
-                                print("Sampling torsion with atoms {} {} {} {} belonging to symmetry group {}".format(*rot_dihedral.atoms, rot_dihedral.parameters["torsion_phase"].symmetry_group))
+                                print("Performing scan of torsion with atoms {} {} {} {} belonging to symmetry group {}".format(*rot_dihedral.atoms, rot_dihedral.parameters["torsion_phase"].symmetry_group))
 
                                 if parametrization_type.upper() == "SEQUENTIAL":
                                     # Define torsions to freeze as the ones given by the user plus all the other soft torsions not being scanned
@@ -302,8 +300,6 @@ class TorsionsParametrization(Task):
                         # Update restart data
                         self.write_restart_pickle(settings.restart, interface, "restart_soft_torsions_file", self.__dict__)
 
-                print(len(self.dihedrals_to_optimize))
-                exit()
                 if parametrization_type.upper() == "SIMULTANEOUS":
                     # Only optimize dihedral types scanned
                     system.force_field.optimize_torsions_by_symmetry(self.dihedrals_to_optimize, change_other_torsions=True, change_other_parameters=True)
