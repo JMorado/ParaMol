@@ -147,27 +147,3 @@ This is a specification for the NetCDF 4 based store file format used by ParaMol
             :_NCProperties = "version=1|netcdflibversion=4.4.1.1|hdf5libversion=1.10.1" ;
     }
 
-
-.. code-block:: text
-    :caption: NetCDF file used to restart ParaMol (usually restart_paramol.nc).
-
-    netcdf restart_paramol {
-    dimensions:
-        n_parameters = 260 ;
-    variables:
-        double optimizable_parameters_values(n_parameters) ;
-            optimizable_parameters_values:units = "standard_paramol_units" ;
-        double optimizable_parameters_values_scaled(n_parameters) ;
-            optimizable_parameters_values_scaled:units = "dimensionless" ;
-        double initial_optimizable_parameters_values(n_parameters) ;
-            initial_optimizable_parameters_values:units = "standard_paramol_units" ;
-        double initial_optimizable_parameters_values_scaled(n_parameters) ;
-            initial_optimizable_parameters_values_scaled:units = "dimensionless" ;
-        double scaling_constants(n_parameters) ;
-            scaling_constants:units = "standard_paramol_units" ;
-        double prior_widths(n_parameters) ;
-            prior_widths:units = "standard_paramol_units" ;
-
-    // global attributes:
-            :_NCProperties = "version=1|netcdflibversion=4.4.1.1|hdf5libversion=1.10.1" ;
-    }
