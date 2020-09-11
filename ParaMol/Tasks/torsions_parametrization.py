@@ -35,6 +35,8 @@ class TorsionsParametrization(Task):
         Current bond id.
     bonds_scanned : list of list of int
         List containing lists with the pairs of atoms that form bonds that were already scanned.
+    force_field_current : dict
+        Current force field dictionary. Used for the intermediate optimizations.
     force_field_original : dict
         Original force field dictionary. Only used if method="SIMULATENOUS" to recover the original FF parameters.
     """
@@ -47,7 +49,13 @@ class TorsionsParametrization(Task):
         self.bond_symm_global = None
         self.bond_id = None
         self.bonds_scanned = None
+
+        # Force field
         self.force_field_original = None
+        self.force_field_current = None
+        # Restart
+        self.restart_intermediate_parametrization = None
+        self.restart_final_parametrization = None
 
     # ------------------------------------------------------------ #
     #                                                              #
@@ -149,9 +157,13 @@ class TorsionsParametrization(Task):
 
                     bonds_to_scan = [item for item in rotatable_dihedrals if item not in self.bonds_scanned]
 
+
                     # Read data into system
                     if self.dihedrals_to_optimize:
                         system.read_data(os.path.join(settings.restart["restart_dir"], "{}_data_restart.nc".format(system.name)))
+
+                        # Reset parameters to current values
+                        system.engine.set_bonded_parameters(self.force_field_current)
                 else:
                     print("Found {} soft bonds and {} soft torsions.".format(len(rotatable_bonds), sum(len(x) for x in rotatable_dihedrals)))
                     if optimize_qm_before_scan:
@@ -171,11 +183,10 @@ class TorsionsParametrization(Task):
                         # Set optimized geometry in RDKit conf
                         torsions_scan.set_positions_rdkit_conf(rdkit_conf, positions.in_units_of(unit.angstrom)._value)
 
-                    # Perform sampling of dihedral
                     self.bonds_scanned = []
                     self.bond_symm_global = []
-                    self.bond_id = 0
                     self.dihedrals_to_optimize = []
+                    self.bond_id = 0
 
                     bonds_to_scan = rotatable_dihedrals
 
@@ -194,6 +205,13 @@ class TorsionsParametrization(Task):
                     if bond_symm in self.bond_symm_global:
                         # If bond has the same number of dihedral types
                         print("This bond is equivalent. No sampling will be performed.")
+
+                        # Add bond symmetry to type of bonds scanned
+                        self.bonds_scanned.append(bond)
+                        self.bond_id += 1
+
+                        # Update restart data
+                        self.write_restart_pickle(settings.restart, interface, "restart_soft_torsions_file", self.__dict__)
                         continue
                     else:
                         if restart:
@@ -216,7 +234,7 @@ class TorsionsParametrization(Task):
                                     torsions_to_freeze_mod = torsions_to_freeze
 
                                     # Iterate over all torsions and pick the ones that will not be scanned
-                                    for soft_bond in rotatable_dihedrals[:self.bond_id]:
+                                    for soft_bond in rotatable_dihedrals:
                                         for torsion in soft_bond:
                                             if torsion.atoms is not rot_dihedral.atoms:
                                                 torsions_to_freeze_mod.append(torsion.atoms)
@@ -253,7 +271,7 @@ class TorsionsParametrization(Task):
                                 #self.set_zero(system, rotatable_bonds)
                                 parametrization = Parametrization()
                                 systems, parameter_space, objective_function, optimizer = parametrization.run_task(
-                                    settings, systems, None, None, None, restart=restart)
+                                    settings, systems, None, None, None)
 
                                 # Once it is done, set the data in the buffer back in the system
                                 system.ref_coordinates = np.asarray(tmp_coordinates)
@@ -265,6 +283,9 @@ class TorsionsParametrization(Task):
                                 self.dihedrals_scanned.append(rot_dihedral)
                                 self.dihedral_types_scanned.append(rot_dihedral.parameters["torsion_phase"].symmetry_group)
                                 self.dihedrals_to_optimize.append(rot_dihedral.atoms)
+
+                                # Save current force field
+                                self.force_field_current = copy.deepcopy(system.force_field.force_field)
 
                                 # Write restart data
                                 system.write_data(os.path.join(settings.restart["restart_dir"], "{}_data_restart.nc".format(system.name)))
@@ -278,18 +299,22 @@ class TorsionsParametrization(Task):
                         self.bond_symm_global.append(bond_symm)
                         self.bond_id += 1
 
+                        # Update restart data
+                        self.write_restart_pickle(settings.restart, interface, "restart_soft_torsions_file", self.__dict__)
+
+                print(len(self.dihedrals_to_optimize))
+                exit()
                 if parametrization_type.upper() == "SIMULTANEOUS":
                     # Only optimize dihedral types scanned
                     system.force_field.optimize_torsions_by_symmetry(self.dihedrals_to_optimize, change_other_torsions=True, change_other_parameters=True)
 
                     # Reset parameters to original values
                     # Re-set original parameters
-                    system.engine.set_nonbonded_parameters(self.force_field_original)
                     system.engine.set_bonded_parameters(self.force_field_original)
 
                     # Perform parametrization of all rotatable dihedral simultaneously
                     parametrization = Parametrization()
-                    systems, parameter_space, objective_function, optimizer = parametrization.run_task(settings, systems, None, None, None, restart=restart)
+                    systems, parameter_space, objective_function, optimizer = parametrization.run_task(settings, systems, None, None, None)
 
         print("!=================================================================================!")
         print("!             TORSIONS PARAMETRIZATION TERMINATED SUCCESSFULLY :)                 !")
