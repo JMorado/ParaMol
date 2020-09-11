@@ -59,6 +59,7 @@ class TorsionScan(Task):
 
         Notes
         -----
+        Only one ParaMol system is supported at once.
         Initially a QM engine is initiated for every `system` in `systems`.
         Then for every `system` in `systems` a RDKit molecule is created.
         The 1D or 2D torsional scan is performed for the torsion(s) in torsions_to_scan with
@@ -104,6 +105,7 @@ class TorsionScan(Task):
         print("!=================================================================================!")
         print("!                                TORSIONAL SCAN                                   !")
         print("!=================================================================================!")
+        assert len(systems) == 1, "TorsionScan task currently only supports one system at once."
         # Assert that number of torsional scans to performed has an equal number of scan settings
         assert len(torsions_to_scan) == len(scan_settings), "Number of scan to perform does not match number of scan settings provided."
 

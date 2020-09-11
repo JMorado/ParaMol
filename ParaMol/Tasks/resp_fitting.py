@@ -35,6 +35,10 @@ class RESPFitting(Task):
         """
         Method that performs a RESP calculation.
 
+        Notes
+        -----
+        Only one ParaMol system is supported at once.
+
         Parameters
         ----------
         settings : dict
@@ -65,7 +69,7 @@ class RESPFitting(Task):
         print("!=================================================================================!")
 
         assert total_charge is not None, "System's total charge was not specified."
-        assert len(systems) == 1, "RESP task currently only supports fitting of one system at once."
+        assert len(systems) == 1, "RESP task currently only supports parametrization of one system at once."
 
         if solver.lower() == "scipy":
             logging.info("ParaMol will solve fit to ESP using a SciPy optimimzer.")
