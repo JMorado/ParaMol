@@ -16,6 +16,8 @@ class DFTBWrapper:
 
     Parameters
     ----------
+    system_name : str
+        Name of the system to which this wrapper is associated.
     interface : :obj:`ParaMol.Utils.interface.ParaMolInterface`
         ParaMol interface object instance.
     n_atoms : int
@@ -42,10 +44,14 @@ class DFTBWrapper:
     max_ang_mom : dict, default={"H": "s", "C": "p", "N": "p", "O": "p", "F": "p", "S": "p"}
         Dictionary that defines the maximum angular momentum for each chemical element.
     """
-    def __init__(self, interface, n_atoms, atom_list, n_calculations,
-                 slater_koster_files_prefix, work_dir="DFTBWorkDir", calc_file="dftb_in.hsd", geometry_file="geometry.gen",
+    def __init__(self, system_name, interface, n_atoms, atom_list, n_calculations,
+                 slater_koster_files_prefix, work_dir_prefix="DFTBWorkDir_", calc_file="dftb_in.hsd", geometry_file="geometry.gen",
                  calc_dir_prefix="dftb_", detailed_file_output="detailed.out", calc_file_output="dftb_output.out",
                  max_ang_mom={"H": "s", "C": "p", "N": "p", "O": "p", "F": "p", "S": "p"}):
+
+        # Name of the system to which this wrapper is associated to
+        self._system_name = system_name
+
         # Natoms, atom list, n calculations
         self._n_atoms = n_atoms
         self._atom_list = atom_list
@@ -61,7 +67,7 @@ class DFTBWrapper:
 
         # Constants
         self._slater_koster_files_prefix = slater_koster_files_prefix
-        self._work_dir = work_dir
+        self._work_dir = "{}{}".format(work_dir_prefix, self._system_name)
         self._calc_file = calc_file
         self._calc_file_output = calc_file_output
         self._geometry_file = geometry_file

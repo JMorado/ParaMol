@@ -32,7 +32,7 @@ class Parametrization(Task):
     #                       PUBLIC METHODS                       #
     #                                                            #
     # ---------------------------------------------------------- #
-    def run_task(self, settings, systems, parameter_space=None, objective_function=None, optimizer=None, interface=None, adaptive_parametrization=False, restart=False):
+    def run_task(self, settings, systems, parameter_space=None, objective_function=None, optimizer=None, interface=None, adaptive_parametrization=False, apply_charge_correction=False, restart=False):
         """
         Method that performs the standard ParaMol parametrization.
         
@@ -52,6 +52,8 @@ class Parametrization(Task):
             ParaMol system instance.
         adaptive_parametrization: bool
             Flag that signals if this parametrization is being done inside a an adaptive parametrization loop. If `False` the sytem xml file is not written in this method (default is `False`).
+        apply_charge_correction : bool
+            Whether or not to apply charge correction. Important if charges are being optimized.
         restart : bool
             Flag that controls whether or not to perform a restart.
 
@@ -110,21 +112,22 @@ class Parametrization(Task):
         # ================================================================================= #
         #                                APPLY CHARGE CORRECTION                            #
         # ================================================================================= #
-        for system in systems:
-            # Apply charge correction
-            self._apply_charge_correction(system)
-            # Create optimizable force field
-            system.force_field.create_force_field_optimizable()
+        if apply_charge_correction:
+            for system in systems:
+                # Apply charge correction
+                self._apply_charge_correction(system)
+                # Create optimizable force field
+                system.force_field.create_force_field_optimizable()
 
-        # Get optimizable parameters
-        parameter_space.get_optimizable_parameters(systems)
-        # Calculate prior widths, scaling constants and apply jacobi preconditioning (they may have changes if charges changed).
-        # Otherwise, we may assume that the change is so small that this has no effect... quite good approximation, hence these lines may be commented
-        # parameter_space.calculate_scaling_constants()
-        # parameter_space.calculate_prior_widths()
-        parameter_space.jacobi_preconditioning()
-        # Update the OpenMM context
-        parameter_space.update_systems(systems, parameter_space.optimizable_parameters_values_scaled)
+            # Get optimizable parameters
+            parameter_space.get_optimizable_parameters(systems)
+            # Calculate prior widths, scaling constants and apply jacobi preconditioning (they may have changes if charges changed).
+            # Otherwise, we may assume that the change is so small that this has no effect... quite good approximation, hence these lines may be commented
+            # parameter_space.calculate_scaling_constants()
+            # parameter_space.calculate_prior_widths()
+            parameter_space.jacobi_preconditioning()
+            # Update the OpenMM context
+            parameter_space.update_systems(systems, parameter_space.optimizable_parameters_values_scaled)
         # ================================================================================= #
         #                             END APPLY CHARGE CORRECTION                           #
         # ================================================================================= #

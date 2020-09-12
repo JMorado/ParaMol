@@ -3,6 +3,31 @@ File Specifications
 
 ParaMol Force Field (.ff) file
 ##############################
+
+When manually defining the symmetries of terms belonging to specific force groups, the user should adhere to the mapping shown in the table below.
+This is of particular importance if .frcmod and .prmtop files are to be generated after a parametrization. If the user does not want to generate these files, these rules may be ignored.
+It is also worth mentioning that these starting letters may be followed by any combination of letters and numbers. For example, "B0", "B9999" or "BABC" are all valid symmetry-groups for the HarmonicBondForce group.
+
+.. list-table:: Mapping between force groups and symmetry groups.
+   :widths: 25 25
+   :header-rows: 1
+
+   * - Term Type
+     - Starting Letter(s)
+   * - HarmonicBondForce
+     - B
+   * - HarmonicAngleForce
+     - A
+   * - PeriodicTorsionForce
+     - T
+   * - NonbondedForce
+     - None
+   * - Scaling14
+     - SC
+   * - No Symmetry
+     - X
+
+
 .. code-block:: text
     :caption: ParaMol Force Field file.
 

@@ -6,6 +6,7 @@ Description
 
 This module defines the :obj:`ParaMol.System.system.ParaMolSystem` class, which is a ParaMol representation of a chemical system.
 This object is used to store reference data such as:
+
     - coordinates,
     - reference energies,
     - reference forces,

@@ -83,7 +83,8 @@ class QMEngine:
             self._system.engine.get_atomic_numbers()
 
             # Create AmberWrapper
-            self.qm_engine = amber.AmberWrapper(interface=self._interface,
+            self.qm_engine = amber.AmberWrapper(system_name=self._system.name,
+                                                interface=self._interface,
                                                 prmtop_file=self._system.engine.top_file,
                                                 inpcrd_file=self._system.engine.crd_file,
                                                 cell=cell,
@@ -98,7 +99,8 @@ class QMEngine:
             # Get atom list and atomic numbers list
             self._system.engine.get_atom_list()
 
-            self.qm_engine = dftb.DFTBWrapper(interface=self._interface,
+            self.qm_engine = dftb.DFTBWrapper(system_name=self._system.name,
+                                              interface=self._interface,
                                               n_atoms=self._system.n_atoms,
                                               atom_list=self._system.engine.atom_list,
                                               n_calculations=self._system.n_cpus,
@@ -110,7 +112,8 @@ class QMEngine:
             # Get atom list and atomic numbers list
             self._system.engine.get_atom_list()
 
-            self.qm_engine = ase.ASEWrapper(interface=self._interface,
+            self.qm_engine = ase.ASEWrapper(system_name=self._system.name,
+                                            interface=self._interface,
                                             n_atoms=self._system.n_atoms,
                                             atom_list=self._system.engine.atom_list,
                                             n_calculations=self._system.n_cpus,
