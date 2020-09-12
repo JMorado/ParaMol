@@ -1,7 +1,7 @@
 Example 6: Example of how to restart a calculation
 ==================================================
 
-Restarting a calculation in ParaMol is as simple as passing the following argument into the :obj:`task.run_task` method:
+Restarting a calculation in ParaMol is as simple as passing the argument :obj:`restart=True` into the :obj:`task.run_task` method:
 
 
 .. code-block:: python
