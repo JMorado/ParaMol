@@ -17,6 +17,8 @@ class AmberWrapper:
 
     Parameters
     ----------
+    system_name : str
+        Name of the system to which this wrapper is associated.
     interface : :obj:`ParaMol.Utils.interface.ParaMolInterface`
         ParaMol interface object instance.
     prmtop_file : str
@@ -39,9 +41,13 @@ class AmberWrapper:
         Prefix given to the sqm calculation file.
     """
 
-    def __init__(self, interface, prmtop_file, inpcrd_file, cell, n_atoms, atom_list, atomic_number_list,
+    def __init__(self, system_name, interface, prmtop_file, inpcrd_file, cell, n_atoms, atom_list, atomic_number_list,
                  sqm_params={"maxcyc": "0", "qm_theory": "AM1", "dftb_disper": "0", "qm_charge": "0", "scfconv": "1.0d-8", "pseudo_diag": "0", "verbosity": "5"},
-                 work_dir="AMBERWorkDir", calc_file_prefix="sqm_"):
+                 work_dir_prefix="AMBERWorkDir_", calc_file_prefix="sqm_"):
+
+        # Name of the system to which this is associated
+        self._system_name = system_name
+
         self._prmtop_file = prmtop_file
         self._inpcrd_file = inpcrd_file
         self._cell = cell
@@ -52,7 +58,7 @@ class AmberWrapper:
         self._sqm_params = sqm_params
 
         # Names
-        self._work_dir = work_dir
+        self._work_dir = "{}{}".format(work_dir_prefix, self._system_name)
         self._calc_file_prefix = calc_file_prefix
 
         # Run final preparations

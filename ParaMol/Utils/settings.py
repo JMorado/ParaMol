@@ -117,7 +117,7 @@ class Settings:
         #                                                            #
         # ---------------------------------------------------------- #
         self.qm_engine = {"qm_engine": "ase",
-                          "dftb+": {"work_dir": "DFTBWorkDir",
+                          "dftb+": {"work_dir_prefix": "DFTBWorkDir_",
                                     "calc_file": "dftb_in.hsd",
                                     "calc_file_output": "dftb_output.out",
                                     "detailed_file_output": "detailed.out",
@@ -137,7 +137,7 @@ class Settings:
                                                    "scfconv": "1.0d-8",
                                                    "pseudo_diag": "0",
                                                    "verbosity": "5"},
-                                    "work_dir": "AMBERWorkDir",
+                                    "work_dir_prefix": "AMBERWorkDir_",
                                     "calc_file_prefix": "sqm_", },
                           "ase": {"calculator": None,
                                   "optimizer": BFGS_ase,
@@ -145,7 +145,7 @@ class Settings:
                                   "opt_fmax": 1e-2,
                                   "opt_traj_prefix": "traj_",
                                   "calc_dir_prefix": "ase_",
-                                  "work_dir": "ASEWorkDir",
+                                  "work_dir_prefix": "ASEWorkDir_",
                                   "view_atoms": False, },
                           }
 
@@ -158,4 +158,6 @@ class Settings:
                         "restart_scan_file": "restart_scan.pickle",
                         "restart_soft_torsions_file": "restart_soft_torsions.pickle",
                         "restart_adaptive_parametrization_file": "restart_adaptive_parametrization.pickle",
-                        "restart_parameter_space_file": "restart_parameter_space.pickle"}
+                        "restart_parameter_space_file": "restart_parameter_space.pickle",
+                        "restart_parametrization_checkpoint_freq": 100,
+                        "restart_parametrization_file": "restart_parametrization.pickle"}

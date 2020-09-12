@@ -15,6 +15,8 @@ def conformational_sampling(settings, systems, n_conf, steps_integrator, interfa
 
     Parameters
     ----------
+    settings : dict
+        Dictionary containing global ParaMol settings.
     systems : list of :obj:`ParaMol.System.system.ParaMolSystem`
         List containing instances of ParaMol systems.
     n_conf : int
