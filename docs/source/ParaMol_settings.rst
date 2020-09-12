@@ -115,12 +115,12 @@ QM Engine parameters (qm_engine)
    * **opt_fmax** (*float*, 1e-2): The convergence criterion to stop the optimization is that the force on all individual atoms should be less than `fmax`.
    * **opt_traj_prefix** (`str`, "traj\_"): Prefix given to the pickle file used to store the trajectory during optimization.
    * **calc_dir_prefix** (`str`, "ase\_"): Prefix given to the directories where the calculations will be performed.
-   * **work_dir** (`str`, "ASEWorkDir"): Relative path to the working directory (relatively to the base directory).
+   * **work_dir_prefix** (`str`, "ASEWorkDir"): Relative path to the working directory prefix (relatively to the base directory).
    * **view_atoms** (`bool`, `False`): Whether or not to view the molecule after a calculation.
 * **amber** (`dict`): AMBER QM engine settings.
    * **sqm_params** (`dict`, {"maxcyc": "0", "qm_theory": "'AM1'", "dftb_disper": "0", "qmcharge": "0", "scfconv": "1.0d-8", "pseudo_diag": "0","verbosity": "5"}): SQM parameters to be used in the input file. See AMBER manual for more information.
    * **calc_file_prefix** (`str`, "sqm\_"): Prefix given to the SQM calculation files.
-   * **work_dir** (`str`, "AMBERWorkDir"): Relative path to the working directory (relatively to the base directory).
+   * **work_dir_prefix** (`str`, "AMBERWorkDir"): Relative path to the working directory prefix (relatively to the base directory).
 * **dftb+** (`dict`): DFTB+ QM engine settings.
    * **calc_file** (`str`, "dftb_in.hsd"): Name given to the DFTB+ calculation file.
    * **calc_file_output** (`str`, "dftb_output.out"): Name given to the DFTB+ stdout file.
@@ -129,12 +129,13 @@ QM Engine parameters (qm_engine)
    * **slater_koster_files_prefix** (`str`, ""): Path to the Slater-Koster files.
    * **max_ang_mom** (`dict`, {"H": "s", "C": "p", "N": "p", "O": "p", "F": "p", "S": "p"}): Dictionary that defines the maximum angular momentum for each chemical element.
    * **calc_dir_prefix** (`str`, "dftb\_"): Prefix given to each subdirectory.
-   * **work_dir** (`str`, "DFTBWorkDir"): Relative path to the working directory (relatively to the base directory).
+   * **work_dir_prefix** (`str`, "DFTBWorkDir"): Relative path to the working directory prefix (relatively to the base directory).
 
 Restart parameters (qm_engine)
 ---------------------------------
 * **restart_dir** (`str`, "restart_paramol"): Name of the directory used to stored restart files.
 * **restart_adaptive_parametrization_file** (`str`, "restart_adaptive_parametrization.pickle"): Name of the file used to restart an adaptive parametrization calculation.
+* **restart_soft_torsions_file** (`str`, "restart_soft_torsions.pickle"): Name of the file used to restart the soft torsion parametrization task.
 * **restart_scan_file** (`str`, "restart_scan.pickle"): Name of the file used to restart a dihedral scan.
 * **restart_parameter_space_file** (`str`, "restart_parameter_space.pickle"): Name of the file used to restart the parameter space.
 
