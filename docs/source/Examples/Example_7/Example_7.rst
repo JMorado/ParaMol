@@ -4,13 +4,15 @@ Example 7: Example of multiple system parametrization
 Mapping of different topologies
 ##################################
 
-The mapping.
-
 ParaMol is able to parametrize multiple systems at the same time.
-Even though this is possible to do
+Even though this is possible to do without applying any symmetry constraint, in the context of force field development it is often desirable to derive the parameters for a given term type and for a set of molecules.
+Therefore, in this example we are going to concomitantly optimize the barrier height of the dihedral type hc-c3-c3-hc for ethane and propane.
 
-In this example we are going to use ParaMol's torsional scan Task (:obj:`ParaMol.Tasks.torsions_scan.TorsionScan`) to parametrize a torsion of the norfloxacin analog represented above.
-First of all, we are going to symmetrize the ParaMol Force Field so that it respects atom-type symmetries and write it to a file in order to choose what torsions we want to parametrize.
+**NOTE:** When optimizing more than once system at once, the mapping of the symmetry groups of different systems has to be performed manually so that there is a one-to-one correspondence between symmetry group and term type.
+The automatic mapping of symmetries for different systems is a feature that will likely be implemented in future ParaMol versions.
+
+
+The first step is to write out the ParaMol Force Field files so that the correct symmetries are set, which can be done using the following code:
 
 
 .. literalinclude:: ../../../../Examples/Example_7/example_7_write_ff.py
@@ -26,6 +28,10 @@ First of all, we are going to symmetrize the ParaMol Force Field so that it resp
     :language: text
     :caption: Original propane ParaMol Force Field file.
 
+As can be seen in the ParaMol Force Field files, all term types belong to the default symmetry group, *i.e.*, "X", which means that they do not possess any symmetry.
+We will set the symmetry label of the dihedral types hc-c3-c3-hc to "T0" (see modified ParaMol Force Fields below). In this way, we will be able to find the best barrier height that minimizes the objective function for both ethane and propane.
+
+
 .. literalinclude:: ethane_symm_mod.ff
     :language: text
     :caption: Modified ethane ParaMol Force Field file.
@@ -39,15 +45,15 @@ First of all, we are going to symmetrize the ParaMol Force Field so that it resp
 Simultaneous parametrization of multiple systems
 ##################################################
 
-Now that we have done the necessary changes in the ParaMol Force Field file, we are ready to perform the torsional scan and subsequent parameters's optimization.
-Luckily, as all the torsions around the C11-N4 are of the same type and, therefore, they share the same set of parameters, we only need to perform the torsional scan of one of the torsions with symmetry T8. Furthermore, when asking ParaMol to create its Force Field representation, we need to provide the modified ParaMol Force Field file so that ParaMol creates its internal representation of the Force Field from this file. The same procedure can be done to set special constraints or to optimize other parameters.
-
+Now that we have done the necessary changes in the ParaMol Force Field files, we are ready to perform the conformational sampling, *ab initio* properties calculation and subsequent parameters' optimization.
+This can be done using the following script:
 
 .. literalinclude:: ../../../../Examples/Example_7/example_7.py
     :language: python
 
 
-
+Finally, as can be seen in the final ParaMol Force Field files, a new barrier height value was found that best suits both systems.
+Specifically, GAFF slightly overestimates the barrier height of this torsions with respect to the SCC-DFTB-D3 level of theory, since, after re-parametrization, its values has decreased from 0.6276 kj/mol to 0.4690 kj/mol.
 
 .. literalinclude:: ethane_symm_opt.ff
     :language: text
