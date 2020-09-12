@@ -14,12 +14,13 @@ from ..MM_engines.resp import *
 from ..MM_engines.openmm import *
 from ..Tasks.task import *
 
-
-# ------------------------------------------------------------
+# ---------------------------------------------------------- #
 #                                                            #
 #                       PARAMETER SPACE                      #
 #                                                            #
-# ------------------------------------------------------------
+# ---------------------------------------------------------- #
+
+
 class ParameterSpace:
     """
     ParaMol representation of the set of mathematical parameters that are used in the optimization.
