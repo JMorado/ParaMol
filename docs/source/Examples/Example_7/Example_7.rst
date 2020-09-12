@@ -6,6 +6,9 @@ Mapping of different topologies
 
 The mapping.
 
+ParaMol is able to parametrize multiple systems at the same time.
+Even though this is possible to do
+
 In this example we are going to use ParaMol's torsional scan Task (:obj:`ParaMol.Tasks.torsions_scan.TorsionScan`) to parametrize a torsion of the norfloxacin analog represented above.
 First of all, we are going to symmetrize the ParaMol Force Field so that it respects atom-type symmetries and write it to a file in order to choose what torsions we want to parametrize.
 

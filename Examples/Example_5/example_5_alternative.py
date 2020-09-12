@@ -24,7 +24,7 @@ norfloxacin.force_field.create_force_field()
 # Create ParaMol settings instance
 paramol_settings = Settings()
 
-# The objective function will contain a energy, force and regularization term
+# The objective function will contain an energy and a regularization term
 paramol_settings.properties["include_energies"] = True
 paramol_settings.properties["include_forces"] = False # One should not include forces when a torsional scan
 paramol_settings.properties["include_regularization"] = True
