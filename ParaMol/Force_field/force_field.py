@@ -696,7 +696,7 @@ class ForceField:
         change_other_torsions : bool
             Whether or not the remaining torsions's optimization state is to be set to False. (default is False, i.e., their optimization state is not changed)
         change_other_parameters : bool
-            Whether or not the remaining parameters's optimization state is to be set to False. (default is False, i.e., their optimization state is not changed)
+            Whether or not the remaining parameters' optimization state is to be set to False. (default is False, i.e., their optimization state is not changed)
 
         Returns
         -------
@@ -737,7 +737,7 @@ class ForceField:
         change_other_sc : bool
             Whether or not the remaining scaling constants's optimization state is to be set to False. (default is False, i.e., their optimization state is not changed)
         change_other_parameters : bool
-            Whether or not the remaining parameters's optimization state is to be set to False. (default is False, i.e., their optimization state is not changed)
+            Whether or not the remaining parameters' optimization state is to be set to False. (default is False, i.e., their optimization state is not changed)
 
         Returns
         -------
@@ -776,7 +776,7 @@ class ForceField:
         change_other_torsions : bool
             Whether or not the remaining torsions's optimization state is to be set to False. (default is False, i.e., their optimization state is not changed)
         change_other_parameters : bool
-            Whether or not the remaining parameters's optimization state is to be set to False. (default is False, i.e., their optimization state is not changed)
+            Whether or not the remaining parameters' optimization state is to be set to False. (default is False, i.e., their optimization state is not changed)
         set_zero : bool
             Whether or not to set the force constant of the optimizable torsions to 0.
 

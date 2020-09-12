@@ -178,7 +178,7 @@ class ParameterSpace:
         prior_widths : np.array(n_parameters)
             Array containing the prior widths for each parameter.
         """
-        assert method is not None, "No method was chosen to calculate the parameters's magnitudes."
+        assert method is not None, "No method was chosen to calculate the parameters' magnitudes."
 
         # Get the parameters for every key
         param_keys = {}
