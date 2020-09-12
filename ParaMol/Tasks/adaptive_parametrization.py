@@ -221,6 +221,9 @@ class AdaptiveParametrization(Task):
             self.sampling_done = [False for _ in systems]
             self.write_restart_pickle(settings.restart, interface, "restart_adaptive_parametrization_file", self.__dict__)
 
+            if restart:
+                restart = False
+
         print("!=================================================================================!")
         print("!                  ADAPTIVE PARAMETRIZATION PERFORMED SUCCESSFULLY                !")
         print("!=================================================================================!")
