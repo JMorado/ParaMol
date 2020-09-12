@@ -23,8 +23,8 @@ The argument :obj:`restart=True` can be used in the :obj:`run_task` method of th
 
     - :obj:`ParaMol.Tasks.parametrization.Parametrization`
 
-    A checkpoint file of the :obj:`ParaMol.Parameter_space.parameter_space` is written with a frequency defined by the :obj:`paramol_settings.restart["restart_parametrization_checkpoint_freq"]` variable. The name of this file is defined in the variable :obj:`paramol_settings.restart["restart_parametrization_file"]`.
-    Furthermore, a checkpoint file is also stored after the optimization procedures finishes, which is useful in order restart an adaptive parametrization with the correct :obj:`ParameterSpace` state. The name of this file is given by the variable :obj:`paramol_settings.restart["restart_parameter_space_file"]`.
+    A checkpoint file of the :obj:`ParaMol.Parameter_space.parameter_space` is written with a frequency defined by the :obj:`paramol_settings.objective_function["checkpoint_freq"]` variable. The name of this file is defined in the variable :obj:`paramol_settings.restart["restart_parameter_space_file"]`.
+    Furthermore, a checkpoint file is also stored after the optimization procedures finishes, which is useful in order restart an adaptive parametrization with the correct :obj:`ParameterSpace` state.
 
     - :obj:`ParaMol.Tasks.adaptive_parametrization.AdaptiveParametrization`
 

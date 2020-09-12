@@ -158,6 +158,4 @@ class Settings:
                         "restart_scan_file": "restart_scan.pickle",
                         "restart_soft_torsions_file": "restart_soft_torsions.pickle",
                         "restart_adaptive_parametrization_file": "restart_adaptive_parametrization.pickle",
-                        "restart_parameter_space_file": "restart_parameter_space.pickle",
-                        "restart_parametrization_checkpoint_freq": 100,
-                        "restart_parametrization_file": "restart_parametrization.pickle"}
+                        "restart_parameter_space_file": "restart_parameter_space.pickle"}

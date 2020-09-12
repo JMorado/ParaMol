@@ -17,6 +17,10 @@ from .pickable_swig import *
 from .cpu_objective_function import *
 from .gpu_objective_function import *
 
+
+from ..Tasks.task import *
+from ..Utils.interface import *
+
 # Simtk modules
 from simtk.openmm import *
 
@@ -27,6 +31,8 @@ class ObjectiveFunction:
 
     Parameters
     ----------
+    settings : dict
+        Dictionary containing global ParaMol settings.
     parameter_space : :obj:`ParaMol.Parameter_space.parameter_space.ParameterSpace`
         ParaMol representation of ParameterSpace.
     properties : list of :obj:`ParaMol.ObjectiveFunction.Properties`
@@ -53,7 +59,8 @@ class ObjectiveFunction:
     systems : list of :obj:`ParaMol.System.system.ParaMolSystem`
         List containing instances of ParaMol systems.
     """
-    def __init__(self, parameter_space, properties, systems, platform_name, parallel=False, weighing_method="uniform", weighing_temperature=300*unit.kelvin, checkpoint_freq=1000):
+    def __init__(self, settings, parameter_space, properties, systems, platform_name, parallel=False, weighing_method="uniform", weighing_temperature=300*unit.kelvin, checkpoint_freq=1000):
+        self.settings = settings
         # OpenMM platform used to compute the objective function
         self.parameter_space = parameter_space
         self.properties = properties
@@ -324,6 +331,8 @@ class ObjectiveFunction:
             objective_function = 1e16
 
         if self._f_count % self._checkpoint_freq == 1:
+            task = Task()
+            task.write_restart_pickle(self.settings.restart, ParaMolInterface(), "restart_parameter_space_file", self.parameter_space.__dict__)
             for system in self.systems:
                 system.engine.write_system_xml("{}_checkpoint.xml".format(system.name))
 

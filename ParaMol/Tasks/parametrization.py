@@ -86,7 +86,7 @@ class Parametrization(Task):
         # Create properties and objective function
         if objective_function is None:
             properties = self.create_properties(settings.properties, systems, parameter_space)
-            objective_function = self.create_objective_function(settings.objective_function, parameter_space, properties, systems)
+            objective_function = self.create_objective_function(settings.objective_function, settings.restart, parameter_space, properties, systems)
         else:
             assert type(objective_function) is ObjectiveFunction
             if settings.objective_function["parallel"]:

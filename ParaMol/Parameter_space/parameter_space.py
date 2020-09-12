@@ -12,6 +12,7 @@ import logging
 
 from ..MM_engines.resp import *
 from ..MM_engines.openmm import *
+from ..Tasks.task import *
 
 
 # ------------------------------------------------------------
@@ -388,4 +389,3 @@ class ParameterSpace:
             raise NotImplementedError("MM RESP Engine {} is not implemented.".format(type(system.resp_engine)))
 
         return self.optimizable_parameters_values
-

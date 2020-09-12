@@ -33,6 +33,8 @@ class AdaptiveParametrization(Task):
         Array containing parameters of the previous iteration.
     new_param : list or np.array
         Array containing parameters of the current iteration.
+    sampling_done : List of bool
+        List of flags that indicate whether or not, for a given system, sampling was already performed in this iteration.
     """
     def __init__(self):
         self.parameters_generations = None
@@ -40,6 +42,7 @@ class AdaptiveParametrization(Task):
         self.rmsd = None
         self.old_param = None
         self.new_param = None
+        self.sampling_done = None
 
     # ------------------------------------------------------------ #
     #                                                              #
@@ -125,6 +128,7 @@ class AdaptiveParametrization(Task):
             # Global SC loop parameters
             self.iteration = 0
             self.rmsd = 1e18
+            self.sampling_done = [False for _ in systems]
 
         # ================================================================================= #
         #                            START ADAPTIVE PARAMETRIZATION                         #
@@ -138,40 +142,48 @@ class AdaptiveParametrization(Task):
             print("Iteration no. {} of the adaptive parametrization loop.".format(self.iteration))
 
             # Iterate over all ParaMol systems and QM Wrappers
-            for system in systems:
-                self._convert_system_ref_arrays_to_list(system)
-                # Perform sampling for this system
-                for j in range(structures_per_iter):
-                    if j % 50 == 0:
-                        print("Generating new configuration {}.".format(j + 1))
+            for i in range(len(systems)):
+                if not self.sampling_done[i]:
+                    system = systems[i]
 
-                    # Randomize velocities
-                    system.engine.context.setVelocitiesToTemperature(system.engine.integrator.getTemperature())
+                    self._convert_system_ref_arrays_to_list(system)
+                    # Perform sampling for this system
+                    for j in range(structures_per_iter):
+                        if j % 50 == 0:
+                            print("Generating new configuration {}.".format(j + 1))
 
-                    # Perform classical MD
-                    system.engine.integrator.step(steps_integrator)
+                        # Randomize velocities
+                        system.engine.context.setVelocitiesToTemperature(system.engine.integrator.getTemperature())
 
-                    # Get positions and compute QM energy and forces
-                    coord = system.engine.context.getState(getPositions=True).getPositions()
-                    energy, forces = system.qm_engine.qm_engine.run_calculation(coords=coord.in_units_of(unit.angstrom)._value, label=0)
+                        # Perform classical MD
+                        system.engine.integrator.step(steps_integrator)
 
-                    # Append energies, forces and conformations
-                    system.ref_energies.append(energy)
-                    system.ref_forces.append(forces)
-                    system.ref_coordinates.append(coord._value)
-                    system.n_structures += 1
+                        # Get positions and compute QM energy and forces
+                        coord = system.engine.context.getState(getPositions=True).getPositions()
+                        energy, forces = system.qm_engine.qm_engine.run_calculation(coords=coord.in_units_of(unit.angstrom)._value, label=0)
 
-                # Perform WHAM re-weighing
-                if wham_reweighing:
-                    print("Reweighting configurations of system {}.".format(system.name))
-                    system.wham_reweighing(self.parameters_generations)
+                        # Append energies, forces and conformations
+                        system.ref_energies.append(energy)
+                        system.ref_forces.append(forces)
+                        system.ref_coordinates.append(coord._value)
+                        system.n_structures += 1
 
-                print("Generated new {} MM structures for system {}.".format(structures_per_iter, system.name))
+                    # Perform WHAM re-weighing
+                    if wham_reweighing:
+                        print("Reweighting configurations of system {}.".format(system.name))
+                        system.wham_reweighing(self.parameters_generations)
 
-                # Convert lists back to numpy arrays (format used in parametrization)
-                system.ref_energies = np.asarray(system.ref_energies)
-                system.ref_forces = np.asarray(system.ref_forces)
-                system.ref_coordinates = np.asarray(system.ref_coordinates)
+                    print("Generated new {} MM structures for system {}.".format(structures_per_iter, system.name))
+
+                    # Convert lists back to numpy arrays (format used in parametrization)
+                    system.ref_energies = np.asarray(system.ref_energies)
+                    system.ref_forces = np.asarray(system.ref_forces)
+                    system.ref_coordinates = np.asarray(system.ref_coordinates)
+
+                # Sampling done for this system, write reference data
+                self.sampling_done[i] = True
+                system.write_data(os.path.join(settings.restart["restart_dir"], "{}_data_restart.nc".format(system.name)))
+                self.write_restart_pickle(settings.restart, interface, "restart_adaptive_parametrization_file", self.__dict__)
 
             # Perform parametrization
             systems, parameter_space, objective_function, optimizer = parametrization.run_task(settings=settings,
@@ -188,7 +200,6 @@ class AdaptiveParametrization(Task):
                 # xml_file_name = "{}_sc_iter_{}.xml".format(system.name, iteration + 1)
                 system.engine.write_system_xml(xml_file_name)
                 # system.write_data("paramol_data_sc_iter_{}.nc".format(iteration+1))
-                system.write_data(os.path.join(settings.restart["restart_dir"], "{}_data_restart.nc".format(system.name)))
 
             # Compute RMSD and check for convergence
             self.new_param = copy.deepcopy(parameter_space.optimizable_parameters_values_scaled)
@@ -207,6 +218,7 @@ class AdaptiveParametrization(Task):
             self.iteration += 1
 
             # Write parameters generation to pickle file
+            self.sampling_done = [False for _ in systems]
             self.write_restart_pickle(settings.restart, interface, "restart_adaptive_parametrization_file", self.__dict__)
 
         print("!=================================================================================!")
