@@ -30,12 +30,12 @@ The argument :obj:`restart=True` can be used in the :obj:`run_task` method of th
 
     A checkpoint file with the adaptive parametrization procedure state is stored after every iteration of the algorithm.
     The name of this checkpoint file is defined in the variable :obj:`paramol_settings.restart["restart_adaptive_parametrization_file"]`.
-    Additionally, at the end of every iteration, a :doc:`NetCDF file <../../Files_specification>` containing system's information, such as coordinates, energies and forces is saved in a file named :obj:`restart_[system.name]_data.nc`.
+    Additionally, at the end of every sampling iteration, a :doc:`NetCDF file <../../Files_specification>` containing system's information, such as coordinates, energies and forces is saved in a file named :obj:`restart_[system.name]_data.nc`.
 
     - :obj:`ParaMol.Tasks.torsions_parametrization.TorsionsParametrization`
 
-    A checkpoint file with the state of the procedure used to automatically parametrize soft torsions is stored after the scan of a soft dihedral is completed. Furthermore, as this task resorts to :obj:`ParaMol.Tasks.torsions_scan.TorsionScan` and :obj:`ParaMol.Tasks.Parametrization.parametrization` tasks, their respective checkpoint files are also saved.
-    The name of the :obj:`TorsionsParametrization` checkpoint file is defined in the variable :obj:`paramol_settings.restart["restart_soft_torsions_file"]`.
+    A checkpoint file with the state of the procedure used to automatically parametrize soft torsions is stored after the scan of a soft dihedral is completed. Furthermore, as this task resorts to :obj:`ParaMol.Tasks.torsions_scan.TorsionScan`, its respective checkpoint files are also saved.
+    The name of the :obj:`TorsionsParametrization` checkpoint file is defined in the variable :obj:`paramol_settings.restart["restart_soft_torsions_file"]`. No restart of the :obj:`ParaMol.Tasks.Parametrization.parametrization` task is performed in this task, which means that if an optimization is stopped, upon restart it will start from the beginning.
 
     - :obj:`ParaMol.Tasks.torsions_scan.TorsionScan`
 
