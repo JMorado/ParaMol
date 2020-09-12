@@ -3,6 +3,31 @@ File Specifications
 
 ParaMol Force Field (.ff) file
 ##############################
+
+When manually defining the symmetries of terms belonging to specific force groups, the user should adhere to the mapping shown in the table below.
+This is of particular importance if .frcmod and .prmtop files are to be generated after a parametrization. If the user does not want to generate these files, these rules may be ignored.
+It is also worth mentioning that these starting letters may be followed by any combination of letters and numbers. For example, "B0", "B9999" or "BABC" are all valid symmetry-groups for the HarmonicBondForce group.
+
+.. list-table:: Mapping between force groups and symmetry groups.
+   :widths: 25 25
+   :header-rows: 1
+
+   * - Term Type
+     - Starting Letter(s)
+   * - HarmonicBondForce
+     - B
+   * - HarmonicAngleForce
+     - A
+   * - PeriodicTorsionForce
+     - T
+   * - NonbondedForce
+     - None
+   * - Scaling14
+     - SC
+   * - No Symmetry
+     - X
+
+
 .. code-block:: text
     :caption: ParaMol Force Field file.
 
@@ -147,27 +172,3 @@ This is a specification for the NetCDF 4 based store file format used by ParaMol
             :_NCProperties = "version=1|netcdflibversion=4.4.1.1|hdf5libversion=1.10.1" ;
     }
 
-
-.. code-block:: text
-    :caption: NetCDF file used to restart ParaMol (usually restart_paramol.nc).
-
-    netcdf restart_paramol {
-    dimensions:
-        n_parameters = 260 ;
-    variables:
-        double optimizable_parameters_values(n_parameters) ;
-            optimizable_parameters_values:units = "standard_paramol_units" ;
-        double optimizable_parameters_values_scaled(n_parameters) ;
-            optimizable_parameters_values_scaled:units = "dimensionless" ;
-        double initial_optimizable_parameters_values(n_parameters) ;
-            initial_optimizable_parameters_values:units = "standard_paramol_units" ;
-        double initial_optimizable_parameters_values_scaled(n_parameters) ;
-            initial_optimizable_parameters_values_scaled:units = "dimensionless" ;
-        double scaling_constants(n_parameters) ;
-            scaling_constants:units = "standard_paramol_units" ;
-        double prior_widths(n_parameters) ;
-            prior_widths:units = "standard_paramol_units" ;
-
-    // global attributes:
-            :_NCProperties = "version=1|netcdflibversion=4.4.1.1|hdf5libversion=1.10.1" ;
-    }

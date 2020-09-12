@@ -148,7 +148,7 @@ class Task:
         return properties
 
     @staticmethod
-    def create_objective_function(objective_function_settings, parameter_space, properties, systems):
+    def create_objective_function(objective_function_settings, restart_settings, parameter_space, properties, systems):
         """
         Method that creates the ObjectiveFunction instances
 
@@ -156,6 +156,8 @@ class Task:
         ----------
         objective_function_settings : dict
             ObjectiveFunction settings dictionary.
+        restart_settings : dict
+            Restart settings dictionary.
         parameter_space: :obj:`ParaMol.Parameter_space.parameter_space.ParameterSpace`
             Instance of the ParameterSpace.
         properties : list of ParaMol properties
@@ -171,7 +173,8 @@ class Task:
 
         assert type(parameter_space) is ParameterSpace, "ParameterSpace provided is invalid."
 
-        objective_function = ObjectiveFunction(parameter_space=parameter_space,
+        objective_function = ObjectiveFunction(restart_settings=restart_settings,
+                                               parameter_space=parameter_space,
                                                properties=properties,
                                                systems=systems,
                                                **objective_function_settings)

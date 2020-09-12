@@ -12,6 +12,7 @@ import logging
 
 from ..MM_engines.resp import *
 from ..MM_engines.openmm import *
+from ..Tasks.task import *
 
 
 # ------------------------------------------------------------
@@ -178,7 +179,7 @@ class ParameterSpace:
         prior_widths : np.array(n_parameters)
             Array containing the prior widths for each parameter.
         """
-        assert method is not None, "No method was chosen to calculate the parameters's magnitudes."
+        assert method is not None, "No method was chosen to calculate the parameters' magnitudes."
 
         # Get the parameters for every key
         param_keys = {}
@@ -388,4 +389,3 @@ class ParameterSpace:
             raise NotImplementedError("MM RESP Engine {} is not implemented.".format(type(system.resp_engine)))
 
         return self.optimizable_parameters_values
-

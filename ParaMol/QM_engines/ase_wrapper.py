@@ -25,6 +25,8 @@ class ASEWrapper:
 
     Parameters
     ----------
+    system_name : str
+        Name of the system to which this wrapper is associated.
     interface : :obj:`ParaMol.Utils.interface.ParaMolInterface`
         ParaMol interface object instance.
     calculator : Any ASE calculator defined in the modules of the subpackage :obj:`ase.calculators`.
@@ -37,7 +39,7 @@ class ASEWrapper:
         Number of calculations
     cell : np.ndarray, shape=(3,3), dtype=float
         Box cell vectors.
-    work_dir : str, default="ASEWorkDir"
+    work_dir_prefix : str, default="ASEWorkDir"
         Path to the working directory.
     optimizer : any ase.optimizer, default=:obj:`ase.optimize.bfgs.BFGS*`
         ASE optimizer instance. For more info see: https://wiki.fysik.dtu.dk/ase/ase/optimize.html
@@ -53,9 +55,13 @@ class ASEWrapper:
         Prefix given to the directories where the calculations will be performed.
     """
 
-    def __init__(self, interface, calculator, n_atoms, atom_list, n_calculations, cell, calc_dir_prefix="ase_",
-                 work_dir="ASEWorkDir", view_atoms=False, optimizer=BFGS,
+    def __init__(self, system_name, interface, calculator, n_atoms, atom_list, n_calculations, cell, calc_dir_prefix="ase_",
+                 work_dir_prefix="ASEWorkDir_", view_atoms=False, optimizer=BFGS,
                  opt_fmax=1e-2, opt_log_file="-", opt_traj_prefix="traj_"):
+
+        # Name of the system to which this wrapper is associated to
+        self._system_name = system_name
+
         # General variables
         self._atom_list = atom_list
         self._n_calculations = n_calculations
@@ -73,7 +79,7 @@ class ASEWrapper:
         self._interface = interface
         self._calculation_dirs = []
         self._calc_dir_prefix = calc_dir_prefix
-        self._work_dir = work_dir
+        self._work_dir = "{}{}".format(work_dir_prefix, self._system_name)
 
         # Initialize calculators
         assert calculator is not None, "ASE calculator instance is None."

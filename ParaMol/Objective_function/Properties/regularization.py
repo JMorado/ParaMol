@@ -23,7 +23,7 @@ class Regularization(Property):
     Parameters
     ----------
     initial_parameters_values : list or np.array of floats
-        List or np.array containing the initial parameters's values.
+        List or np.array containing the initial parameters' values.
     prior_widths : list or np.array of floats
         List or np.array containing the prior width of each parameter.
     method : str
@@ -67,12 +67,12 @@ class Regularization(Property):
     # ------------------------------------------------------------ #
     def set_initial_parameters_values(self, initial_parameters_values):
         """
-        Method that sets the initial parameters's values as a private attribute of this instance.
+        Method that sets the initial parameters' values as a private attribute of this instance.
 
         Parameters
         ----------
         initial_parameters_values : list or np.array of floats
-            List or np.array containing the initial parameters's values.
+            List or np.array containing the initial parameters' values.
 
         Returns
         -------

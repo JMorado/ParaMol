@@ -50,7 +50,7 @@ caffeine.force_field.write_ff_file("caffeine_adaptive_param.ff")
 #               Quality of the Parametrization              #
 # --------------------------------------------------------- #
 # Perform conformational sampling
-conformational_sampling([caffeine], n_conf=1000, steps_integrator=1000)
+conformational_sampling(paramol_settings, [caffeine], n_conf=1000, steps_integrator=1000)
 
 # Calculate MM energies and forces after the re-parametrization
 mm_energies_after = caffeine.get_energies_ensemble()
