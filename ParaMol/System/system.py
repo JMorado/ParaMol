@@ -598,7 +598,7 @@ class ParaMolSystem:
         else:
             print("{} does not contain reference energies data.".format(input_file_name))
 
-        print("SUCCESS! Data of system {} was read from file {}".format(self.name, input_file_name))
+        print("Data of system {} was read from file {}".format(self.name, input_file_name))
         return ncfile.close()
 
     def write_data(self, output_file_name=None):
@@ -648,7 +648,7 @@ class ParaMolSystem:
             data_energies.units = "kilojoules/mol"
             data_energies[:] = self.ref_energies
 
-        print("SUCCESS! Data of system {} was written to file {}".format(self.name, output_file_name))
+        print("Data of system {} was written to file {}".format(self.name, output_file_name))
         return ncfile.close()
 
     def write_coordinates_xyz(self, output_file_name=None, xyz_comment="comment"):
@@ -682,7 +682,7 @@ class ParaMolSystem:
                 # Keep track of the configuration number
                 config_id += 1
 
-        print("SUCCESS! xyz file of system {} was written to file {}".format(self.name, output_file_name))
+        print("xyz file of system {} was written to file {}".format(self.name, output_file_name))
         return xyz_file.close()
 
     ########

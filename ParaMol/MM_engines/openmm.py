@@ -128,7 +128,8 @@ class OpenMMEngine:
 
         if init_openmm:
             self.init_openmm(self._integrator_params, self._create_system_params)
-        else:
+
+        if self.system is not None:
             self._set_force_groups()
 
     # ------------------------------------------------------------ #
@@ -268,11 +269,11 @@ class OpenMMEngine:
         masses : list of floats
             Masses of the atoms of the system.
         """
-        masses = []
+        self.masses_list = []
         for atom_index in range(self.get_number_of_atoms()):
-            masses.append(self.system.getParticleMass(atom_index)._value)
+            self.masses_list.append(self.system.getParticleMass(atom_index))
 
-        return masses
+        return self.masses_list
 
     def get_cell(self):
         """

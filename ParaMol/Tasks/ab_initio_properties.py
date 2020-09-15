@@ -78,7 +78,7 @@ class AbInitioProperties(Task):
             else:
                 self._run_serial(system, write_data)
 
-            print("SUCCESS! Computed QM forces of {} structures of system {}.".format(system.n_structures, system.name))
+            print("Computed QM forces of {} structures of system {}.".format(system.n_structures, system.name))
 
         print("!=================================================================================!")
         print("!             AB INITIO FORCES AND ENERGIES CALCULATED SUCCESFULLY!               !")
