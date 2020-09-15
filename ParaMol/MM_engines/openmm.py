@@ -79,6 +79,10 @@ class OpenMMEngine:
         List containing the atom symbols of the system. Method get_atom_list has to be run to set this attribute variable.
     atomic_number_list : list of int
         List containing the atomic numbers of the system. Method get_atomic_numbers has to be run to set this attribute variable.
+    masses_list : list of float
+        List containing the masses of the atoms of the system. Method get_masses has to be run to set this attribute variable.
+    n_atoms : int
+        Number of atoms of the system.
     cell : np.ndarray, shape=(3, 3), dtype=float
         Array containing the box size cell vectors (in angstroms). Method get_cell has to be run to set this attribute variable.
     """
@@ -114,6 +118,8 @@ class OpenMMEngine:
         self.force_groups = []
         self.atom_list = None
         self.atomic_number_list = None
+        self.masses_list = None
+        self.n_atoms = None
         self.cell = None
 
         # Params to be passed to OpenMM
@@ -234,6 +240,36 @@ class OpenMMEngine:
             self.atomic_number_list.append(atom.element.atomic_number)
 
         return self.atomic_number_list
+
+    def get_number_of_atoms(self):
+        """
+        Method that gets the number of atoms of the system.
+
+        Returns
+        -------
+        n_atoms : n_int
+            Number of atoms of the system.
+        """
+        assert self.system is not None, "OpenMM system is not set."
+
+        self.n_atoms = self.system.getNumParticles()
+
+        return self.n_atoms
+
+    def get_masses(self):
+        """
+        Method that gets the masses of atoms of the system (in amu).
+
+        Returns
+        -------
+        masses : list of floats
+            Masses of the atoms of the system.
+        """
+        masses = []
+        for atom_index in range(self.get_number_of_atoms()):
+            masses.append(self.system.getParticleMass(atom_index)._value)
+
+        return masses
 
     def get_cell(self):
         """
@@ -382,6 +418,19 @@ class OpenMMEngine:
         epot = self.context.getState(getEnergy=True).getPotentialEnergy()._value
 
         return epot
+ 
+    def get_kinetic_energy(self):
+        """
+        Method that computes the kinetic energy.
+
+        Returns
+        -------
+        ekin : float
+            Kinetic energy value in kJ/mol.
+        """
+        ekin = self.context.getState(getEnergy=True).getKineticEnergy()._value
+
+        return ekin
 
     def get_forces(self, positions):
         """
@@ -636,6 +685,92 @@ class OpenMMEngine:
             pass
 
         return self.context
+
+    # ------------------------------------------------------------ #
+    #                                                              #
+    #                  MOLECULAR DYNAMICS METHODS                  #
+    #                                                              #
+    # ------------------------------------------------------------ #
+    def set_positions(self, positions):
+        """
+        Method that sets the Context positions.
+
+        Parameters
+        ----------
+        positions : np.array
+            Array containing the positions.
+        """
+        assert self.context is not None, "OpenMM context was not set."
+
+        return self.context.setPositions(positions)
+
+    def set_velocities(self, velocities):
+        """
+        Method that sets the Context positions.
+
+        Parameters
+        ----------
+        velocities : np.array
+            Array containing the velocities.
+        """
+        assert self.context is not None, "OpenMM context was not set."
+
+        return self.context.setVelocities(velocities)
+
+    def get_positions(self):
+        """
+        Method that gets the Context positions.
+
+        Returns
+        ----------
+        positions : np.array
+            Array containing the positions.
+        """
+        assert self.context is not None, "OpenMM context was not set."
+
+        return self.context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(asNumpy=True)
+
+    def get_velocities(self):
+        """
+        Method that gets the Context velocities.
+
+        Returns
+        ----------
+        velocities : np.array
+            Array containing the velocities.
+        """
+        assert self.context is not None, "OpenMM context was not set."
+
+        return self.context.getState(getVelocities=True).getVelocities(asNumpy=True)
+
+    def generate_maxwell_boltzmann_velocities(self, temperature):
+        """
+        Generate random velocities for the solute.
+
+        """
+        assert self.masses_list is not None
+        assert self.n_atoms is not None
+
+        # Initiate array
+        vel = unit.Quantity(np.zeros([self.n_atoms, 3], np.float64), unit.nanometer / unit.picosecond) # velocities[i,k] is the kth component of the velocity of atom i
+        kT = temperature * unit.BOLTZMANN_CONSTANT_kB
+        kT = kT.in_units_of(unit.kilogram * unit.meter*unit.meter / (unit.second*unit.second))
+
+        # Assign velocities from the Maxwell-Boltzmann distribution.
+        for atom_index in range(self.n_atoms):
+            mass = self.masses_list[atom_index]
+            if mass._value > 1e-8:
+                mass = unit.Quantity(mass._value * 1.66054e-27, unit.kilogram)
+                # Standard deviation of velocity distribution for each coordinate for this atom
+                sigma = unit.sqrt(kT / mass)
+            else:
+                sigma = 0.0 * unit.nanometer / unit.picosecond
+
+            for k in range(3):
+                # 0.001 is to take into account the ns / ps
+                vel[atom_index, k] = (sigma * np.random.standard_normal())
+
+        return vel.in_units_of(unit.nanometer / unit.picosecond)
 
     # ------------------------------------------------------------ #
     #                                                              #
