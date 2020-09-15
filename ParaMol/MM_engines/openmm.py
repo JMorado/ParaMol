@@ -136,7 +136,7 @@ class OpenMMEngine:
     #                          PUBLIC METHODS                      #
     #                                                              #
     # ------------------------------------------------------------ #
-    def init_openmm(self, integrator_params, create_system_params):
+    def init_openmm(self, integrator_params=None, create_system_params=None):
         """
         Method that initiates OpenMM by creating
 
@@ -178,9 +178,10 @@ class OpenMMEngine:
 
         if self.system is None:
             if self.topology_format.upper() == "AMBER":
+                assert create_system_params is not None, "No settings to create the system were provided."
+
                 logging.info("Creating OpenMM System from AMBER file.")
                 self.system = top.createSystem(**create_system_params)
-
             elif self.topology_format.upper() == "XML":
                 logging.info("Creating OpenMM System from XML file.")
                 xml_file = open(self.xml_file)
@@ -190,6 +191,8 @@ class OpenMMEngine:
                 raise NotImplementedError("Topology format {} is not recognized.".format(self.topology_format))
 
         if self.integrator is None:
+            assert integrator_params is not None, "No settings to create the integrator were provided."
+
             self.integrator = openmm.LangevinIntegrator(integrator_params['temperature'], integrator_params["frictionCoeff"], integrator_params["stepSize"])
             logging.info("Creating OpenMM integrator.")
         if self.platform is None:
@@ -419,7 +422,7 @@ class OpenMMEngine:
 
         return epot
  
-    def get_kinetic_energy(self):
+    def get_kinetic_energy(self, velocities=None):
         """
         Method that computes the kinetic energy.
 
@@ -428,6 +431,9 @@ class OpenMMEngine:
         ekin : float
             Kinetic energy value in kJ/mol.
         """
+        if velocities is not None:
+            self.set_velocities(velocities)
+
         ekin = self.context.getState(getEnergy=True).getKineticEnergy()._value
 
         return ekin

@@ -491,6 +491,43 @@ class ParaMolSystem:
 
         return self.ref_coordinates, self.ref_energies, self.ref_forces
 
+    def convert_system_ref_arrays_to_list(self):
+        """
+        Method that checks the data type of the forces, energies and coordinates data structures and converts them to lists.
+
+        Parameters
+        ----------
+        system: :obj:`ParaMol.System.system.ParaMolSystem`
+            ParaMol System instance.
+
+        Returns
+        -------
+        ref_forces, ref_energies, ref_coordinates: list, list, list
+            Forces, energies and coordinates as lists.
+        """
+        if self.ref_forces is None:
+            self.ref_forces = []
+        elif type(self.ref_forces) == np.ndarray:
+            self.ref_forces = self.ref_forces.tolist()
+        elif type(self.ref_forces) is not list:
+            print("QM Forces array type is unknown!")
+            exit(-1)
+
+        if self.ref_energies is None:
+            self.ref_energies = []
+        elif type(self.ref_energies) is np.ndarray:
+            self.ref_energies = self.ref_energies.tolist()
+        elif type(self.ref_energies) is not list:
+            print("QM energies array type is unknown!")
+            exit(-1)
+
+        if self.ref_coordinates is None:
+            self.ref_coordinates = []
+        else:
+            self.ref_coordinates = self.ref_coordinates.tolist()
+
+        return self.ref_forces, self.ref_energies, self.ref_coordinates
+
     # ------------------------------------------------------------ #
     #                                                              #
     #                           I/O METHODS                        #
