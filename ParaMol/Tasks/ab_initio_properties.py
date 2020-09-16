@@ -125,7 +125,7 @@ class AbInitioProperties(Task):
             mm_energies.append(system.engine.get_potential_energy(coord))
 
             if count % 10 == 0:
-                print("Calculation QM energy and forces of structure number {}.".format(count))
+                print("Calculating QM energy and forces of structure number {}.".format(count))
 
             count += 1
 
