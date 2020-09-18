@@ -182,8 +182,10 @@ class AdaptiveParametrization(Task):
 
                 # Sampling done for this system, write reference data
                 self.sampling_done[i] = True
-                system.write_data(os.path.join(settings.restart["restart_dir"], "{}_data_restart.nc".format(system.name)))
+
+                # Write restarts
                 self.write_restart_pickle(settings.restart, interface, "restart_adaptive_parametrization_file", self.__dict__)
+                system.write_data(os.path.join(settings.restart["restart_dir"], "{}_data_restart.nc".format(system.name)))
 
             # Perform parametrization
             systems, parameter_space, objective_function, optimizer = parametrization.run_task(settings=settings,
