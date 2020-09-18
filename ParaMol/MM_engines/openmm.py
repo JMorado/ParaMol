@@ -683,6 +683,7 @@ class OpenMMEngine:
                 # \epsilon_{ij} = \sqrt{\epsilon_{ii} * \epsilon_{jj}}
                 epsilon = scnb * np.sqrt(eps1*eps2)
 
+                # scee*q1*q2
                 charge_prod = scee * chg1 * chg2
 
                 nonbonded_force.setExceptionParameters(i, at1, at2, charge_prod, sigma, epsilon)

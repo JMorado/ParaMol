@@ -101,7 +101,7 @@ class ForceField:
             for i in range(len(self.optimizable_parameters)):
                 self.optimizable_parameters[i].value = optimizable_parameters_values[i]
 
-        """
+        # TODO: check if there's a better way do this
         # Make all scee, scnb positive and eps and sigma positive
         if "Scaling14" in self.force_field_optimizable:
             for ff_term in self.force_field_optimizable["Scaling14"]:
@@ -112,7 +112,7 @@ class ForceField:
             for ff_term in self.force_field_optimizable["NonbondedForce"]:
                 ff_term.parameters["lj_eps"].value == abs(ff_term.parameters["lj_eps"].value)
                 ff_term.parameters["lj_sigma"].value == abs(ff_term.parameters["lj_sigma"].value)
-        """
+
         return self.optimizable_parameters
 
     def create_force_field(self, opt_bonds=False, opt_angles=False, opt_torsions=False, opt_charges=False, opt_lj=False, opt_sc=False, ff_file=None):
