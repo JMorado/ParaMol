@@ -31,7 +31,7 @@ The argument :obj:`restart=True` can be used in the :obj:`run_task` method of th
     A checkpoint file with the adaptive parametrization procedure state is stored after every iteration of the algorithm.
     The name of this checkpoint file is defined in the variable :obj:`paramol_settings.restart["restart_adaptive_parametrization_file"]`.
     Additionally, at the end of every sampling iteration, a :doc:`NetCDF file <../../Files_specification>` containing system's information, such as coordinates, energies and forces is saved in a file named :obj:`restart_[system.name]_data.nc`.
-    In this task, restart of the :obj:`ParaMol.Tasks.Parametrization.parametrization` task are performed.
+    This task performs restarts of the :obj:`ParaMol.Tasks.Parametrization.parametrization` task.
 
     - :obj:`ParaMol.Tasks.torsions_parametrization.TorsionsParametrization`
 

@@ -78,7 +78,7 @@ class AbInitioProperties(Task):
             else:
                 self._run_serial(system, write_data)
 
-            print("SUCCESS! Computed QM forces of {} structures of system {}.".format(system.n_structures, system.name))
+            print("Computed QM forces of {} structures of system {}.".format(system.n_structures, system.name))
 
         print("!=================================================================================!")
         print("!             AB INITIO FORCES AND ENERGIES CALCULATED SUCCESFULLY!               !")
@@ -125,7 +125,7 @@ class AbInitioProperties(Task):
             mm_energies.append(system.engine.get_potential_energy(coord))
 
             if count % 10 == 0:
-                print("Computing QM forces of structure number {}.".format(count))
+                print("Calculating QM energy and forces of structure number {}.".format(count))
 
             count += 1
 

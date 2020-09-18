@@ -145,8 +145,8 @@ class AdaptiveParametrization(Task):
             for i in range(len(systems)):
                 if not self.sampling_done[i]:
                     system = systems[i]
+                    system.convert_system_ref_arrays_to_list()
 
-                    self._convert_system_ref_arrays_to_list(system)
                     # Perform sampling for this system
                     for j in range(structures_per_iter):
                         if j % 50 == 0:
@@ -182,8 +182,10 @@ class AdaptiveParametrization(Task):
 
                 # Sampling done for this system, write reference data
                 self.sampling_done[i] = True
-                system.write_data(os.path.join(settings.restart["restart_dir"], "{}_data_restart.nc".format(system.name)))
+
+                # Write restarts
                 self.write_restart_pickle(settings.restart, interface, "restart_adaptive_parametrization_file", self.__dict__)
+                system.write_data(os.path.join(settings.restart["restart_dir"], "{}_data_restart.nc".format(system.name)))
 
             # Perform parametrization
             systems, parameter_space, objective_function, optimizer = parametrization.run_task(settings=settings,
@@ -258,41 +260,5 @@ class AdaptiveParametrization(Task):
 
         return rmsd
 
-    @staticmethod
-    def _convert_system_ref_arrays_to_list(system):
-        """
-        Method that checks the data type of the forces, energies and coordinates data structures and converts them to lists.
 
-        Parameters
-        ----------
-        system: :obj:`ParaMol.System.system.ParaMolSystem`
-            ParaMol System instance.
-
-        Returns
-        -------
-        ref_forces, ref_energies, ref_coordinates: list, list, list
-            Forces, energies and coordinates as lists.
-        """
-        if system.ref_forces is None:
-            system.ref_forces = []
-        elif type(system.ref_forces) == np.ndarray:
-            system.ref_forces = system.ref_forces.tolist()
-        elif type(system.ref_forces) is not list:
-            print("QM Forces array type is unknown!")
-            exit(-1)
-
-        if system.ref_energies is None:
-            system.ref_energies = []
-        elif type(system.ref_energies) is np.ndarray:
-            system.ref_energies = system.ref_energies.tolist()
-        elif type(system.ref_energies) is not list:
-            print("QM energies array type is unknown!")
-            exit(-1)
-
-        if system.ref_coordinates is None:
-            system.ref_coordinates = []
-        else:
-            system.ref_coordinates = system.ref_coordinates.tolist()
-
-        return system.ref_forces, system.ref_energies, system.ref_coordinates
 

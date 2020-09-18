@@ -92,7 +92,7 @@ class Settings:
                                    "platform_name": "Reference",
                                    "weighing_method": "uniform",
                                    "weighing_temperature": 300.0*unit.kelvin,
-                                   "checkpoint_freq": 1000}
+                                   "checkpoint_freq": 100}
 
         # ---------------------------------------------------------- #
         #                                                            #
