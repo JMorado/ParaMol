@@ -110,8 +110,8 @@ class ForceField:
 
         if "NonbondedForce" in self.force_field_optimizable:
             for ff_term in self.force_field_optimizable["NonbondedForce"]:
-                ff_term.parameters["lj_eps"].value == abs(ff_term.parameters["lj_eps"].value)
-                ff_term.parameters["lj_sigma"].value == abs(ff_term.parameters["lj_sigma"].value)
+                ff_term.parameters["lj_eps"].value = abs(ff_term.parameters["lj_eps"].value)
+                ff_term.parameters["lj_sigma"].value = abs(ff_term.parameters["lj_sigma"].value)
 
         return self.optimizable_parameters
 
