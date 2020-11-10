@@ -14,6 +14,10 @@ import numpy as np
 
 # ASE imports
 from ase.optimize import BFGS
+from ase.md.verlet import VelocityVerlet
+import ase.units as ase_unit
+
+import simtk.unit as unit
 
 # ParaMol imports
 from ..Utils.interface import *
@@ -189,16 +193,95 @@ class ASEWrapper:
                 view(atoms)
 
             # Get data
-            coord = atoms.get_positions() * 0.1 # Angstrom to nm
+            coords = atoms.get_positions() * 0.1 # Angstrom to nm
             energy = atoms.get_potential_energy() * 96.48530749925794  # eV to kJ/mol
             forces = atoms.get_forces() * 96.48530749925794 * 10.0 # eV/A to kJ/mol/nm
 
             # Go back to main folder
             self._interface.chdir_base()
 
-            return coord, energy, forces
+            return coords, energy, forces
         else:
             raise NotImplementedError("Calculation of type {} is not implemented.".format(calc_type))
+
+    def run_md(self, coords, label, steps, dt=unit.Quantity(1.0, unit.femtoseconds), temperature=unit.Quantity(300.0, unit.kelvin), integrator=VelocityVerlet,  ase_constraints=None):
+        """
+        Method that runs an ASE calculation.
+
+        Parameters
+        ----------
+        coords : np.ndarray, shape=(n_atoms,3), dtype=float
+            Coordinates array.
+        label : str or int
+            Label of the calculation.
+        steps: int
+            Number of steps to take.
+        dt : unit.Quantity
+            MD Time step.
+        temperature : unit.Quantity
+            Temperature of MD.
+        integrator : ase.md integrator
+            ASE integrator.
+        ase_constraints : list of ASE constraints, default=None
+            List of ASE constraints to be applied during the scans.
+            More information: https://wiki.fysik.dtu.dk/ase/ase/constraints.html
+
+        Returns
+        -------
+        coord : np.ndarray, shape=(n_atoms,3), dtype=float
+             Coordinate array in nanometers.
+        energy : float
+            Energy value in kJ/mol.
+        forces : np.ndarray, shape=(n_atoms,3), dtype=float
+            Forces array, kJ/mol/nm.
+        """
+        from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
+
+        # Change to calculation directory
+        self._interface.chdir(self._calculation_dirs[label], absolute=True)
+
+        # Reset ase calculator
+        self._ase_calculator[label].reset()
+
+        # Set calculator in Atoms object
+        atoms = ase.Atoms(self._symbols_string, coords)
+        atoms.set_calculator(self._ase_calculator[label])
+
+        if self._cell is not None:
+            # Set the cell and center the atoms
+            atoms.set_cell(self._cell)
+            atoms.center()
+
+        # Apply any ASE constraints
+        # More information: https://wiki.fysik.dtu.dk/ase/ase/constraints.html
+        if ase_constraints is not None:
+            for constraint in ase_constraints:
+                atoms.set_constraint(constraint)
+
+        # Randomize velocities
+        MaxwellBoltzmannDistribution(atoms, 300 * ase_unit.kB, force_temp=False, rng=np.random)
+
+        # Get data
+        kinetic_intial = atoms.get_kinetic_energy() * 96.48530749925794  # eV to kJ/mol
+        potential_inital = atoms.get_potential_energy() * 96.48530749925794  # eV to kJ/mol
+        forces_initial = atoms.get_forces() * 96.48530749925794 * 10.0  # eV/A to kJ/mol/nm
+
+        dyn = integrator(atoms, dt=1 * ase_unit.fs, trajectory=self._opt_traj_prefix+".traj", logfile=self._opt_logfile)
+        dyn.run(steps)
+        #dyn.attach(MDLogger(dyn, atoms, 'md.log', header=False, stress=False,
+        #                    peratom=True, mode="a"), interval=1000)
+
+        # Get data
+        coords = atoms.get_positions() * 0.1  # Angstrom to nm
+        kinetic_final = atoms.get_kinetic_energy() * 96.48530749925794  # eV to kJ/mol
+        potential_final = atoms.get_potential_energy() * 96.48530749925794  # eV to kJ/mol
+        forces_final = atoms.get_forces() * 96.48530749925794 * 10.0  # eV/A to kJ/mol/nm
+
+        # View molecule after sp calculation
+
+        self._interface.chdir_base()
+
+        return coords, potential_inital, kinetic_intial, forces_initial, potential_final, kinetic_final, forces_final
 
     # ------------------------------------------------------------ #
     #                                                              #
