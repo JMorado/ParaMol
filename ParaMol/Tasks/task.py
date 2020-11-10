@@ -103,12 +103,14 @@ class Task:
         return parameter_space
 
     @staticmethod
-    def create_properties(properties_settings, systems, parameter_space):
+    def create_properties(properties_settings, parameter_space_settings, systems, parameter_space):
         """
         Method that creates the Property instances
         Parameters
         ----------
         properties_settings : dict
+            Properties settings dictionary.
+        parameter_space_settings : dict
             Properties settings dictionary.
         systems : list of :obj:`ParaMol.System.system.ParaMolSystem`
             List containing instances of ParaMol systems.
@@ -137,7 +139,8 @@ class Task:
 
         # Create regularization if required
         if properties_settings["include_regularization"]:
-            parameter_space.calculate_prior_widths()
+            parameter_space.calculate_prior_widths(parameter_space_settings["prior_widths_method"])
+
             regularization = Regularization(initial_parameters_values=parameter_space.initial_optimizable_parameters_values_scaled,
                                             prior_widths=parameter_space.prior_widths,
                                             **properties_settings["regularization"])
