@@ -40,10 +40,10 @@ class ObjectiveFunction:
         Name of the OpenMM platform. Only options are 'Reference', 'CPU' and 'OpenCL'.
     parallel : bool, default=`False`
         Flag that signals if the objective function calculation is to be performed in parallel.
-    weighing_method : str, default="uniform"
+    weighting_method : str, default="uniform"
         Method used to weigh the conformations. Available methods are "uniform, "boltzmann" and "non-boltzmann".
-    weighing_temperature : unit.simtk.Quantity, default=300.0*unit.kelvin
-        Temperature used in the weighing. Only relevant if `weighing_method` is "boltzmann" or "non_boltzmann".
+    weighting_temperature : unit.simtk.Quantity, default=300.0*unit.kelvin
+        Temperature used in the weighing. Only relevant if `weighting_method` is "boltzmann" or "non_boltzmann".
     checkpoint_freq : int
         Frequency at which checkpoint files are saved.
 
@@ -56,7 +56,7 @@ class ObjectiveFunction:
     systems : list of :obj:`ParaMol.System.system.ParaMolSystem`
         List containing instances of ParaMol systems.
     """
-    def __init__(self, restart_settings, parameter_space, properties, systems, platform_name, parallel=False, weighing_method="uniform", weighing_temperature=300*unit.kelvin, checkpoint_freq=1000):
+    def __init__(self, restart_settings, parameter_space, properties, systems, platform_name, parallel=False, weighting_method="uniform", weighting_temperature=300*unit.kelvin, checkpoint_freq=1000):
         self.restart_settings = restart_settings
         # OpenMM platform used to compute the objective function
         self.parameter_space = parameter_space
@@ -66,8 +66,8 @@ class ObjectiveFunction:
         self._platform = platform_name
         self._parallel = parallel
         self._checkpoint_freq = checkpoint_freq
-        self._weighing_method = weighing_method
-        self._weighing_temperature = weighing_temperature
+        self._weighting_method = weighting_method
+        self._weighting_temperature = weighting_temperature
         self._f_count = 0
 
         if self._parallel:
@@ -188,7 +188,7 @@ class ObjectiveFunction:
         objective_function = 0.0
 
         for system in self.systems:
-            system.compute_conformations_weights(temperature=self._weighing_temperature, emm=emm, weighing_method=self._weighing_method)
+            system.compute_conformations_weights(temperature=self._weighting_temperature, emm=emm, weighting_method=self._weighting_method)
 
         for property in self.properties:
             if property.name == "ENERGY":

@@ -90,8 +90,8 @@ class Settings:
         # ---------------------------------------------------------- #
         self.objective_function = {"parallel": False,
                                    "platform_name": "Reference",
-                                   "weighing_method": "uniform",
-                                   "weighing_temperature": 300.0*unit.kelvin,
+                                   "weighting_method": "uniform",
+                                   "weighting_temperature": 300.0*unit.kelvin,
                                    "checkpoint_freq": 100}
 
         # ---------------------------------------------------------- #
@@ -107,10 +107,11 @@ class Settings:
                            "forces": {"term_type": "components",
                                       "weight": 1.0},
                            "esp": {"weight": 1.0},
-                           "regularization": {"method": "L2",
+                           "regulari zation": {"method": "L2",
                                               "weight": 1.0,
                                               "scaling_factor": 1.0,
                                               "hyperbolic_beta": 0.01},}
+
         # ---------------------------------------------------------- #
         #                                                            #
         #                      QM ENGINE SETTINGS                    #

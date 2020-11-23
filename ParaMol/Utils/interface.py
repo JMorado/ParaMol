@@ -8,6 +8,7 @@ This module defines the :obj:`ParaMol.Utils.interface.ParaMolInterface` used for
 import logging
 import subprocess
 import os
+import shutil
 
 
 class ParaMolInterface:
@@ -52,7 +53,7 @@ class ParaMolInterface:
             # Check if directory exists
             self.check_dir_exists(current_dir)
             # Remove dir
-            os.rmdir(current_dir)
+            shutil.rmtree(current_dir)
 
         return self.created_dirs
 

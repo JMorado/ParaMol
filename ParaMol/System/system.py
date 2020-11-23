@@ -124,7 +124,7 @@ class ParaMolSystem:
     #                          PUBLIC METHODS                      #
     #                                                              #
     # ------------------------------------------------------------ #
-    def create_qm_engines(self, qm_engine_name, qm_engine_settings, interface=None):
+    def create_qm_engines(self, qm_engine_name, qm_engine_settings, interface=None, overwrite_qm_engine=False):
         """
         Method (top-level) that creates a QM engine for the system.
 
@@ -136,6 +136,8 @@ class ParaMolSystem:
             Keyword arguments passed to the QM engine wrapper.
         interface : :obj:`ParaMol.Utils.interface.ParaMolInterface`, default=None
             ParaMol interface.
+        overwrite_qm_engine : bool
+            Flag to overwrite current QM engine, if it exists.
 
         Returns
         -------
@@ -152,10 +154,12 @@ class ParaMolSystem:
         if self.qm_engine is None:
             # If there are no QM engine associated with this stystem
             self.qm_engine = QMEngine(self, qm_engine_name, qm_engine_settings, interface)
+        elif overwrite_qm_engine:
+            self.qm_engine = QMEngine(self, qm_engine_name, qm_engine_settings, interface)
 
         return self.qm_engine
 
-    def compute_conformations_weights(self, temperature=None, emm=None, weighing_method="UNIFORM"):
+    def compute_conformations_weights(self, temperature=None, emm=None, weighting_method="UNIFORM"):
         """
         Method that calculates the weights of every configuration of the ensemble.
 
@@ -171,7 +175,7 @@ class ParaMolSystem:
         ----------
         temperature : simtk.unit.Quantity
             Temperature of the ensemble in Kelvin.
-        weighing_method : str
+        weighting_method : str
             Available weighing methods are "UNIFORM", "BOLTZMANN" and "NON-BOLTZMANN".
         emm: list or np.array
             (n_structures) 1D list or numpy array containing the MM energies.
@@ -183,7 +187,7 @@ class ParaMolSystem:
         """
         np.seterr(all='raise')
 
-        if weighing_method.upper() == "UNIFORM":
+        if weighting_method.upper() == "UNIFORM":
             # Equal weight to each conformation.
             # P(r_i) =  P(r_j) = 1/N_structures for any two configurations i and j.
             self.weights = np.ones(self.n_structures)
@@ -191,7 +195,7 @@ class ParaMolSystem:
             # Normalize
             self.weights = self.weights / np.sum(self.weights)
 
-        elif weighing_method.upper() == "NON_BOLTZMANN":
+        elif weighting_method.upper() == "NON_BOLTZMANN":
             # Weight given by the Boltzmann distribution of the difference of QM-MM.
             # P(r_i) = exp(-beta*(E^ref(r_i)-E^mm(r_i)-<E^ref-E^mm>))
             assert temperature is not None, "Temperature was not chosen."
@@ -211,7 +215,7 @@ class ParaMolSystem:
                 # Apply uniform weighting
                 self.weights = np.ones((self.n_structures)) / self.n_structures
 
-        elif weighing_method.upper() == "BOLTZMANN":
+        elif weighting_method.upper() == "BOLTZMANN":
             # Weight given by the Boltzmann distribution of the reference energies.
             # P(r_i) = exp(-beta*(E^ref(r_i)-<E^ref>))
             assert temperature is not None, "Temperature was not chosen."
