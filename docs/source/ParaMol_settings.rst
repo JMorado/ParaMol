@@ -81,8 +81,8 @@ Objective function parameters (objective_function)
 ---------------------------------------------------
 * **parallel** (`bool`, True): Flag that signals if the objective function calculation is to be performed in parallel.
 * **platform_name** (`str`, "Reference"): Name of the OpenMM platform to be used to calculate the objective function. Only options are 'Reference', 'CPU' and 'OpenCL'.
-* **weighing_method** (`str`, "uniform"): Method used to weigh the conformations. Available methods are "uniform, "boltzmann" and "non-boltzmann".
-* **weighing_temperature** (`simtk.unit.Quantity`, 300.0*unit.kelvin): Temperature used in the weighing. Only relevant if `weighing_method` is "boltzmann" or "non_boltzmann".
+* **weighting_method** (`str`, "uniform"): Method used to weigh the conformations. Available methods are "uniform, "boltzmann" and "non-boltzmann".
+* **weighting_temperature** (`simtk.unit.Quantity`, 300.0*unit.kelvin): Temperature used in the weighing. Only relevant if `weighing_method` is "boltzmann" or "non_boltzmann".
 * **checkpoint_freq** (`int`, 100): Frequency at which ParameterSpace checkpoint files are saved during an optimization. Useful for restarts.
 
 

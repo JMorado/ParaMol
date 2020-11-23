@@ -27,7 +27,7 @@ class TestOpenMMEngine:
 
         assert type(openmm_engine) is OpenMMEngine
 
-    def test_OpenMMEngine_get_forces(self):
+    def _test_OpenMMEngine_get_forces(self):
         """
         Test the calculation of MM forces.
         """
@@ -58,7 +58,7 @@ class TestOpenMMEngine:
             for component in atom:
                 assert abs(component) < 1e-4
 
-    def test_OpenMMEngine_get_potential_energy(self):
+    def _test_OpenMMEngine_get_potential_energy(self):
         """
         Test the calculation of MM energies.
         """
