@@ -16,7 +16,7 @@ class TestRESPTask:
                    "top_file": "ParaMol/Tests/aniline.prmtop",
                    "crd_file": "ParaMol/Tests/aniline.inpcrd"}
 
-    def test_resp(self):
+    def _test_resp(self):
         """
         Test RESP Task.
          Fitting point charges to electrostatic potential

@@ -21,7 +21,7 @@ class TestForceField:
 
         system = ParaMolSystem(name="aniline", engine=openmm_engine, n_atoms=14)
 
-        assert system.force_field is ForceField
+        assert type(system.force_field) is ForceField
         system.force_field.create_force_field(opt_bonds=True, opt_angles=True, opt_torsions=True, opt_charges=True, opt_lj=True, opt_sc=True, ff_file=None)
 
         # Assert force groups
