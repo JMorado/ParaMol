@@ -49,6 +49,56 @@ class ForceField:
     #                         PUBLIC METHODS                       #
     #                                                              #
     # ------------------------------------------------------------ #
+    def create_force_field(self, opt_bonds=False, opt_angles=False, opt_torsions=False, opt_charges=False, opt_lj=False, opt_sc=False, ff_file=None):
+        """
+        Method that wraps the methods create_force_field_from_openmm/read_ff_file and create_force_field_optimizable in order to ease the procedure of creating a ParaMol representation of a force field.
+
+        Notes
+        -----
+        If `ff_file` is not `None` the force field will be created from the provided file. The system stored in :obj:`ParaMol.MM_engines.openmm.OpenMMEngine` should contain exactly the same forces and force field terms as the ones in this file.
+
+        Parameters
+        ----------
+        opt_bonds : bool
+            Flag that signals whether or not the bond parameters will be optimized.
+        opt_angles : bool
+             Flag that signals whether or not the angle parameters will be optimized.
+        opt_torsions : bool
+            Flag that signals whether or not the dihedral parameters will be optimized.
+        opt_charges : bool
+            Flag that signal whether or not the charges will be optimized.
+        opt_lj : bool
+            Flag that signal whether or not the charges will be optimized.
+        opt_sc : bool
+            Flag that signal whether or not the 1-4 Lennard-Jones and electrostatic scaling factor will be optimized.
+        ff_file : str
+            Name of the ParaMol force field file to be read.
+
+        Returns
+        -------
+        force_field : dict
+            Dictionary that contains as keys force groups names and as values and the correspondent :obj:`ParaMol.Force_field.force_field_term.FFTerm`.
+        """
+
+        # Set empty Force Field and Force Group dictionaries
+        self.force_field = {}
+        self.force_groups = {}
+
+        if ff_file is None:
+            # No .ff file was provided - create parameter list from force field
+            logging.info("Creating force field directly from OpenMM.")
+            assert self._openmm is not None, "OpenMM was not set."
+            self.create_force_field_from_openmm(opt_bonds, opt_angles, opt_torsions, opt_charges, opt_lj, opt_sc)
+        else:
+            logging.info("Creating force from .ff file named '{}'.".format(ff_file))
+            # A .param file was provided - create parameter list from the information contained in this file.
+            assert os.path.exists(ff_file), "\t * ERROR: .param file provided - {} - does not exist."
+            self.read_ff_file(ff_file)
+
+        self.create_force_field_optimizable()
+
+        return self.force_field
+
     def update_force_field(self, optimizable_parameters_values, symmetry_constrained=True):
         """
         Method that updates the value of each Parameter object instance.
@@ -114,56 +164,6 @@ class ForceField:
                 ff_term.parameters["lj_sigma"].value = abs(ff_term.parameters["lj_sigma"].value)
 
         return self.optimizable_parameters
-
-    def create_force_field(self, opt_bonds=False, opt_angles=False, opt_torsions=False, opt_charges=False, opt_lj=False, opt_sc=False, ff_file=None):
-        """
-        Method that wraps the methods create_force_field_from_openmm/read_ff_file and create_force_field_optimizable in order to ease the procedure of creating a ParaMol representation of a force field.
-
-        Notes
-        -----
-        If `ff_file` is not `None` the force field will be created from the provided file. The system stored in :obj:`ParaMol.MM_engines.openmm.OpenMMEngine` should contain exactly the same forces and force field terms as the ones in this file.
-
-        Parameters
-        ----------
-        opt_bonds : bool
-            Flag that signals whether or not the bond parameters will be optimized.
-        opt_angles : bool
-             Flag that signals whether or not the angle parameters will be optimized.
-        opt_torsions : bool
-            Flag that signals whether or not the dihedral parameters will be optimized.
-        opt_charges : bool
-            Flag that signal whether or not the charges will be optimized.
-        opt_lj : bool
-            Flag that signal whether or not the charges will be optimized.
-        opt_sc : bool
-            Flag that signal whether or not the 1-4 Lennard-Jones and electrostatic scaling factor will be optimized.
-        ff_file : str
-            Name of the ParaMol force field file to be read.
-
-        Returns
-        -------
-        force_field : dict
-            Dictionary that contains as keys force groups names and as values and the correspondent :obj:`ParaMol.Force_field.force_field_term.FFTerm`.
-        """
-
-        # Set empty Force Field and Force Group dictionaries
-        self.force_field = {}
-        self.force_groups = {}
-
-        if ff_file is None:
-            # No .ff file was provided - create parameter list from force field
-            logging.info("Creating force field directly from OpenMM.")
-            assert self._openmm is not None, "OpenMM was not set."
-            self.create_force_field_from_openmm(opt_bonds, opt_angles, opt_torsions, opt_charges, opt_lj, opt_sc)
-        else:
-            logging.info("Creating force from .ff file named '{}'.".format(ff_file))
-            # A .param file was provided - create parameter list from the information contained in this file.
-            assert os.path.exists(ff_file), "\t * ERROR: .param file provided - {} - does not exist."
-            self.read_ff_file(ff_file)
-
-        self.create_force_field_optimizable()
-
-        return self.force_field
 
     def create_force_field_from_openmm(self, opt_bonds, opt_angles, opt_torsions, opt_charges, opt_lj, opt_sc):
         """

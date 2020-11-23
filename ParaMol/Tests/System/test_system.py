@@ -13,9 +13,6 @@ class TestSystem:
                    "top_file": "ParaMol/Tests/aniline.prmtop",
                    "crd_file": "ParaMol/Tests/aniline.inpcrd"}
 
-    system_kwargs_dict = {"name": "aniline",
-                          "n_atoms": 14}
-
     def test_create_qm_engines(self):
         """
         Test the creation of the QM engines.
