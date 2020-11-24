@@ -6,17 +6,18 @@ from ParaMol.MM_engines.openmm import *
 from ParaMol.Tasks.resp_fitting import *
 from ParaMol.Utils.settings import *
 from ParaMol.Utils.gaussian_esp import *
+from ParaMol.Parameter_space.parameter_space import *
 
 import numpy as np
 
 
-class TestRESPTask:
+class _TestRESPTask:
     # Kwargs dictionary for AMBER topology system. These are shared between all instances.
     kwargs_dict = {"topology_format": "AMBER",
                    "top_file": "ParaMol/Tests/aniline.prmtop",
                    "crd_file": "ParaMol/Tests/aniline.inpcrd"}
 
-    def _test_resp(self):
+    def test_resp(self):
         """
         Test RESP Task.
          Fitting point charges to electrostatic potential
@@ -55,14 +56,33 @@ class TestRESPTask:
         paramol_settings.properties["include_energies"] = False
         paramol_settings.properties["include_forces"] = False
         paramol_settings.properties["include_esp"] = True
+        paramol_settings.parameter_space = {"parameters_magnitudes": {"charge": 0.5,
+                                                                      "lj_sigma": 0.30,
+                                                                      "lj_eps": 0.20,
+                                                                      "torsion_phase": np.pi,
+                                                                      "torsion_k": 4 * 4.184,
+                                                                      "bond_eq": 0.05,
+                                                                      "bond_k":  100000,
+                                                                      "angle_eq": np.pi / 16.0,
+                                                                      "angle_k": 100.0,
+                                                                      "scee": 1.0,
+                                                                      "scnb": 1.0},
+                                            "prior_widths_method": "default",
+                                            "scaling_constants_method": "default",}
+
         # --------------------------------------------------------- #
         #                 Read ESP Data into ParaMol                #
         # --------------------------------------------------------- #
         gaussian_esp = GaussianESP()
         aniline.ref_coordinates, aniline.ref_esp_grid, aniline.ref_esp = gaussian_esp.read_log_files(["ParaMol/Tests/Tasks/aniline_opt.log"])
 
+        assert aniline.ref_esp_grid.shape == (1, 39946, 3)
+        assert aniline.ref_esp.shape == (1, 39946)
+
         # Set number of structures
         aniline.n_structures = len(aniline.ref_coordinates)
+
+        assert aniline.n_structures == 1
 
         # --------------------------------------------------------- #
         #                      RESP Charge Fitting                  #
@@ -74,6 +94,9 @@ class TestRESPTask:
 
         # Test EXPLICIT solver
         resp_fitting = RESPFitting()
+
+        assert type(resp_fitting) is RESPFitting
+
         systems, parameter_space, objective_function, optimizer = resp_fitting.run_task(paramol_settings, [aniline], solver="explicit", total_charge=0)
         charges = np.asarray(parameter_space.optimizable_parameters_values)[:14]
 
