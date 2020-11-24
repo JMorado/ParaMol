@@ -7,6 +7,7 @@ from ParaMol.QM_engines.ase_wrapper import *
 
 import numpy as np
 
+
 class TestSystem:
     # Kwargs dictionary for AMBER topology system. These are shared between all instances.
     kwargs_dict = {"topology_format": "AMBER",

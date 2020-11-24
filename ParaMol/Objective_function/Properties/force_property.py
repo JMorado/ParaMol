@@ -139,11 +139,12 @@ class ForceProperty(Property):
         """
         from numpy.linalg import inv
 
+        self.inv_covariance = []
+
         for system in self.systems:
             assert system.ref_forces is not None, \
                 "\t * Impossible to calculate the covariance of the QM forces since these were not set yet."
 
-            self.inv_covariance = []
             inv_covariance_forces = np.zeros((system.n_atoms, 3, 3))
 
             for i in range(system.n_atoms):
