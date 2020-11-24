@@ -326,7 +326,7 @@ class TorsionsParametrization(Task):
         rdkit_mol:
             RDKit Molecule
         methyl : bool
-            If true, also includes rotatable bonds of methyl groups.
+            If true, also includes rotatable bonds of methyl groups. Not implemented yet.
 
         Returns
         -------

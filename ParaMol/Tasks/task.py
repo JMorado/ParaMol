@@ -63,7 +63,7 @@ class Task:
         systems : list of :obj:`ParaMol.System.system.ParaMolSystem`
             List containing instances of ParaMol systems.
         interface: :obj:`ParaMol.Utils.interface.ParaMolInterface`
-            ParaMol system instance.
+            ParaMol interface instance.
         preconditioning : bool
             Flag that signal whether or not the preconditioning of the parameters is done when this method is run.
         restart : bool
