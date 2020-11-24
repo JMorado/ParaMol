@@ -107,7 +107,7 @@ class Settings:
                            "forces": {"term_type": "components",
                                       "weight": 1.0},
                            "esp": {"weight": 1.0},
-                           "regulari zation": {"method": "L2",
+                           "regularization": {"method": "L2",
                                               "weight": 1.0,
                                               "scaling_factor": 1.0,
                                               "hyperbolic_beta": 0.01},}
