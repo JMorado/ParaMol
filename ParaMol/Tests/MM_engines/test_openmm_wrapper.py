@@ -27,7 +27,7 @@ class TestOpenMMEngine:
 
         assert type(openmm_engine) is OpenMMEngine
 
-    def _test_OpenMMEngine_get_forces(self):
+    def test_OpenMMEngine_get_forces(self):
         """
         Test the calculation of MM forces.
         """
@@ -38,27 +38,25 @@ class TestOpenMMEngine:
         # Test get_forces
         positions = openmm_engine.context.getState(getPositions=True).getPositions()
         forces = openmm_engine.get_forces(positions)
-        forces_to_compare = np.asarray([[-108.20637122, 14.14975219, -203.01049775],
-                                        [285.23819821, -44.26763491, 622.12727234],
-                                        [-370.49318137, -165.53371961, 862.01433178],
-                                        [126.58599999, 33.44856972, -197.69047989],
-                                        [-581.70982215, -67.64550267, -522.34967916],
-                                        [315.1541032, 101.17451063, -65.19818332],
-                                        [-984.3807304, 822.37994851, -1481.98729613],
-                                        [1353.7231787, -1122.81542249, 1921.23187906],
-                                        [-602.7141258, 145.84354165, 27.17423844],
-                                        [228.1849988, 273.6632624, -501.45893709],
-                                        [-219.24294377, -22.30555889, -788.64576361],
-                                        [-224.02270718, 34.6457255, 272.69745263],
-                                        [1041.98078492, 11.56852192, 38.56452241],
-                                        [-260.09738479, -14.30599467, 16.53114005]])
 
-        diff = forces-forces_to_compare
-        for atom in diff:
-            for component in atom:
-                assert abs(component) < 1e-4
+        forces_to_compare = np.asarray([[  63.35630106,  162.8967182 , -258.24033288],
+                                        [ -59.00944446, -208.77385948,  355.58821171],
+                                        [-776.22546605, -504.12792941,  166.35451611],
+                                        [ 308.2616859 ,  165.84950054,   -6.51344357],
+                                        [ 298.18912045,  411.24031931, -721.17666783],
+                                        [ 173.36177528,  -18.60772402,  335.44688256],
+                                        [-154.47362429,  159.35849737,  161.19346389],
+                                        [ 391.65340945, -360.28848608, -570.75865292],
+                                        [ 103.39422437,  135.17881342,  490.66165364],
+                                        [-458.56499782,  -23.61221643,  210.89896885],
+                                        [ 166.3213486 ,  370.13451591, -766.39734703],
+                                        [-314.8255014 , -170.20584891,  100.11854383],
+                                        [ 478.93689136, -122.96590207,  736.30926713],
+                                        [-220.37572244,    3.92360164, -233.4850635 ]])
 
-    def _test_OpenMMEngine_get_potential_energy(self):
+        np.testing.assert_almost_equal(forces, forces_to_compare)
+
+    def test_OpenMMEngine_get_potential_energy(self):
         """
         Test the calculation of MM energies.
         """
@@ -69,8 +67,8 @@ class TestOpenMMEngine:
         # Test get_potential_energy
         positions = openmm_engine.context.getState(getPositions=True).getPositions()
         pot_energy = openmm_engine.get_potential_energy(positions)
-        energy_to_comapare = -94.4336492887833
-        assert abs(pot_energy - energy_to_comapare) < 1e-4
+        energy_to_compare = -109.4067856056198
+        assert abs(pot_energy - energy_to_compare) < 1e-4
 
     def test_OpenMMEngine_get_atom_list(self):
         """
