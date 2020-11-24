@@ -26,6 +26,9 @@ class TestParameterSpace:
         system.force_field.create_force_field(opt_bonds=True, opt_angles=True, opt_torsions=True, opt_charges=True, opt_lj=True, opt_sc=True, ff_file=None)
 
         parameter_space = ParameterSpace()
+
+        assert type(parameter_space) is ParameterSpace
+
         optimizable_parameters, optimizable_parameters_values = parameter_space.get_optimizable_parameters([system])
 
         assert len(optimizable_parameters_values) == 232
@@ -71,6 +74,9 @@ class TestParameterSpace:
         system.force_field.create_force_field(opt_bonds=True, opt_angles=True, opt_torsions=True, opt_charges=True, opt_lj=True, opt_sc=True, ff_file=None)
 
         parameter_space = ParameterSpace()
+
+        assert type(parameter_space) is ParameterSpace
+
         _, _ = parameter_space.get_optimizable_parameters([system])
 
         # Geometric
@@ -117,15 +123,22 @@ class TestParameterSpace:
         system = ParaMolSystem(name="aniline", engine=openmm_engine, n_atoms=14)
 
         assert type(system.force_field) is ForceField
+
         system.force_field.create_force_field(opt_bonds=True, opt_angles=True, opt_torsions=True, opt_charges=True, opt_lj=True, opt_sc=True, ff_file=None)
 
         parameter_space = ParameterSpace()
+
+        assert type(parameter_space) is ParameterSpace
+
         _, _ = parameter_space.get_optimizable_parameters([system])
 
         # Perform jacobi preconditioning
         parameter_space.calculate_scaling_constants("arithmetic")
+
         assert parameter_space.preconditioned is False
+
         parameter_space.jacobi_preconditioning()
+
         assert parameter_space.preconditioned is True
 
         optimizable_parameters_values_scaled_to_compare = np.asarray([ 0.88251683,  0.84596432,  0.88251683,  0.84596432,  0.88251683,
@@ -189,9 +202,13 @@ class TestParameterSpace:
         system = ParaMolSystem(name="aniline", engine=openmm_engine, n_atoms=14)
 
         assert type(system.force_field) is ForceField
+
         system.force_field.create_force_field(opt_bonds=True, opt_angles=True, opt_torsions=True, opt_charges=True, opt_lj=True, opt_sc=True, ff_file=None)
 
         parameter_space = ParameterSpace()
+
+        assert type(parameter_space) is ParameterSpace
+
         _, old_values = parameter_space.get_optimizable_parameters([system])
 
         parameters = np.ones(len(old_values))
