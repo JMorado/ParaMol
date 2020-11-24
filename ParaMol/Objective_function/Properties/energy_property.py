@@ -48,7 +48,7 @@ class EnergyProperty(Property):
         self.value = None
         self.weight = weight
         self.systems = systems
-        self.variance = []
+        self.variance = None
         self.units = unit.kilojoule_per_mole
 
     def add_system(self, system):
@@ -124,6 +124,8 @@ class EnergyProperty(Property):
         variance : np.array of floats
             Array containing the variance of the QM (reference) energies for each system.
         """
+        self.variance = []
+
         for system in self.systems:
             assert system.ref_energies is not None, "ERROR: It is not possible to calculate the variance, data was not set."
             self.variance.append(np.var(system.ref_energies))
