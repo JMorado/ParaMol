@@ -11,7 +11,7 @@ from ParaMol.Parameter_space.parameter_space import *
 import numpy as np
 
 
-class _TestRESPTask:
+class TestRESPTask:
     # Kwargs dictionary for AMBER topology system. These are shared between all instances.
     kwargs_dict = {"topology_format": "AMBER",
                    "top_file": "ParaMol/Tests/aniline.prmtop",
