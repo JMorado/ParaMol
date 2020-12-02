@@ -179,7 +179,8 @@ class TorsionScan(Task):
         return scan_angles, qm_energies_list, qm_forces_list, qm_conformations_list, mm_energies_list, mm_conformations_list
 
 
-    def scan_1d(self, interface, restart_settings, system, rdkit_conf, torsion_to_scan, torsions_to_freeze, scan_settings, optimize_qm, optimize_qm_before_scan, optimize_mm, optimize_mm_before_scan, optimize_mm_type, ase_constraints, restart, force_constant=999999999.0, threshold=1e-2):
+    def scan_1d(self, interface, restart_settings, system, rdkit_conf, torsion_to_scan, torsions_to_freeze, scan_settings, optimize_qm, optimize_qm_before_scan, optimize_mm,
+                optimize_mm_before_scan, optimize_mm_type, ase_constraints, restart, force_constant=999999999.0, threshold=1e-2):
         """
         Method that performs 1-dimensional torsional scans.
 
@@ -392,7 +393,8 @@ class TorsionScan(Task):
 
         return self.scan_angles, self.qm_energies_list, self.qm_forces_list, self.qm_conformations_list, self.mm_energies_list, self.mm_conformations_list
 
-    def scan_2d(self, interface, restart_settings, system, rdkit_conf, torsion_to_scan_1, torsion_to_scan_2, torsions_to_freeze, scan_settings_1, scan_settings_2, optimize_qm, optimize_qm_before_scan, optimize_mm, optimize_mm_before_scan, optimize_mm_type, ase_constraints, restart, force_constant=9999999.0, threshold=1e-2):
+    def scan_2d(self, interface, restart_settings, system, rdkit_conf, torsion_to_scan_1, torsion_to_scan_2, torsions_to_freeze, scan_settings_1, scan_settings_2, optimize_qm,
+                optimize_qm_before_scan, optimize_mm, optimize_mm_before_scan, optimize_mm_type, ase_constraints, restart, force_constant=9999999.0, threshold=1e-2):
         """
         Method that performs 2-dimensional torsional scans.
 
