@@ -10,14 +10,16 @@ import copy
 import logging
 import os
 import shutil
+import simtk.unit as unit
+
 import numpy as np
 
 # ASE imports
 from ase.optimize import BFGS
 from ase.md.verlet import VelocityVerlet
 import ase.units as ase_unit
+from ase.constraints import FixInternals
 
-import simtk.unit as unit
 
 # ParaMol imports
 from ..Utils.interface import *
@@ -61,7 +63,9 @@ class ASEWrapper:
 
     def __init__(self, system_name, interface, calculator, n_atoms, atom_list, n_calculations, cell, calc_dir_prefix="ase_",
                  work_dir_prefix="ASEWorkDir_", view_atoms=False, optimizer=BFGS,
-                 opt_fmax=1e-2, opt_log_file="-", opt_traj_prefix="traj_"):
+                 opt_fmax=1e-2, opt_log_file="-", opt_traj_prefix="traj_",
+                 md_steps=100, md_dt=1.0*ase_unit.fs, md_initial_temperature=300.0*ase_unit.kB,
+                 md_integrator=VelocityVerlet, md_integrator_args={}):
 
         # Name of the system to which this wrapper is associated to
         self._system_name = system_name
@@ -78,6 +82,13 @@ class ASEWrapper:
         self._opt_fmax = opt_fmax
         self._opt_logfile = opt_log_file
         self._opt_traj_prefix = opt_traj_prefix
+
+        # ASE MD variables
+        self._md_steps = md_steps
+        self._md_dt = md_dt
+        self._md_initial_temperature = md_initial_temperature
+        self._md_integrator = md_integrator
+        self._md_integrator_args = md_integrator_args
 
         # ParaMol interface
         self._interface = interface
@@ -163,7 +174,6 @@ class ASEWrapper:
             return energy, forces
         elif calc_type.lower() == "optimization":
             # Run optimization
-            from ase.constraints import FixInternals
             from ase.io import write, read
             logging.info("Performing QM optimization using ASE optimizer.")
 
@@ -204,7 +214,7 @@ class ASEWrapper:
         else:
             raise NotImplementedError("Calculation of type {} is not implemented.".format(calc_type))
 
-    def run_md(self, coords, label, steps, dt=unit.Quantity(1.0, unit.femtoseconds), temperature=unit.Quantity(300.0, unit.kelvin), integrator=VelocityVerlet,  ase_constraints=None):
+    def run_md(self, coords, label, steps=None, dt=None, initial_temperature=None, integrator=None, integrator_args=None, dihedral_freeze=None, ase_constraints=None):
         """
         Method that runs an ASE calculation.
 
@@ -218,10 +228,14 @@ class ASEWrapper:
             Number of steps to take.
         dt : unit.Quantity
             MD Time step.
-        temperature : unit.Quantity
+        initial_temperature : float with ase.unit
             Temperature of MD.
         integrator : ase.md integrator
             ASE integrator.
+        integrator_args : dict
+            Additional integrator options.
+        dihedral_freeze : list of list of int, default=None
+            List of lists of wherein each inner list should contain 4 integers defining a torsion to be kept fixed.
         ase_constraints : list of ASE constraints, default=None
             List of ASE constraints to be applied during the scans.
             More information: https://wiki.fysik.dtu.dk/ase/ase/constraints.html
@@ -236,6 +250,22 @@ class ASEWrapper:
             Forces array, kJ/mol/nm.
         """
         from ase.md.velocitydistribution import MaxwellBoltzmannDistribution
+
+        if steps is None:
+            assert self._md_steps is not None
+            steps = self._md_steps
+        if dt is None:
+            assert self._md_dt is not None
+            dt = self._md_dt
+        if initial_temperature is None:
+            assert self._md_initial_temperature is not None
+            initial_temperature = self._md_initial_temperature
+        if integrator is None:
+            assert self._md_integrator is not None
+            integrator = self._md_integrator
+        if integrator_args is None:
+            assert self._md_integrator_args is not None
+            integrator_args = self._md_integrator_args
 
         # Change to calculation directory
         self._interface.chdir(self._calculation_dirs[label], absolute=True)
@@ -252,6 +282,15 @@ class ASEWrapper:
             atoms.set_cell(self._cell)
             atoms.center()
 
+        # Apply necessary dihedral constraints
+        if dihedral_freeze is not None:
+            dihedrals_to_fix = []
+            for dihedral in dihedral_freeze:
+                dihedrals_to_fix.append([atoms.get_dihedral(*dihedral) * np.pi / 180.0, dihedral])
+
+            constraint = FixInternals(bonds=[], angles=[], dihedrals=dihedrals_to_fix)
+            atoms.set_constraint(constraint)
+
         # Apply any ASE constraints
         # More information: https://wiki.fysik.dtu.dk/ase/ase/constraints.html
         if ase_constraints is not None:
@@ -259,17 +298,15 @@ class ASEWrapper:
                 atoms.set_constraint(constraint)
 
         # Randomize velocities
-        MaxwellBoltzmannDistribution(atoms, 300 * ase_unit.kB, force_temp=False, rng=np.random)
+        MaxwellBoltzmannDistribution(atoms, initial_temperature, force_temp=False, rng=np.random)
 
         # Get data
         kinetic_intial = atoms.get_kinetic_energy() * 96.48530749925794  # eV to kJ/mol
         potential_inital = atoms.get_potential_energy() * 96.48530749925794  # eV to kJ/mol
         forces_initial = atoms.get_forces() * 96.48530749925794 * 10.0  # eV/A to kJ/mol/nm
 
-        dyn = integrator(atoms, dt=1 * ase_unit.fs, trajectory=self._opt_traj_prefix+".traj", logfile=self._opt_logfile)
+        dyn = integrator(atoms, dt, *integrator_args, trajectory=self._opt_traj_prefix+".traj", logfile=self._opt_logfile, )
         dyn.run(steps)
-        #dyn.attach(MDLogger(dyn, atoms, 'md.log', header=False, stress=False,
-        #                    peratom=True, mode="a"), interval=1000)
 
         # Get data
         coords = atoms.get_positions() * 0.1  # Angstrom to nm
