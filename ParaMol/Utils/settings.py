@@ -4,12 +4,12 @@ Description
 -----------
 This module defines the :obj:`ParaMol.Utils.settings.Settings` class used to define ParaMol global settings.
 """
-
+import ase.units as ase_unit
 import numpy as np
 import simtk.unit as unit
 from ase.optimize import BFGS as BFGS_ase
 from scipy.optimize import BFGS as BFGS_scipy
-
+from ase.md.verlet import VelocityVerlet
 
 # ---------------------------------------------------------- #
 #                                                            #
@@ -147,7 +147,12 @@ class Settings:
                                   "opt_traj_prefix": "traj_",
                                   "calc_dir_prefix": "ase_",
                                   "work_dir_prefix": "ASEWorkDir_",
-                                  "view_atoms": False, },
+                                  "view_atoms": False,
+                                  "md_dt": 1.0 * ase_unit.fs,
+                                  "md_steps": 100,
+                                  "md_initial_temperature": 300 * ase_unit.kB,
+                                  "md_integrator": VelocityVerlet,
+                                  "md_integrator_args": {}, },
                           }
 
         # ---------------------------------------------------------- #
