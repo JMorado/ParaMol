@@ -681,7 +681,7 @@ class ParaMolSystem:
             for conformation in self.ref_coordinates:
                 xyz_file.write("{} \n {} {} \n".format(self.n_atoms, config_id, xyz_comment))
                 for atom, symbol in zip(conformation, atom_list):
-                    xyz_file.write("{} {} {} {} \n".format(symbol, *atom * 10.0))
+                    xyz_file.write("{} {} {} {} \n".format(symbol, atom[0] * 10.0, atom[1] * 10.0, atom[2] * 10.0))
 
                 # Keep track of the configuration number
                 config_id += 1
