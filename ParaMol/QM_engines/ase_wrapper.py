@@ -98,7 +98,10 @@ class ASEWrapper:
 
         # Initialize calculators
         assert calculator is not None, "ASE calculator instance is None."
-        self._ase_calculator = [copy.deepcopy(calculator) for i in range(self._n_calculations)]
+        if self._n_calculations > 1:
+            self._ase_calculator = [copy.deepcopy(calculator) for i in range(self._n_calculations)]
+        else:
+            self._ase_calculator = [calculator]
 
         # Create Symbols Strings
         self._symbols_string = ''
