@@ -116,7 +116,7 @@ class ASEWrapper:
     #                         PUBLIC METHODS                       #
     #                                                              #
     # ------------------------------------------------------------ #
-    def run_calculation(self, coords, label, calc_type="single_point", dihedral_freeze=None, ase_constraints=None):
+    def run_calculation(self, coords, label, calc_type="single_point", calculate_force=True, dihedral_freeze=None, ase_constraints=None):
         """
         Method that runs an ASE calculation.
 
@@ -128,6 +128,8 @@ class ASEWrapper:
             Label of the calculation.
         calc_type : str, default="single_point"
             Available options are "single_point" and "optimization".
+        calculate_force : bool
+            Whether to calculate forces.
         dihedral_freeze : list of list of int, default=None
             List of lists of wherein each inner list should contain 4 integers defining a torsion to be kept fixed.
         ase_constraints : list of ASE constraints, default=None
@@ -155,6 +157,9 @@ class ASEWrapper:
         atoms = ase.Atoms(self._symbols_string, coords)
         atoms.set_calculator(self._ase_calculator[label])
 
+        if not calculate_force:
+            forces = None
+
         if self._cell is not None:
             # Set the cell and center the atoms
             atoms.set_cell(self._cell)
@@ -165,7 +170,9 @@ class ASEWrapper:
             # Set calculator in Atoms object
 
             energy = atoms.get_potential_energy() * 96.48530749925794  # eV to kJ/mol
-            forces = atoms.get_forces() * 96.48530749925794 * 10.0  # eV/A to kJ/mol/nm
+
+            if calculate_force:
+                forces = atoms.get_forces() * 96.48530749925794 * 10.0  # eV/A to kJ/mol/nm
 
             # View molecule after sp calculation
             if self._view_atoms:
@@ -208,7 +215,9 @@ class ASEWrapper:
             # Get data
             coords = atoms.get_positions() * 0.1 # Angstrom to nm
             energy = atoms.get_potential_energy() * 96.48530749925794  # eV to kJ/mol
-            forces = atoms.get_forces() * 96.48530749925794 * 10.0 # eV/A to kJ/mol/nm
+
+            if calculate_force:
+                forces = atoms.get_forces() * 96.48530749925794 * 10.0 # eV/A to kJ/mol/nm
 
             # Go back to main folder
             self._interface.chdir_base()
