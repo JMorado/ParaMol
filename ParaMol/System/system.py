@@ -638,19 +638,25 @@ class ParaMolSystem:
             # Create the variable
             data_coordinates = ncfile.createVariable('reference_coordinates', np.dtype('float64').char, ('n_structures', 'n_atoms', 'spatial_dim'))
             data_coordinates.units = "nanometers"
-            # first argument is name of variable, second is datatype, third is a tuple with the name of the dimensions
-            data_coordinates[:] = self.ref_coordinates
+
+            if len(self.ref_coordinates) != 0:
+                # first argument is name of variable, second is datatype, third is a tuple with the name of the dimensions
+                data_coordinates[:] = self.ref_coordinates
 
         if self.ref_forces is not None:
             data_forces = ncfile.createVariable('reference_forces', np.dtype('float64').char, ('n_structures', 'n_atoms', 'spatial_dim'))
             data_forces.units = "kilojoules/mol/nanometers"
-            # first argument is name of variable, second is datatype, third is a tuple with the name of the dimensions
-            data_forces[:] = self.ref_forces
+
+            if len(self.ref_forces) != 0:
+                # first argument is name of variable, second is datatype, third is a tuple with the name of the dimensions
+                data_forces[:] = self.ref_forces
 
         if self.ref_energies is not None:
             data_energies = ncfile.createVariable('reference_energies', np.dtype('float64').char, ('n_structures'))
             data_energies.units = "kilojoules/mol"
-            data_energies[:] = self.ref_energies
+
+            if len(self.ref_energies) != 0:
+                data_energies[:] = self.ref_energies
 
         print("Data of system {} was written to file {}".format(self.name, output_file_name))
         return ncfile.close()
