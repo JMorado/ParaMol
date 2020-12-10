@@ -617,7 +617,6 @@ class ParaMolSystem:
         Returns
         -------
         True if file was closed successfully. False otherwise.
-
         """
         import netCDF4 as nc
 
