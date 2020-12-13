@@ -1,0 +1,19 @@
+name: paramol
+channels:
+  - ambermd
+  - conda-forge
+  - omnia
+  - rdkit
+  - anaconda
+dependencies:
+  - python>=3.7
+  - numpy
+  - scipy
+  - openmmtools
+  - ambertools
+  - ase
+  - parmed
+  - rdkit
+  - netCDF4
+
+
