@@ -11,7 +11,7 @@ sphinx:
 
 #  Conda
 conda:
-  environment: conda-build/meta.yaml
+  environment: docs/environment.yml
 
 # Optionally set the version of Python and requirements required to build your docs
 python:
