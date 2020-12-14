@@ -131,6 +131,7 @@ QM Engine parameters (qm_engine)
    * **calc_dir_prefix** (`str`, "dftb\_"): Prefix given to each subdirectory.
    * **work_dir_prefix** (`str`, "DFTBWorkDir"): Relative path to the working directory prefix (relatively to the base directory).
 
+
 Restart parameters (qm_engine)
 ---------------------------------
 * **restart_dir** (`str`, "restart_paramol"): Name of the directory used to stored restart files.
