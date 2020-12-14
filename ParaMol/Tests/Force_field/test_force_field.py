@@ -1,6 +1,6 @@
 # Import ParaMol modules
-from ..System.system import *
-from ..Force_field import *
+from ParaMol.System.system import *
+from ParaMol.Force_field import *
 
 import numpy as np
 

@@ -1,9 +1,9 @@
 # Import ParaMol modules
-from ..System.system import *
-from ..Utils.interface import *
-from ..QM_engines.amber_wrapper import *
-from ..QM_engines.dftb_wrapper import *
-from ..QM_engines.ase_wrapper import *
+from ParaMol.System.system import *
+from ParaMol.Utils.interface import *
+from ParaMol.QM_engines.amber_wrapper import *
+from ParaMol.QM_engines.dftb_wrapper import *
+from ParaMol.QM_engines.ase_wrapper import *
 
 import numpy as np
 
@@ -48,7 +48,7 @@ class TestSystem:
                               "detailed_file_output": "detailed.out",
                               "calc_dir_prefix": "dftb_",
                               "geometry_file": "geometry.gen",
-                              "slater_koster_files_prefix": "../slakos/mio-ext/",
+                              "slater_koster_files_prefix": "ParaMol./slakos/mio-ext/",
                               "max_ang_mom": {"H": "s",
                                               "C": "p",
                                               "N": "p",

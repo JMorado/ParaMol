@@ -1,5 +1,5 @@
 # Import ParaMol modules
-from ..MM_engines.openmm import *
+from ParaMol.MM_engines.openmm import *
 
 
 class TestOpenMMEngine:
