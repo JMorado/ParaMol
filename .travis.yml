@@ -9,7 +9,7 @@ install:
   - bash miniconda.sh -b -p $HOME/miniconda
   - source "$HOME/miniconda/etc/profile.d/conda.sh"
   # Create conda environment and update it
-  - conda update -q conda
+  - conda update --yes -q conda
   - conda config --set always_yes yes
   - conda create -q -n paramol python=$TRAVIS_PYTHON_VERSION
   - conda activate paramol
