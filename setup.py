@@ -1,12 +1,8 @@
-from setuptools import setup
-
+from setuptools import setup, find_packages
 setup(
     name='ParaMol',
     version='1.0.0',
-    packages=['ParaMol', 'ParaMol.Tasks', 'ParaMol.Tasks.forces_parallel', 'ParaMol.Tests', 'ParaMol.Utils',
-              'ParaMol.System', 'ParaMol.MM_engines', 'ParaMol.Optimizers',
-              'ParaMol.Optimizers.devel', 'ParaMol.QM_engines', 'ParaMol.Force_field', 'ParaMol.Parameter_space',
-              'ParaMol.Objective_function', 'ParaMol.Objective_function.Properties'],
+    packages=find_packages(),
     url='https://github.com/JMorado/ParaMol',
     license='MIT',
     author='João Morado',

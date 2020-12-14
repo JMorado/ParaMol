@@ -15,7 +15,8 @@ __all__ = ["System",
            "Objective_function",
            "Optimizers",
            "Force_field",
-           "Utils"]
+           "Utils",
+           "Tests"]
 
 
 
