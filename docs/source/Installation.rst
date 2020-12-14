@@ -8,7 +8,7 @@ Quick Install
 ParaMol has been extensively tested both on Linux and OS X platforms and all its features work as expected.
 Nevertheless, it has never been tested on Windows. It is expected that most of ParaMol features work correctly
 on this platform except the parallel capabilities (Windows does not support forks).
-Therefore, please remember that Window is not natively suported by ParaMol.
+Therefore, please remember that Windows is not natively supported by ParaMol.
 
 The easiest way to install ParaMol is via the conda package manager:
 

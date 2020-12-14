@@ -11,5 +11,7 @@ setup(
     license='MIT',
     author='João Morado',
     author_email='j.morado@soton.ac.uk',
-    description=' A Package for Parametrization of Molecular Mechanics Force Fields '
+    description='A Package for Parametrization of Molecular Mechanics Force Fields',
+    tests_require=["pytest"],
+    test_suite="ParaMol.Tests"
 )
