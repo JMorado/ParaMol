@@ -9,5 +9,5 @@ setup(
     author_email='j.morado@soton.ac.uk',
     description='A Package for Parametrization of Molecular Mechanics Force Fields',
     tests_require=["pytest"],
-    test_suite="ParaMol.tests",
+    test_suite="ParaMol.Tests",
 )
