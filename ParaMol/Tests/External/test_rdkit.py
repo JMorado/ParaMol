@@ -1,7 +1,7 @@
 # Import ParaMol modules
-from ParaMol.System.system import *
-from ParaMol.Tasks.torsions_scan import *
-from ParaMol.Tasks.torsions_parametrization import *
+from ..System.system import *
+from ..Tasks.torsions_scan import *
+from ..Tasks.torsions_parametrization import *
 
 import rdkit
 import numpy as np

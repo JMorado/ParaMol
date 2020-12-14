@@ -1,12 +1,12 @@
 # ParaMol imports
-from ParaMol.System.system import *
-from ParaMol.MM_engines.openmm import *
+from ..System.system import *
+from ..MM_engines.openmm import *
 
 # ParaMol Tasks imports
-from ParaMol.Tasks.resp_fitting import *
-from ParaMol.Utils.settings import *
-from ParaMol.Utils.gaussian_esp import *
-from ParaMol.Parameter_space.parameter_space import *
+from ..Tasks.resp_fitting import *
+from ..Utils.settings import *
+from ..Utils.gaussian_esp import *
+from ..Parameter_space.parameter_space import *
 
 import numpy as np
 

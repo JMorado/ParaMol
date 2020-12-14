@@ -1,9 +1,9 @@
 # Import ParaMol modules
-from ParaMol.System.system import *
-from ParaMol.Utils.interface import *
-from ParaMol.QM_engines.amber_wrapper import *
-from ParaMol.QM_engines.dftb_wrapper import *
-from ParaMol.QM_engines.ase_wrapper import *
+from ..System.system import *
+from ..Utils.interface import *
+from ..QM_engines.amber_wrapper import *
+from ..QM_engines.dftb_wrapper import *
+from ..QM_engines.ase_wrapper import *
 
 import numpy as np
 
