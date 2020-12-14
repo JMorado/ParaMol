@@ -15,8 +15,7 @@ install:
   - conda activate paramol
   - conda env update --file docs/environment.yml
   - python setup.py install
-  - export PYTHONPATH=$PYTHONPATH:/home/travis/build/JMorado/ParaMol
 
 # Run tests
 script:
-  - python -m pytest
+  - python setup.py test
