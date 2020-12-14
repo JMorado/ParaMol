@@ -1,3 +1,6 @@
+[![Build Status](https://travis-ci.com/JMorado/ParaMol.svg?branch=master)](https://travis-ci.org/JMorado/ParaMol)
+
+
 # ParaMol 
 
 ![ParaMol](docs/source/paramol.png)
