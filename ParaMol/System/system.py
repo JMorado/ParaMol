@@ -57,7 +57,7 @@ class ParaMolSystem:
     weights : int or np.array
         Weight of each configuration.
     wham_weights : int or np.array
-        WHAM weight of each configuration. It is equal to 1 unless adaptive parametrization is being performed with WHAM reweighing.
+        WHAM weight of each configuration. It is equal to 1 unless adaptive parametrization is being performed with WHAM reweighting.
     n_structures : int
         Number of configurations.
     ref_coordinates : list or np.array
@@ -168,7 +168,7 @@ class ParaMolSystem:
 
         Notes
         -----
-        For more info about the non-Boltzmann weighing see:
+        For more info about the non-Boltzmann weighting see:
         "Communication: Hybrid ensembles for improved force matching"
         Lee-Ping Wang and Troy Van Voorhis
         J. Chem. Phys. 133, 231101 (2010)
@@ -179,7 +179,7 @@ class ParaMolSystem:
         temperature : simtk.unit.Quantity
             Temperature of the ensemble in Kelvin.
         weighting_method : str
-            Available weighing methods are "UNIFORM", "BOLTZMANN", "NON-BOLTZMANN", and "MANUAL"
+            Available weighting methods are "UNIFORM", "BOLTZMANN", "NON-BOLTZMANN", and "MANUAL"
         emm: list or np.array
             (n_structures) 1D list or numpy array containing the MM energies.
         manual_weights_array : list or np.array
@@ -203,7 +203,7 @@ class ParaMolSystem:
             # Weight given by the Boltzmann distribution of the difference of QM-MM.
             # P(r_i) = exp(-beta*(E^ref(r_i)-E^mm(r_i)-<E^ref-E^mm>))
             assert temperature is not None, "Temperature was not chosen."
-            assert emm is not None, "Non-Boltzmann weighing was chosen but MM energies were not provided."
+            assert emm is not None, "Non-Boltzmann weighting was chosen but MM energies were not provided."
 
             diff = np.asarray(emm)-np.asarray(self.ref_energies)
             diff = diff - np.mean(diff)
@@ -246,7 +246,7 @@ class ParaMolSystem:
 
     def wham_reweighing(self, parameters_generation):
         """
-        Method that performs WHAM reweighing.
+        Method that performs WHAM reweighting.
 
         Notes
         -----

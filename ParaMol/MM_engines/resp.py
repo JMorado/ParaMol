@@ -23,8 +23,18 @@ class RESP:
     ----------
     total_charge : int
         Total charge of the system
-    constraint_tolerance : float
-        Constraint tolerance.
+    include_regulatization : bool
+        Flag that signal whether or not to include regularization.
+    method : str
+        Type of regularization. Options are 'L2' or 'hyperbolic'.
+    scaling_factor : float
+        Scaling factor of the regularization value.
+    hyperbolic_beta : float
+        Hyperbolic beta value. Only used if `regularization_type` is `hyperbolic`.
+    weighting_method : str
+        Method used to weight the conformations. Available methods are "uniform, "boltzmann" and "manual".
+    weighting_temperature : unit.simtk.Quantity
+        Temperature used in the weighting. Only relevant if `weighting_method` is "boltzmann".
 
     Attributes
     ----------
@@ -34,12 +44,23 @@ class RESP:
         List with initial system's charges.
     inv_rij : list or np.array
         (nconformations, natoms, n_esp_values) Inverse distances (1/rij) between the atomic centre j and the electrostatic point i for every every conformation of every system.
+    include_regulatization : bool
+        Flag that signal whether or not to include regularization.
+    regularization_type : str
+        Type of regularization. Options are 'L2' or 'hyperbolic'.
+    scaling_factor : float
+        Scaling factor of the regularization value.
+    hyperbolic_beta : float
+        Hyperbolic beta value. Only used if `regularization_type` is `hyperbolic`.
+    weighting_method : str
+        Method used to weight the conformations. Available methods are "uniform, "boltzmann" and "manual".
+    weighting_temperature : unit.simtk.Quantity
+        Temperature used in the weighting. Only relevant if `weighting_method` is "boltzmann".
     """
-    def __init__(self, total_charge, constraint_tolerance=1e-8):
+    def __init__(self, total_charge, include_regularization, method, scaling_factor, hyperbolic_beta, weighting_method, weighting_temperature, **kwargs):
         # Variables related to total charge and symmetry constraints
         self._n_constraints = 1 # There is always at least one constraint (total charge one). This value is increased if there are more symmetry constraints.
         self._total_charge = total_charge
-        self._contraint_tol = constraint_tolerance
         self._symmetry_constraints = None
 
         self.charges = None
@@ -51,9 +72,20 @@ class RESP:
         # Matrices used in the explicit solution of the RESP equations
         self._A = None
         self._B = None
+
         # Auxiliary matrices that store values that do not change along the calculation
         self._A_aux = None
         self._B_aux = None
+
+        # Regularization variables
+        self._include_regularization = include_regularization
+        self._regularization_type = method
+        self._scaling_factor = scaling_factor
+        self._hyperbolic_beta = hyperbolic_beta
+
+        # Weighting variables
+        self._weighting_method = weighting_method
+        self._weighting_temperature = weighting_temperature
 
     # ------------------------------------------------------------ #
     #                                                              #
@@ -159,7 +191,10 @@ class RESP:
         """
         from numpy.linalg import inv
 
-        #system.compute_conformations_weights(temperature=self._weighting_temperature, emm=emm, weighting_method=self._weighting_method)
+        assert self._weighting_method.upper() in ["UNIFORM", "MANUAL", "BOLTZMANN"], "RESP only accepts the following weighting methods:'UNIFORM', 'MANUAL' or 'BOLTZMANN'"
+        # Calculate conformations weights
+        system.compute_conformations_weights(temperature=self._weighting_temperature, weighting_method=self._weighting_method)
+
         # Compute A matrix
         self._calculate_a(system, initialize=True)
         # Compute B matrix
@@ -181,6 +216,9 @@ class RESP:
         while n_iter < max_iter and rmsd > rmsd_tol:
             # Advance one iteration
             n_iter = n_iter + 1
+
+            # Calculate conformations weights
+            system.compute_conformations_weights(temperature=self._weighting_temperature, weighting_method=self._weighting_method)
 
             # Compute A matrix
             self._calculate_a(system, initialize=False)
@@ -311,7 +349,7 @@ class RESP:
             # Iterate over all atomic centers
             for j in range(system.n_atoms):
                 # Add derivative of restrain w.r.t. atomic charge
-                self._A[m, j, j] = self._A[m, j, j] + self._regularization_derivative(j)
+                self._A[m, j, j] = self._A[m, j, j] + self._calculate_regularization_derivative(j, self._scaling_factor, self._hyperbolic_beta)
 
         # Sum over all conformations
         self._A = np.sum(self._A, axis=0)
@@ -362,21 +400,52 @@ class RESP:
             # Iterate over all atomic centers
             for j in range(system.n_atoms):
                 # Add derivative of restrain w.r.t. atomic charge
-                self._B[m, j] = self._B[m, j] + self._regularization_derivative(j) * self.initial_charges[j]
+                self._B[m, j] = self._B[m, j] + self._calculate_regularization_derivative(j, self._scaling_factor, self._hyperbolic_beta) * self.initial_charges[j]
 
         # Sum results over all conformations
         self._B = np.sum(self._B, axis=0)
 
         return self._B
 
-    def _regularization_derivative(self, at):
+    def _calculate_regularization_derivative(self, at_idx, a=None, b=None):
         """
-        Method that calculates the derivative of the regularization.
+        Method that wraps private regularization derivatives methods in order to calculate the derivative of regularization term.
 
         Parameters
         ----------
-        at : int
-            Atom index
+        at_idx : int
+            Atom index.
+        a : float, default=`None`
+            a parameter (scaling factor). If not `None`, instance attribute `self._scaling_factor` is ignored.
+        b : float, default=`None`
+            Hyperbolic beta parameter. If not `None`, instance attribute `self._hyperbolic_beta` is ignored.
+
+        Returns
+        -------
+        float
+            Regularization value.
+        """
+
+        if self._include_regularization:
+            if self._regularization_type == "L2":
+                return self._regularization_derivative_l2(at_idx, a)
+            elif self._regularization_type == "HYPERBOLIC":
+                return self._hyperbolic_regularization_derivative(at_idx, a, b)
+            else:
+                raise NotImplementedError("Regularization {} scheme not implement.".format(self._regularization_type))
+        else:
+            return 0.0
+
+    def _regularization_derivative_l2(self, at_idx, a):
+        """
+        Method that calculates the derivative of the L2 regularization.
+
+        Parameters
+        ----------
+        at_idx : int
+            Atom index.
+        a : float, default=`None`
+            a parameter (scaling factor). If not `None`, instance attribute `self._scaling_factor` is ignored.
 
         Notes
         -----
@@ -387,17 +456,40 @@ class RESP:
         reg_deriv : float
             Value of the regularization derivative.
         """
-        type = "NONE"
+        if a is None:
+            a = self._scaling_factor
 
-        if type.upper() == "L2":
-            a = 1.0
-            reg_deriv = - 2.0 * a * (self.initial_charges[at]-self.charges[at])
-        elif type.upper() == "HYPERBOLIC":
-            a = 0.01
-            b = 0.1
-            reg_deriv = a * self.charges[at] * (self.charges[at]**2+b**2)**(-1/2.)
-        elif type.upper() == "NONE":
-            reg_deriv = 0
+        reg_deriv = - 2.0 * a * (self.initial_charges[at_idx]-self.charges[at_idx])
 
         return reg_deriv
 
+    def _regularization_derivative_hyperbolic(self, at_idx, a, b):
+        """
+        Method that calculates the derivative of the hyperbolic regularization.
+
+        Parameters
+        ----------
+        at_idx : int
+            Atom index.
+        a : float, default=`None`
+            a parameter (scaling factor). If not `None`, instance attribute `self._scaling_factor` is ignored.
+        b : float, default=`None`
+            Hyperbolic beta parameter. If not `None`, instance attribute `self._hyperbolic_beta` is ignored.
+
+        Notes
+        -----
+        This is only necessary for the explicit solution case.
+
+        Returns
+        -------
+        reg_deriv : float
+            Value of the regularization derivative.
+        """
+        if a is None:
+            a = self._scaling_factor
+        if b is None:
+            b = self._hyperbolic_beta
+
+        reg_deriv = a * self.charges[at_idx] * (self.charges[at_idx] ** 2 + b ** 2) ** (-1 / 2.)
+
+        return reg_deriv

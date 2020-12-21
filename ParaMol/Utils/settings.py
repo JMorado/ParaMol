@@ -102,7 +102,7 @@ class Settings:
         self.properties = {"include_energies": True,
                            "include_forces": True,
                            "include_esp": False,
-                           "include_regularization" : False,
+                           "include_regularization": False,
                            "energies": {"weight": 1.0},
                            "forces": {"term_type": "components",
                                       "weight": 1.0},

@@ -88,6 +88,7 @@ class ESPProperty(Property):
         for system, esp, var in zip(self.systems, esp_data, self.variance):
             # Iterate over all conformations
             # Iterate over all conformations
+            tmp_value = np.zeros((system.n_structures))
             for m in range(system.n_structures):
                 # Iterate over all grid points
                 sq_diff_sum = 0
@@ -95,7 +96,9 @@ class ESPProperty(Property):
                     diff = system.ref_esp[m, i] - esp[m, i]
                     sq_diff_sum += diff * diff
 
-                self.value += self.weight[m] * sq_diff_sum / (var * system.ref_esp.shape[1])
+                tmp_value[m] = sq_diff_sum / (var * system.ref_esp.shape[1])
+
+            self.value = np.sum(self.weight * tmp_value, axis=0)
 
         return self.value
 
