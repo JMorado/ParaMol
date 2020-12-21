@@ -33,7 +33,7 @@ about:
   license: MIT
   license_family: MIT
   summary: "ParaMol: A Package for Parametrization of Molecular Mechanics Force Fields"
-  doc_url: https://cubelib.readthedocs.io/
+  doc_url: https://paramol.readthedocs.io/
   dev_url: https://github.com/JMorado/ParaMol
 
 extra:
