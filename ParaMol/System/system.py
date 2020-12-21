@@ -196,7 +196,6 @@ class ParaMolSystem:
             # Equal weight to each conformation.
             # P(r_i) =  P(r_j) = 1/N_structures for any two configurations i and j.
             self.weights = np.ones(self.n_structures)
-
             # Normalize
             self.weights = self.weights / np.sum(self.weights)
 

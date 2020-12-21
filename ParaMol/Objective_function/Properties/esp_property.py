@@ -95,8 +95,7 @@ class ESPProperty(Property):
                     diff = system.ref_esp[m, i] - esp[m, i]
                     sq_diff_sum += diff * diff
 
-                self.value += sq_diff_sum / (var * system.ref_esp.shape[1])
-            self.value = self.value / system.n_structures
+                self.value += self.weight[m] * sq_diff_sum / (var * system.ref_esp.shape[1])
 
         return self.value
 
