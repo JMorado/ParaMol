@@ -116,7 +116,6 @@ class RESPFitting(Task):
                 # Set initial/current charges
                 system.resp_engine.set_initial_charges(system.force_field.force_field)
                 system.resp_engine.set_charges(system.force_field.force_field)
-
                 # Calculate 1/r_{ij} matrix before the RESP procedure
                 system.resp_engine.calculate_inverse_distances(system)
                 # Set symmetry constraints

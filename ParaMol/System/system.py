@@ -164,7 +164,7 @@ class ParaMolSystem:
 
     def compute_conformations_weights(self, temperature=None, emm=None, weighting_method="UNIFORM", manual_weights_array=None):
         """
-        Method that calculates the weights of every configuration of the ensemble.
+        Method that calculates the weights of every configuration of the ensemble or sets them in case manual weighting is used.
 
         Notes
         -----
