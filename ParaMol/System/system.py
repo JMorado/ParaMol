@@ -87,8 +87,11 @@ class ParaMolSystem:
 
         self.name = name
         self.n_atoms = n_atoms
-        self.weights = 1.0
         self.wham_weights = 1.0
+
+        # Weights
+        self.weights = 1.0
+        self._was_manual_weighting_set = False
 
         # Ensemble of conformations, energies and forces
         self.n_structures = 0
@@ -159,7 +162,7 @@ class ParaMolSystem:
 
         return self.qm_engine
 
-    def compute_conformations_weights(self, temperature=None, emm=None, weighting_method="UNIFORM"):
+    def compute_conformations_weights(self, temperature=None, emm=None, weighting_method="UNIFORM", manual_weights_array=None):
         """
         Method that calculates the weights of every configuration of the ensemble.
 
@@ -179,6 +182,8 @@ class ParaMolSystem:
             Available weighing methods are "UNIFORM", "BOLTZMANN" and "NON-BOLTZMANN".
         emm: list or np.array
             (n_structures) 1D list or numpy array containing the MM energies.
+        manual_weights_array : list or np.array
+            (n_structures) 1D list or numpy array containing weights of the conformers.
 
         Returns
         -------
@@ -230,6 +235,13 @@ class ParaMolSystem:
             except FloatingPointError:
                 # Apply uniform weighting
                 self.weights = np.ones((self.n_structures)) / self.n_structures
+
+        elif weighting_method.upper() == "MANUAL":
+            if not self._was_manual_weighting_set:
+                assert manual_weights_array is not None, "No weights array was provided."
+                assert len(manual_weights_array) == self.n_structures, "Weights array provided has different number of weights than the number of structures."
+                self.weights = np.asarray(manual_weights_array)
+                self._was_manual_weighting_set = True
 
         return self.weights
 
