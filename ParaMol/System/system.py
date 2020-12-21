@@ -179,7 +179,7 @@ class ParaMolSystem:
         temperature : simtk.unit.Quantity
             Temperature of the ensemble in Kelvin.
         weighting_method : str
-            Available weighing methods are "UNIFORM", "BOLTZMANN" and "NON-BOLTZMANN".
+            Available weighing methods are "UNIFORM", "BOLTZMANN", "NON-BOLTZMANN", and "MANUAL"
         emm: list or np.array
             (n_structures) 1D list or numpy array containing the MM energies.
         manual_weights_array : list or np.array
@@ -227,7 +227,7 @@ class ParaMolSystem:
             beta = (unit.BOLTZMANN_CONSTANT_kB / unit.kilojoule_per_mole * temperature * unit.kelvin) * unit.AVOGADRO_CONSTANT_NA
             beta = 1.0 / beta
 
-            # Handle exponential overflow which occurs whenever
+            # Handle exponential overflow
             try:
                 self.weights = np.exp(- np.asarray(self.ref_energies - np.mean(self.ref_energies)) * beta)
                 self.weights = self.weights / np.sum(self.weights)
