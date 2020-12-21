@@ -11,6 +11,7 @@ import time
 import numpy as np
 import multiprocessing as mp
 import logging
+import os
 
 # ParaMol modules
 from .pickable_swig import *
@@ -41,9 +42,9 @@ class ObjectiveFunction:
     parallel : bool, default=`False`
         Flag that signals if the objective function calculation is to be performed in parallel.
     weighting_method : str, default="uniform"
-        Method used to weigh the conformations. Available methods are "uniform, "boltzmann" and "non-boltzmann".
+        Method used to weight the conformations. Available methods are "uniform, "boltzmann" and "non-boltzmann".
     weighting_temperature : unit.simtk.Quantity, default=300.0*unit.kelvin
-        Temperature used in the weighing. Only relevant if `weighting_method` is "boltzmann" or "non_boltzmann".
+        Temperature used in the weighting. Only relevant if `weighting_method` is "boltzmann" or "non_boltzmann".
     checkpoint_freq : int
         Frequency at which checkpoint files are saved.
 
@@ -78,7 +79,7 @@ class ObjectiveFunction:
             self.init_parallel()
 
         os.environ['OPENMM_DEFAULT_PLATFORM'] = 'Reference'
-        os.environ['OPENMM_NUM_THREADS'] = '1'
+        #os.environ['OPENMM_NUM_THREADS'] = '1'
 
     # ------------------------------------------------------------ #
     #                                                              #
