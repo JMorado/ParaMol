@@ -75,8 +75,8 @@ class AdaptiveParametrization(Task):
             Number of steps the integrator performs each time it is called.
         structures_per_iter : int
             How many structure to sample in each adaptive parametrization iteration (default is 1000).
-        wham_reweighing : bool
-            Flag that signals whether or not to perform WHAM reweighing at the end of every iteration.
+        wham_reweighting : bool
+            Flag that signals whether or not to perform WHAM reweighting at the end of every iteration.
         restart : bool
             Flag that controls whether or not to perform a restart.
 
@@ -168,7 +168,7 @@ class AdaptiveParametrization(Task):
                         system.ref_coordinates.append(coord._value)
                         system.n_structures += 1
 
-                    # Perform WHAM re-weighing
+                    # Perform WHAM re-weighting
                     if wham_reweighing:
                         print("Reweighting configurations of system {}.".format(system.name))
                         system.wham_reweighing(self.parameters_generations)

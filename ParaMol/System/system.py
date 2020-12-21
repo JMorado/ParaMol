@@ -57,7 +57,7 @@ class ParaMolSystem:
     weights : int or np.array
         Weight of each configuration.
     wham_weights : int or np.array
-        WHAM weight of each configuration. It is equal to 1 unless adaptive parametrization is being performed with WHAM reweighing.
+        WHAM weight of each configuration. It is equal to 1 unless adaptive parametrization is being performed with WHAM reweighting.
     n_structures : int
         Number of configurations.
     ref_coordinates : list or np.array
@@ -87,8 +87,11 @@ class ParaMolSystem:
 
         self.name = name
         self.n_atoms = n_atoms
-        self.weights = 1.0
         self.wham_weights = 1.0
+
+        # Weights
+        self.weights = 1.0
+        self._was_manual_weighting_set = False
 
         # Ensemble of conformations, energies and forces
         self.n_structures = 0
@@ -159,13 +162,13 @@ class ParaMolSystem:
 
         return self.qm_engine
 
-    def compute_conformations_weights(self, temperature=None, emm=None, weighting_method="UNIFORM"):
+    def compute_conformations_weights(self, temperature=None, emm=None, weighting_method="UNIFORM", manual_weights_array=None):
         """
-        Method that calculates the weights of every configuration of the ensemble.
+        Method that calculates the weights of every configuration of the ensemble or sets them in case manual weighting is used.
 
         Notes
         -----
-        For more info about the non-Boltzmann weighing see:
+        For more info about the non-Boltzmann weighting see:
         "Communication: Hybrid ensembles for improved force matching"
         Lee-Ping Wang and Troy Van Voorhis
         J. Chem. Phys. 133, 231101 (2010)
@@ -176,9 +179,11 @@ class ParaMolSystem:
         temperature : simtk.unit.Quantity
             Temperature of the ensemble in Kelvin.
         weighting_method : str
-            Available weighing methods are "UNIFORM", "BOLTZMANN" and "NON-BOLTZMANN".
+            Available weighting methods are "UNIFORM", "BOLTZMANN", "NON-BOLTZMANN", and "MANUAL"
         emm: list or np.array
             (n_structures) 1D list or numpy array containing the MM energies.
+        manual_weights_array : list or np.array
+            (n_structures) 1D list or numpy array containing weights of the conformers.
 
         Returns
         -------
@@ -191,7 +196,6 @@ class ParaMolSystem:
             # Equal weight to each conformation.
             # P(r_i) =  P(r_j) = 1/N_structures for any two configurations i and j.
             self.weights = np.ones(self.n_structures)
-
             # Normalize
             self.weights = self.weights / np.sum(self.weights)
 
@@ -199,7 +203,7 @@ class ParaMolSystem:
             # Weight given by the Boltzmann distribution of the difference of QM-MM.
             # P(r_i) = exp(-beta*(E^ref(r_i)-E^mm(r_i)-<E^ref-E^mm>))
             assert temperature is not None, "Temperature was not chosen."
-            assert emm is not None, "Non-Boltzmann weighing was chosen but MM energies were not provided."
+            assert emm is not None, "Non-Boltzmann weighting was chosen but MM energies were not provided."
 
             diff = np.asarray(emm)-np.asarray(self.ref_energies)
             diff = diff - np.mean(diff)
@@ -222,7 +226,7 @@ class ParaMolSystem:
             beta = (unit.BOLTZMANN_CONSTANT_kB / unit.kilojoule_per_mole * temperature * unit.kelvin) * unit.AVOGADRO_CONSTANT_NA
             beta = 1.0 / beta
 
-            # Handle exponential overflow which occurs whenever
+            # Handle exponential overflow
             try:
                 self.weights = np.exp(- np.asarray(self.ref_energies - np.mean(self.ref_energies)) * beta)
                 self.weights = self.weights / np.sum(self.weights)
@@ -231,11 +235,18 @@ class ParaMolSystem:
                 # Apply uniform weighting
                 self.weights = np.ones((self.n_structures)) / self.n_structures
 
+        elif weighting_method.upper() == "MANUAL":
+            if not self._was_manual_weighting_set:
+                assert manual_weights_array is not None, "No weights array was provided."
+                assert len(manual_weights_array) == self.n_structures, "Weights array provided has different number of weights than the number of structures."
+                self.weights = np.asarray(manual_weights_array)
+                self._was_manual_weighting_set = True
+
         return self.weights
 
     def wham_reweighing(self, parameters_generation):
         """
-        Method that performs WHAM reweighing.
+        Method that performs WHAM reweighting.
 
         Notes
         -----

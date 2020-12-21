@@ -75,8 +75,7 @@ class RESPFitting(Task):
             logging.info("ParaMol will solve fit to ESP using a SciPy optimimzer.")
 
             for system in systems:
-                system.resp_engine = RESP(total_charge=total_charge,
-                                          constraint_tolerance=constraint_tolerance)
+                system.resp_engine = RESP(total_charge, settings.properties["include_regularization"], **settings.properties["regularization"], **settings.objective_function)
 
                 system.resp_engine.calculate_inverse_distances(system)
 
@@ -111,12 +110,12 @@ class RESPFitting(Task):
                 assert system.ref_coordinates is not None
                 assert system.ref_esp_grid is not None
 
-                system.resp_engine = RESP(total_charge=total_charge)
+                print(settings.properties["regularization"])
+                system.resp_engine = RESP(total_charge, settings.properties["include_regularization"], **settings.properties["regularization"], **settings.objective_function)
 
                 # Set initial/current charges
                 system.resp_engine.set_initial_charges(system.force_field.force_field)
                 system.resp_engine.set_charges(system.force_field.force_field)
-
                 # Calculate 1/r_{ij} matrix before the RESP procedure
                 system.resp_engine.calculate_inverse_distances(system)
                 # Set symmetry constraints
