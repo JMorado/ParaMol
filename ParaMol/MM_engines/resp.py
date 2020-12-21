@@ -159,6 +159,7 @@ class RESP:
         """
         from numpy.linalg import inv
 
+        #system.compute_conformations_weights(temperature=self._weighting_temperature, emm=emm, weighting_method=self._weighting_method)
         # Compute A matrix
         self._calculate_a(system, initialize=True)
         # Compute B matrix
@@ -170,7 +171,7 @@ class RESP:
         # q=A^{-1}B
         self.charges = np.matmul(inv(self._A), self._B)
 
-        print("Initial charges {}".format(self.charges[:14]))
+        print("Initial charges {}".format(self.charges[:system.n_atoms]))
         max_iter = 100000
         # Self-consistent solution
         n_iter = 0
@@ -192,9 +193,9 @@ class RESP:
             self.charges = np.matmul(inv(self._A), self._B)
             new_charges = self.charges
 
-            rmsd = np.sqrt(np.sum( (old_charges-new_charges)**2 ) / 14. )
+            rmsd = np.sqrt(np.sum( (old_charges-new_charges)**2 ) / system.n_atoms )
 
-        for charge in self.charges[:14]:
+        for charge in self.charges[:system.n_atoms]:
             print("charge: {}".format(charge))
 
         print("Final net charge: {}.".format(np.sum(self.charges[:system.n_atoms])))
