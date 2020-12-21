@@ -72,7 +72,7 @@ class TestObjectiveFunction:
                                                                0.8333333333333334, 0.5, 0.8333333333333334, 0.5])
 
         optimizable_parameters_values = np.asarray(optimizable_parameters_values)
-        np.testing.assert_almost_equal(optimizable_parameters_values_to_compare, optimizable_parameters_values)
+        np.testing.assert_almost_equal(optimizable_parameters_values_to_compare, optimizable_parameters_values, decimal=4)
 
         # Energy property
         energies_dict = {"weight": 1.0}

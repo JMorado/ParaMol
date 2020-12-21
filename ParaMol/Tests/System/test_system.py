@@ -138,7 +138,7 @@ class TestSystem:
                                         [453.73793472,   938.54210868,   888.41665337],
                                         [-34.75796701,   251.95560644,  -297.37617932]])
 
-        np.testing.assert_almost_equal(forces, forces_to_compare)
+        np.testing.assert_almost_equal(forces, forces_to_compare, decimal=4)
 
     def test_weighting_methods(self):
         """
@@ -161,11 +161,11 @@ class TestSystem:
 
         boltzmann = system.compute_conformations_weights(temperature=300 * unit.kelvin, weighting_method="boltzmann")
         boltzmann_to_compare = np.asarray([9.22184537e-01, 7.06265178e-07, 4.15510475e-03, 1.07451351e-03, 3.53751796e-02, 2.78547996e-05, 3.70800366e-07, 9.58279141e-03, 3.51432746e-05, 2.75637985e-02])
-        np.testing.assert_almost_equal(boltzmann, boltzmann_to_compare)
+        np.testing.assert_almost_equal(boltzmann, boltzmann_to_compare, decimal=4)
 
         non_boltzmann = system.compute_conformations_weights(temperature=300 * unit.kelvin, emm=system.get_energies_ensemble(), weighting_method="non_boltzmann")
         non_boltzmann_to_compare = [0.12733302, 0.00108862, 0.08359318, 0.10544513, 0.06922439, 0.29104615, 0.01167686, 0.29807564, 0.00220013, 0.01031687]
-        np.testing.assert_almost_equal(non_boltzmann, non_boltzmann_to_compare)
+        np.testing.assert_almost_equal(non_boltzmann, non_boltzmann_to_compare, decimal=4)
 
     def test_filter_conformations(self):
         """

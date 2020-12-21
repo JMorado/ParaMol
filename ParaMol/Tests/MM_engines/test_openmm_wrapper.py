@@ -54,7 +54,7 @@ class TestOpenMMEngine:
                                         [ 478.93689136, -122.96590207,  736.30926713],
                                         [-220.37572244,    3.92360164, -233.4850635 ]])
 
-        np.testing.assert_almost_equal(forces, forces_to_compare)
+        np.testing.assert_almost_equal(forces, forces_to_compare, decimal=4)
 
     def test_OpenMMEngine_get_potential_energy(self):
         """

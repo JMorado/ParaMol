@@ -1,6 +1,5 @@
 # ParaMol conda package builder
 
-
 package:
   name: 'paramol'
   version: 1.0.0
