@@ -46,7 +46,7 @@ The current development version can be installed via conda:
 
  Once pytest is installed, the tests can be run by simply typing:
  
-    pytest
+    python -m pytest
     
  in ParaMol's root directory.
 

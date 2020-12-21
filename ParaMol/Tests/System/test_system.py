@@ -106,7 +106,7 @@ class TestSystem:
         # Get energies
         energies = system.get_energies_ensemble()
         energies_to_compare = np.asarray([-61.29511275, -14.29133038, -46.76993321, -43.97566967, -51.64154255, -37.39727507, -18.60248536, -52.02555262, -25.79225498, -46.27102486])
-        np.testing.assert_almost_equal(energies, energies_to_compare)
+        np.testing.assert_almost_equal(energies, energies_to_compare, decimal=4)
 
     def test_get_forces_ensemble(self):
         """
