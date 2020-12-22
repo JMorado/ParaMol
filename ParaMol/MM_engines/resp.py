@@ -367,6 +367,9 @@ class RESP:
         # A_{jj} = \sum_{i} 1/(r_{ij}^2) + \frac{\partial X^2_{rstr}}{\partial q_j}
         # Iterate over all conformations
         for m in range(system.n_structures):
+            # Weighing as in AMBER; remove **2 if to make it like ParaMol
+            self._A[m, :system.n_atoms, :system.n_atoms] = self._A[m, :system.n_atoms, :system.n_atoms] * system.weights[m]**2
+
             # Iterate over all atomic centers
             for j in range(system.n_atoms):
                 # Add derivative of restrain w.r.t. atomic charge
@@ -384,6 +387,8 @@ class RESP:
         Notes
         -----
         This is only necessary for the explicit solution case. :math:`B_j = \sum_{i} V_{i} / r_{ij} + q_{0j} + dX^2_{rstr}/dq_{j}`
+        Weighting is done as in AMBER. AMBER uses weigth**2 * (A-Aref)^2, ParaMol uses weigth * (A-Aref)^2
+
 
         Parameters
         ----------
@@ -418,10 +423,15 @@ class RESP:
 
         # Iterate over all conformations
         for m in range(system.n_structures):
+            # Weighing as in AMBER; remove **2 if to make it like ParaMol
+            self._B[m, :system.n_atoms] = self._B[m, :system.n_atoms] * system.weights[m] ** 2
+
             # Iterate over all atomic centers
             for j in range(system.n_atoms):
                 # Add derivative of restrain w.r.t. atomic charge
-                self._B[m, j] = self._B_aux[m, j] + self._calculate_regularization_derivative(j, self._scaling_factor, self._hyperbolic_beta) * self.initial_charges[j]
+                self._B[m, j] = self._B[m, j] + self._calculate_regularization_derivative(j, self._scaling_factor, self._hyperbolic_beta) * self.initial_charges[j]
+
+            # Weight with conformation weight
 
         # Sum results over all conformations
         self._B = np.sum(self._B, axis=0)
@@ -513,9 +523,6 @@ class RESP:
         if b is None:
             b = self._hyperbolic_beta
 
-        #if at_idx in [6,7,8,9,10,12,13]:
-        #    a=0.0
-
-        reg_deriv = a *  (self.charges[at_idx] ** 2 + b ** 2) ** (-1 / 2.)
+        reg_deriv = a * (self.charges[at_idx] ** 2 + b ** 2) ** (-1 / 2.)
 
         return reg_deriv
