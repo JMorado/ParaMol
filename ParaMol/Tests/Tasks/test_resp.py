@@ -76,8 +76,8 @@ class TestRESPTask:
         gaussian_esp = GaussianESP()
         aniline.ref_coordinates, aniline.ref_esp_grid, aniline.ref_esp = gaussian_esp.read_log_files(["ParaMol/Tests/Tasks/aniline_opt.log"])
 
-        assert aniline.ref_esp_grid.shape == (1, 39946, 3)
-        assert aniline.ref_esp.shape == (1, 39946)
+        assert aniline.ref_esp_grid[0].shape == (39946, 3)
+        assert len(aniline.ref_esp[0]) == 39946
 
         # Set number of structures
         aniline.n_structures = len(aniline.ref_coordinates)
@@ -104,7 +104,45 @@ class TestRESPTask:
         for diff_charge in diff:
             assert abs(diff_charge) < 1e-4
 
+        # Test EXPLICIT solver with L2 reg
+        charges_to_compare = [-0.126696, -0.074417, -0.085152, -0.074417, -0.126696, -0.133602, 0.114144, 0.120919, 0.120919, 0.114144, 0.113535, -0.482523, 0.259921, 0.259921]
+        charges_to_compare = np.asarray(charges_to_compare)
+
+        paramol_settings.properties["include_regularization"] = True
+        paramol_settings.properties["regularization"]["method"] = "L2"
+        paramol_settings.properties["regularization"]["scaling_factor"] = 0.5
+        resp_fitting = RESPFitting()
+
+        assert type(resp_fitting) is RESPFitting
+
+        systems, parameter_space, objective_function, optimizer = resp_fitting.run_task(paramol_settings, [aniline], solver="explicit", total_charge=0)
+        charges = np.asarray(parameter_space.optimizable_parameters_values)[:14]
+
+        diff = charges-charges_to_compare
+        for diff_charge in diff:
+            assert abs(diff_charge) < 1e-4
+
+        # Test EXPLICIT solver with hyperbolic reg
+        charges_to_compare = [-0.080054, -0.349042, 0.482141, -0.349041, -0.080051, -0.222752, 0.139195, 0.177437, 0.177437, 0.139194, 0.142552, -0.915567, 0.369275, 0.369277]
+        charges_to_compare = np.asarray(charges_to_compare)
+
+        paramol_settings.properties["include_regularization"] = True
+        paramol_settings.properties["regularization"]["method"] = "hyperbolic"
+        paramol_settings.properties["regularization"]["scaling_factor"] = 0.001
+        paramol_settings.properties["regularization"]["hyperbolic_beta"] = 0.1
+        resp_fitting = RESPFitting()
+
+        assert type(resp_fitting) is RESPFitting
+
+        systems, parameter_space, objective_function, optimizer = resp_fitting.run_task(paramol_settings, [aniline], solver="explicit", total_charge=0)
+        charges = np.asarray(parameter_space.optimizable_parameters_values)[:14]
+
+        diff = charges-charges_to_compare
+        for diff_charge in diff:
+            assert abs(diff_charge) < 1e-4
+
         # Test SciPy solver
+        paramol_settings.properties["include_regularization"] = False
         resp_fitting = RESPFitting()
         systems, parameter_space, objective_function, optimizer = resp_fitting.run_task(paramol_settings, [aniline], solver="scipy", total_charge=0)
         charges = np.asarray(parameter_space.optimizable_parameters_values)
