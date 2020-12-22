@@ -77,6 +77,7 @@ class ESPProperty(Property):
         Notes
         -----
         This method should be modified by the user if another objective function form is to be used.
+        AMBER uses weigth**2 * (A-Aref)^2 instead of weigth * (A-Aref)^2 that ParaMol uses
 
         Returns
         -------
@@ -87,7 +88,6 @@ class ESPProperty(Property):
 
         for system, esp, var in zip(self.systems, esp_data, self.variance):
             # Iterate over all conformations
-            # Iterate over all conformations
             tmp_value = np.zeros((system.n_structures))
             for m in range(system.n_structures):
                 # Determine number of ESP points
@@ -96,12 +96,12 @@ class ESPProperty(Property):
                 # Iterate over all grid points
                 sq_diff_sum = 0
                 for i in range(esp_points):
-                    diff = system.ref_esp[m][i] - esp[m][i]
+                    diff = (system.ref_esp[m][i] - esp[m][i]) # * system.weights[m] this makes results coincident with AMBER
                     sq_diff_sum += diff * diff
 
-                tmp_value[m] = sq_diff_sum # / (var * esp_points)
+                tmp_value[m] = sq_diff_sum  # / (var * esp_points)
 
-            self.value = np.sum(self.weight * tmp_value, axis=0)
+            self.value = np.sum(tmp_value * system.weights, axis=0)
 
         return self.value
 
