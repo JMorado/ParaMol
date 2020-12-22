@@ -1,6 +1,11 @@
 Change Log
 ==========
 
+Version 1.0.1
+-------------
+- Improvements to the RESP procedure.
+- RESP: Multiconformational fitting can be now performed using the explicit solver and with different weighting methods.
+
 Version 1.0.0
 -------------
 - Stable release of ParaMol (5th July 2020).
