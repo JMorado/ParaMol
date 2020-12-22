@@ -9,6 +9,7 @@ input for RESP calculations in ParaMol.
 import numpy as np
 import logging
 
+
 class GaussianESP:
     def __init__(self, conformations=None, grids=None, esps=None):
         self.conformations = conformations
@@ -96,11 +97,11 @@ class GaussianESP:
         for gaussian_file in files_names:
             conformation, grid, esp = self.gaussian_read_log(gaussian_file)
             assert len(grid) == len(esp), "Number of grid points and ESP values does not coincide."
-            self.conformations.append(conformation)
-            self.grids.append(grid)
-            self.esps.append(esp)
+            self.conformations.append(np.asarray(conformation))
+            self.grids.append(np.asarray(grid))
+            self.esps.append(np.asarray(esp))
 
-        return np.asarray(self.conformations), np.asarray(self.grids), np.asarray(self.esps)
+        return self.conformations, self.grids, self.esps
 
     def write_esp_paramol_format(self):
         """

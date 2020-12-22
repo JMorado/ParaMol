@@ -31,7 +31,7 @@ class RESPFitting(Task):
     #                          PUBLIC METHODS                      #
     #                                                              #
     # ------------------------------------------------------------ #
-    def run_task(self, settings, systems, parameter_space=None, objective_function=None, optimizer=None, interface=None, solver="SCIPY", total_charge=None, constraint_tolerance=1e-6):
+    def run_task(self, settings, systems, parameter_space=None, objective_function=None, optimizer=None, interface=None, solver="SCIPY", total_charge=None, restraint_hydrogens=True, constraint_tolerance=1e-6, rmsd_tol=1e-8, max_iter=10000):
         """
         Method that performs a RESP calculation.
 
@@ -57,8 +57,14 @@ class RESPFitting(Task):
             RESP solver. Options are "EXPLICTI" or "SCIPY" (default is "SCIPY").
         total_charge : int
             System's total charge (default is `None`).
+        restraint_hydrogens : bool
+            Flag that determines wheter or not hydrogens will be restrained when applying regularization.
         constraint_tolerance : float
             Tolerance used to impose total charge or symmetry constraints. Only used if `solver` is "SCIPY" (default is 1e-6).
+        rmsd_tol : float
+            RMSD convergence tolerance. Only used if `solver` is "explicit" (default is 1e-8).
+        max_iter : int
+            Maximum number of iterations. Only used if `solver` is "explicit" (default is 10000).
 
         Returns
         -------
@@ -110,7 +116,6 @@ class RESPFitting(Task):
                 assert system.ref_coordinates is not None
                 assert system.ref_esp_grid is not None
 
-                print(settings.properties["regularization"])
                 system.resp_engine = RESP(total_charge, settings.properties["include_regularization"], **settings.properties["regularization"], **settings.objective_function)
 
                 # Set initial/current charges
@@ -121,7 +126,7 @@ class RESPFitting(Task):
                 # Set symmetry constraints
                 system.resp_engine.set_symmetry_constraints(system, True)
                 # Perform RESP charge fitting
-                charges = system.resp_engine.fit_resp_charges_explicitly(system)
+                charges = system.resp_engine.fit_resp_charges_explicitly(system, rmsd_tol, max_iter)
 
                 # Update system
                 parameter_space.update_systems(systems, charges)

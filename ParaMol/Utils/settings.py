@@ -110,7 +110,7 @@ class Settings:
                            "regularization": {"method": "L2",
                                               "weight": 1.0,
                                               "scaling_factor": 1.0,
-                                              "hyperbolic_beta": 0.01},}
+                                              "hyperbolic_beta": 0.1},}
 
         # ---------------------------------------------------------- #
         #                                                            #

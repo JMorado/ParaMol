@@ -90,13 +90,16 @@ class ESPProperty(Property):
             # Iterate over all conformations
             tmp_value = np.zeros((system.n_structures))
             for m in range(system.n_structures):
+                # Determine number of ESP points
+                esp_points = len(system.ref_esp[m])
+
                 # Iterate over all grid points
                 sq_diff_sum = 0
-                for i in range(system.ref_esp.shape[1]):
-                    diff = system.ref_esp[m, i] - esp[m, i]
+                for i in range(esp_points):
+                    diff = system.ref_esp[m][i] - esp[m][i]
                     sq_diff_sum += diff * diff
 
-                tmp_value[m] = sq_diff_sum / (var * system.ref_esp.shape[1])
+                tmp_value[m] = sq_diff_sum # / (var * esp_points)
 
             self.value = np.sum(self.weight * tmp_value, axis=0)
 
@@ -115,9 +118,11 @@ class ESPProperty(Property):
         variance : np.array of floats
             Array containing the variance of the QM (reference) ESP for each system.
         """
+        self.variance = []
         for system in self.systems:
             assert system.ref_esp is not None, "ERROR: It is not possible to calculate the variance, data was not set."
-            self.variance.append(np.var(system.ref_esp))
+            for m in range(system.n_structures):
+                self.variance.append(np.var(system.ref_esp[m]))
 
         self.variance = np.asarray(self.variance)
 

@@ -364,16 +364,17 @@ class ParaMolSystem:
             (n_structures, n_esp) 2D list containing the calculated ESP values for every configuration.
         """
         assert self.resp_engine is not None
-        mm_esp = np.zeros((self.n_structures, self.ref_esp.shape[1]))
+        mm_esp = []
 
         # Iterate over all points of the ESP
         for m in range(self.n_structures):
-            for i in range(self.ref_esp.shape[1]):
+            mm_esp.append(np.zeros(len(self.ref_esp[m])))
+            for i in range(len(self.ref_esp[m])):
                 mm_esp_dummy = 0.0
                 for j in range(self.n_atoms):
-                    mm_esp_dummy += self.resp_engine.charges[j] * self.resp_engine.inv_rij[m, j, i]
+                    mm_esp_dummy += self.resp_engine.charges[j] * self.resp_engine.inv_rij[m][j, i]
 
-                mm_esp[m, i] = mm_esp_dummy
+                mm_esp[m][i] = mm_esp_dummy
 
         return mm_esp
 

@@ -120,11 +120,11 @@ class Regularization(Property):
             Regularization value.
         """
 
-        if self._regularization_type == "L2":
+        if self._regularization_type.upper() == "L2":
             return self._l2_regularization(current_parameters, a)
-        elif self._regularization_type == "L1":
+        elif self._regularization_type.upper() == "L1":
             return self._l1_regularization(current_parameters, a)
-        elif self._regularization_type == "HYPERBOLIC":
+        elif self._regularization_type.upper() == "HYPERBOLIC":
             return self._hyperbolic_regularization(current_parameters, a, b)
         else:
             raise NotImplementedError("Regularization {} scheme not implement.".format(self._regularization_type))

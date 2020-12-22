@@ -8,6 +8,7 @@ This module defines the :obj:`ParaMol.MM_engines.resp.RESP` class which is the P
 # ParaMol modules
 from ..System.system import *
 import numpy as np
+import copy
 
 
 # ------------------------------------------------------------ #
@@ -42,7 +43,7 @@ class RESP:
         List with system's charges.
     initial_charges : list of floats
         List with initial system's charges.
-    inv_rij : list or np.array
+    inv_rij : list of np.array
         (nconformations, natoms, n_esp_values) Inverse distances (1/rij) between the atomic centre j and the electrostatic point i for every every conformation of every system.
     include_regulatization : bool
         Flag that signal whether or not to include regularization.
@@ -107,25 +108,23 @@ class RESP:
 
         Returns
         -------
-        inv_rij : np.array
-            (nconformations, natoms, n_esp_values) distance matrix
+        inv_rij : list of np.array
+            (nconformations, natoms, n_esp_values) distance matrix (ragged if more than one structure)
         """
-
         # Create empty array where result will be stored
-        self.inv_rij = np.zeros((system.n_structures,
-                                 system.n_atoms,
-                                 system.ref_esp.shape[1]))
+        self.inv_rij = []
 
         # Compute 1/rij for all conformations
         # Iterate over all conformations
         for m in range(system.n_structures):
+            self.inv_rij.append(np.zeros((system.n_atoms, len(system.ref_esp[m]))))
             # Iterate over all atomic centers
             for j in range(system.n_atoms):
                 # Iterate over all grid points
-                for i in range(system.ref_esp.shape[1]):
-                    v = system.ref_coordinates[m, j, :] - system.ref_esp_grid[m, i, :]
+                for i in range(len(system.ref_esp[m])):
+                    v = system.ref_coordinates[m][j, :] - system.ref_esp_grid[m][i, :]
                     rij = np.linalg.norm(v)
-                    self.inv_rij[m, j, i] = 1.0 / rij
+                    self.inv_rij[m][j, i] = 1.0 / rij
 
         return self.inv_rij
 
@@ -175,7 +174,7 @@ class RESP:
     # ------------------------------------------------------------ #
     #           Explicit solution of the RESP problem              #
     # ------------------------------------------------------------ #
-    def fit_resp_charges_explicitly(self, system):
+    def fit_resp_charges_explicitly(self, system, rmsd_tol, max_iter):
         """
         Method that explicitly solves RESP equations
 
@@ -183,6 +182,10 @@ class RESP:
         ----------
         system : :obj:`ParaMol.System.system.ParaMolSystem`
             ParaMol System.
+        rmsd_tol : float
+            RMSD convergence tolerance. Only used if `solver` is "explicit" (default is 1e-8).
+        max_iter : int
+            Maximum number of iterations. Only used if `solver` is "explicit" (default is 10000).
 
         Returns
         -------
@@ -190,35 +193,40 @@ class RESP:
             List with system's charges.
         """
         from numpy.linalg import inv
-
+        from numpy.linalg import solve
+        self.initial_charges = np.zeros(14)
         assert self._weighting_method.upper() in ["UNIFORM", "MANUAL", "BOLTZMANN"], "RESP only accepts the following weighting methods:'UNIFORM', 'MANUAL' or 'BOLTZMANN'"
+
+        n_iter = 1
+
         # Calculate conformations weights
         system.compute_conformations_weights(temperature=self._weighting_temperature, weighting_method=self._weighting_method)
 
+        print("Initial net charge: {}.".format(self._total_charge))
+        print("\n{:20s} {:s}".format("Niter", "RMSD"))
+        print("================================")
+
+        old_charges = self.initial_charges
         # Compute A matrix
         self._calculate_a(system, initialize=True)
         # Compute B matrix
         self._calculate_b(system, initialize=True)
-
-        print("Initial net charge: {}.".format(self._total_charge))
-
         # Solve system of equations in matrix form (it is necessary to invert a matrix; may be costly for large mols)
         # q=A^{-1}B
-        self.charges = np.matmul(inv(self._A), self._B)
+        #self.charges = np.matmul(self._B, inv(self._A))
+        self.charges = solve(self._A, self._B)
 
-        print("Initial charges {}".format(self.charges[:system.n_atoms]))
-        max_iter = 100000
+        new_charges = self.charges[:system.n_atoms]
+        rmsd = np.sqrt(np.sum((old_charges - new_charges) ** 2) / system.n_atoms)
+
+        print("{:<20d} {:.4e}".format(n_iter, rmsd))
         # Self-consistent solution
-        n_iter = 0
-
-        rmsd_tol = 1e-5
-        rmsd = 1.0
         while n_iter < max_iter and rmsd > rmsd_tol:
             # Advance one iteration
             n_iter = n_iter + 1
 
             # Calculate conformations weights
-            system.compute_conformations_weights(temperature=self._weighting_temperature, weighting_method=self._weighting_method)
+            # system.compute_conformations_weights(temperature=self._weighting_temperature, weighting_method=self._weighting_method)
 
             # Compute A matrix
             self._calculate_a(system, initialize=False)
@@ -227,16 +235,29 @@ class RESP:
             self._calculate_b(system, initialize=False)
 
             # q=A^{-1}B
-            old_charges = self.charges
-            self.charges = np.matmul(inv(self._A), self._B)
-            new_charges = self.charges
+            # self.charges = np.matmul(self._B, inv(self._A))
+            self.charges = solve(self._A, self._B)
 
-            rmsd = np.sqrt(np.sum( (old_charges-new_charges)**2 ) / system.n_atoms )
+            # Calculate RMSD
+            new_charges = copy.deepcopy(self.charges[:system.n_atoms])
+            rmsd = np.sqrt(np.sum((old_charges-new_charges)**2) / system.n_atoms)
+            old_charges = copy.deepcopy(new_charges)
 
-        for charge in self.charges[:system.n_atoms]:
-            print("charge: {}".format(charge))
+            print("{:<20d} {:.4e}".format(n_iter, rmsd))
 
-        print("Final net charge: {}.".format(np.sum(self.charges[:system.n_atoms])))
+        print("================================")
+        if n_iter < max_iter:
+            print("Convergence was achieved.\n")
+        else:
+            print("Convergence was not achieved. Maximum number of iterations was reached.")
+
+        print("\n{:16s} {:20s} {:20s}".format("Atom id", "q(init)", "q(opt)"))
+        print("===================================================")
+        for charge_id in range(system.n_atoms):
+            print("{:3d} {:>20.6f} {:>20.6f}".format(charge_id+1, self.initial_charges[charge_id], self.charges[charge_id]))
+        print("===================================================")
+
+        print("\nFinal net charge: {:.4e}".format(np.sum(self.charges[:system.n_atoms])))
 
         return self.charges
 
@@ -318,10 +339,10 @@ class RESP:
             # Only compute upper diagonal part + diagonal elements
             for m in range(system.n_structures):
                 for j in range(system.n_atoms):
-                    for k in range(j,system.n_atoms):
-                        for i in range(system.ref_esp.shape[1]):
+                    for k in range(j, system.n_atoms):
+                        for i in range(len(system.ref_esp[m])):
                             # A_{jk} = \sum_{i} 1/(r_{ij}*r_{ik})
-                            self._A_aux[m, j, k] = self._A_aux[m, j, k] + self.inv_rij[m, j, i] * self.inv_rij[m, k, i]
+                            self._A_aux[m, j, k] = self._A_aux[m, j, k] + self.inv_rij[m][j, i] * self.inv_rij[m][k, i]
 
                             if k != j:
                                 # Lower diagonal part
@@ -339,7 +360,7 @@ class RESP:
                 self._A_aux[:, self._symmetry_constraints[i][1], system.n_atoms + i + 1] = -1.0
 
         # Set matrix A equal to its immutable part
-        self._A = self._A_aux
+        self._A = copy.deepcopy(self._A_aux)
 
         # Compute diagonal elements restraints
         # They are necessary to re-calculate in every iteration because they depend on the charge value
@@ -385,22 +406,22 @@ class RESP:
                 # Iterate over all atomic centers
                 for j in range(system.n_atoms):
                     # Iterate over all grid points
-                    for i in range(system.ref_esp.shape[1]):
+                    for i in range(len(system.ref_esp[m])):
                         # B_{j} = \sum_{i} \frac{V_i}{r_{ij}}
-                        self._B_aux[m, j] = self._B_aux[m, j] + system.ref_esp[m, i] * self.inv_rij[m, j, i]
+                        self._B_aux[m, j] = self._B_aux[m, j] + system.ref_esp[m][i] * self.inv_rij[m][j, i]
 
             # Set last element of the row equal to the total charge
             self._B_aux[:, system.n_atoms] = self._total_charge
 
         # Set matrix B equal to its immutable part
-        self._B = self._B_aux
+        self._B = copy.deepcopy(self._B_aux)
 
         # Iterate over all conformations
         for m in range(system.n_structures):
             # Iterate over all atomic centers
             for j in range(system.n_atoms):
                 # Add derivative of restrain w.r.t. atomic charge
-                self._B[m, j] = self._B[m, j] + self._calculate_regularization_derivative(j, self._scaling_factor, self._hyperbolic_beta) * self.initial_charges[j]
+                self._B[m, j] = self._B_aux[m, j] + self._calculate_regularization_derivative(j, self._scaling_factor, self._hyperbolic_beta) * self.initial_charges[j]
 
         # Sum results over all conformations
         self._B = np.sum(self._B, axis=0)
@@ -425,12 +446,11 @@ class RESP:
         float
             Regularization value.
         """
-
         if self._include_regularization:
-            if self._regularization_type == "L2":
+            if self._regularization_type.upper() == "L2":
                 return self._regularization_derivative_l2(at_idx, a)
-            elif self._regularization_type == "HYPERBOLIC":
-                return self._hyperbolic_regularization_derivative(at_idx, a, b)
+            elif self._regularization_type.upper() == "HYPERBOLIC":
+                return self._regularization_derivative_hyperbolic(at_idx, a, b)
             else:
                 raise NotImplementedError("Regularization {} scheme not implement.".format(self._regularization_type))
         else:
@@ -449,7 +469,7 @@ class RESP:
 
         Notes
         -----
-        This is only necessary for the explicit solution case.
+        This is only necessary for the explicit solution case. This term differs from the AMBER by a factor of 2.
 
         Returns
         -------
@@ -459,7 +479,10 @@ class RESP:
         if a is None:
             a = self._scaling_factor
 
-        reg_deriv = - 2.0 * a * (self.initial_charges[at_idx]-self.charges[at_idx])
+        try:
+            reg_deriv = - 2.0 * a * (self.initial_charges[at_idx]-self.charges[at_idx]) / self.charges[at_idx]
+        except FloatingPointError:
+            reg_deriv = 0
 
         return reg_deriv
 
@@ -490,6 +513,9 @@ class RESP:
         if b is None:
             b = self._hyperbolic_beta
 
-        reg_deriv = a * self.charges[at_idx] * (self.charges[at_idx] ** 2 + b ** 2) ** (-1 / 2.)
+        #if at_idx in [6,7,8,9,10,12,13]:
+        #    a=0.0
+
+        reg_deriv = a *  (self.charges[at_idx] ** 2 + b ** 2) ** (-1 / 2.)
 
         return reg_deriv
