@@ -102,8 +102,8 @@ Properties parameters (properties)
 * **regularization** (`dict`): Regularization property settings.
    * **weight** (`int`, 1.0): Weight of this property in the objective function.
    * **method** (`str`, "L2"): Type of regularization. Options are 'L1', 'L2' or 'hyperbolic' ('hyperbolic' only for RESP calculations)
-   * **scaling_factor** (`float`, 0.1): Scaling factor of the regularization value.
-   * **hyperbolic_beta** (`float`, 0.01): Hyperbolic beta value. Only used if `method` is `hyperbolic`.
+   * **scaling_factor** (`float`, 1.0): Scaling factor of the regularization value.
+   * **hyperbolic_beta** (`float`, 0.1): Hyperbolic beta value. Only used if `method` is `hyperbolic`.
 
 QM Engine parameters (qm_engine)
 ---------------------------------
