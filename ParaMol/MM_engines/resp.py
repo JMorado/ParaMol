@@ -194,7 +194,7 @@ class RESP:
         """
         from numpy.linalg import inv
         from numpy.linalg import solve
-        self.initial_charges = np.zeros(14)
+
         assert self._weighting_method.upper() in ["UNIFORM", "MANUAL", "BOLTZMANN"], "RESP only accepts the following weighting methods:'UNIFORM', 'MANUAL' or 'BOLTZMANN'"
 
         n_iter = 1
