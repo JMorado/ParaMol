@@ -126,6 +126,8 @@ class RESP:
                     rij = np.linalg.norm(v)
                     self.inv_rij[m][j, i] = 1.0 / rij
 
+        print("Calculated inverse distance matrix.")
+
         return self.inv_rij
 
     def set_charges(self, force_field):
@@ -359,6 +361,8 @@ class RESP:
                 self._A_aux[:, self._symmetry_constraints[i][0], system.n_atoms + i + 1] = 1.0
                 self._A_aux[:, self._symmetry_constraints[i][1], system.n_atoms + i + 1] = -1.0
 
+            print("Calculated initial A matrix.")
+
         # Set matrix A equal to its immutable part
         self._A = copy.deepcopy(self._A_aux)
 
@@ -417,6 +421,8 @@ class RESP:
 
             # Set last element of the row equal to the total charge
             self._B_aux[:, system.n_atoms] = self._total_charge
+
+            print("Calculated initial B matrix.")
 
         # Set matrix B equal to its immutable part
         self._B = copy.deepcopy(self._B_aux)
