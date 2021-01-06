@@ -218,7 +218,7 @@ class RESP:
         rmsd = np.sqrt(np.sum((old_charges - new_charges) ** 2) / system.n_atoms)
         old_charges = copy.deepcopy(new_charges)
 
-        print("Initial net charge: {}.".format(self._total_charge))
+        print("Initial net charge: {}".format(self._total_charge))
         print("\n{:20s} {:s}".format("Niter", "RMSD"))
         print("================================")
         print("{:<20d} {:.4e}".format(n_iter, rmsd))
