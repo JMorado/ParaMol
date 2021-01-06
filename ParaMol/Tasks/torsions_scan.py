@@ -22,6 +22,7 @@ import numpy as np
 import copy
 import logging
 
+
 class TorsionScan(Task):
     """
     ParaMol implementation of torsion scans.
@@ -54,7 +55,7 @@ class TorsionScan(Task):
     # ------------------------------------------------------------ #
     def run_task(self, settings, systems, torsions_to_scan, scan_settings, interface=None, torsions_to_freeze=None,
                  ase_constraints=None, optimize_qm=True, optimize_qm_before_scan=False, optimize_mm=False, optimize_mm_before_scan=False,
-                 optimize_mm_type="freeze_atoms", sampling=False, n_structures_to_sample=1, rdkit_conf=None, restart=False):
+                 optimize_mm_type="freeze_atoms", sampling=False, n_structures_to_sample=1, dihedral_conservation_threshold=1e-2, rdkit_conf=None, restart=False):
         """
         Method that performs 1D or 2D torsional scans. Only a scan at a time.
 
@@ -101,6 +102,8 @@ class TorsionScan(Task):
             Indicates whether to perform sampling at each dihedral angle value using an ASE integrator (default is `False`).
         n_structures_to_sample : int
             If sampling is `True`, sets the number of structures to sample for each dihedral angle value (default is 1).
+        dihedral_conservation_threshold : float
+            Threshold that control how much the dihedrals are allow to vary when applying constraints.
         rdkit_conf : list of :obj:`rdkit.Chem.rdchem.Conformer`
             List of RDKit conformer for each system. It should be provided with the desired starting conformation.
         restart : bool
@@ -157,14 +160,15 @@ class TorsionScan(Task):
                     # Perform 1D Scan
                     scan_angles, qm_energies_list, qm_forces_list, qm_conformations_list, mm_energies_list, mm_conformations_list = self.scan_1d(
                         interface, settings.restart, system, conf, torsions_to_scan[0], torsions_to_freeze, scan_settings[0], optimize_qm, optimize_qm_before_scan,
-                        optimize_mm, optimize_mm_before_scan, optimize_mm_type, ase_constraints, sampling, n_structures_to_sample,restart)
+                        optimize_mm, optimize_mm_before_scan, optimize_mm_type, ase_constraints, sampling, n_structures_to_sample, dihedral_conservation_threshold, 999999999.0, restart)
 
                     # File name buffer
                     file_name = "{}_scan_{}d_torsion_{}_{}_{}_{}".format(system.name, torsional_scan_dim, *torsions_to_scan[0])
                 elif torsional_scan_dim == 2:
                     # Perform 2D Scan
                     scan_angles, qm_energies_list, qm_forces_list, qm_conformations_list, mm_energies_list, mm_conformations_list =  self.scan_2d(
-                        interface, settings.restart, system, conf, torsions_to_scan[0], torsions_to_scan[1], torsions_to_freeze, scan_settings[0], scan_settings[1], optimize_qm, optimize_qm_before_scan, optimize_mm, optimize_mm_before_scan, optimize_mm_type, ase_constraints, restart)
+                        interface, settings.restart, system, conf, torsions_to_scan[0], torsions_to_scan[1], torsions_to_freeze, scan_settings[0],
+                        scan_settings[1], optimize_qm, optimize_qm_before_scan, optimize_mm, optimize_mm_before_scan, optimize_mm_type, ase_constraints, dihedral_conservation_threshold, 999999999.0, restart)
 
                     # File name buffer
                     file_name = "scan_{}d_torsion_{}_{}_{}_{}_{}_{}_{}_{}.dat".format(torsional_scan_dim, *torsions_to_scan[0], *torsions_to_scan[1])
@@ -186,9 +190,8 @@ class TorsionScan(Task):
 
         return scan_angles, qm_energies_list, qm_forces_list, qm_conformations_list, mm_energies_list, mm_conformations_list
 
-
     def scan_1d(self, interface, restart_settings, system, rdkit_conf, torsion_to_scan, torsions_to_freeze, scan_settings, optimize_qm, optimize_qm_before_scan, optimize_mm,
-                optimize_mm_before_scan, optimize_mm_type, ase_constraints, sampling, n_structures_to_sample, restart, force_constant=999999999.0, threshold=1e-2):
+                optimize_mm_before_scan, optimize_mm_type, ase_constraints, sampling, n_structures_to_sample, threshold, force_constant, restart,):
         """
         Method that performs 1-dimensional torsional scans.
 
@@ -295,7 +298,6 @@ class TorsionScan(Task):
             LocalEnergyMinimizer.minimize(dummy_context)
             positions = dummy_context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(asNumpy=True)
 
-
         if optimize_qm_before_scan and (not restart):
             # ----------------------------------------------------------- #
             #                   Perform QM optimization                   #
@@ -353,7 +355,7 @@ class TorsionScan(Task):
                     new_torsion = rdmt.GetDihedralDeg(rdkit_conf, *torsion_to_scan)
 
                     assert (abs(old_torsion - new_torsion) < threshold) or (abs(abs(old_torsion - new_torsion) - 360) < threshold), \
-                        "Not conserving torsion angle; old={} new={}".format(old_torsion,new_torsion)
+                        "Not conserving torsion angle; old={} new={}".format(old_torsion, new_torsion)
 
                     positions = positions * unit.nanometers
 
@@ -437,7 +439,7 @@ class TorsionScan(Task):
         return self.scan_angles, self.qm_energies_list, self.qm_forces_list, self.qm_conformations_list, self.mm_energies_list, self.mm_conformations_list
 
     def scan_2d(self, interface, restart_settings, system, rdkit_conf, torsion_to_scan_1, torsion_to_scan_2, torsions_to_freeze, scan_settings_1, scan_settings_2, optimize_qm,
-                optimize_qm_before_scan, optimize_mm, optimize_mm_before_scan, optimize_mm_type, ase_constraints, restart, force_constant=9999999.0, threshold=1e-2):
+                optimize_qm_before_scan, optimize_mm, optimize_mm_before_scan, optimize_mm_type, ase_constraints, threshold, force_constant, restart,):
         """
         Method that performs 2-dimensional torsional scans.
 
