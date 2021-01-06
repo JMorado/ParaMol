@@ -203,11 +203,7 @@ class RESP:
 
         # Calculate conformations weights
         system.compute_conformations_weights(temperature=self._weighting_temperature, weighting_method=self._weighting_method)
-
-        print("Initial net charge: {}.".format(self._total_charge))
-        print("\n{:20s} {:s}".format("Niter", "RMSD"))
-        print("================================")
-
+        # Set old charges
         old_charges = self.initial_charges
         # Compute A matrix
         self._calculate_a(system, initialize=True)
@@ -220,8 +216,13 @@ class RESP:
 
         new_charges = self.charges[:system.n_atoms]
         rmsd = np.sqrt(np.sum((old_charges - new_charges) ** 2) / system.n_atoms)
+        old_charges = copy.deepcopy(new_charges)
 
+        print("Initial net charge: {}".format(self._total_charge))
+        print("\n{:20s} {:s}".format("Niter", "RMSD"))
+        print("================================")
         print("{:<20d} {:.4e}".format(n_iter, rmsd))
+
         # Self-consistent solution
         while n_iter < max_iter and rmsd > rmsd_tol:
             # Advance one iteration
