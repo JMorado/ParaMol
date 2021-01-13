@@ -300,7 +300,7 @@ class HMCSampler(Task):
 
         return systems
 
-    def run_task_ase(self, settings, systems, n_sweeps, n_steps_per_sweep=100, verbose_freq=1   ,
+    def run_task_ase(self, settings, systems, n_sweeps, n_steps_per_sweep=100, verbose_freq=1,
                      temperature_pot_qm=unit.Quantity(300, unit.kelvin), temperature_pot_mm=unit.Quantity(300, unit.kelvin),
                      temperature_kin_mm=unit.Quantity(300, unit.kelvin), label="0", checkpoint_freq=100, parametrization=False,
                      parametrization_freq=100, restart=False, ):
@@ -377,7 +377,7 @@ class HMCSampler(Task):
                                        work_dir_prefix="NN_ASEWorkDir_")
             """
             calc = ANIENS(aniensloader('/mainfs/home/jm4g18/programs/ASE_ANI/ani_models/ani-1x_8x.info',0))
-            calc = DFTD3(dft=calc, cutoff=np.sqrt(9000) * ase_units.Bohr, damping="bj", a1=0.5719, a2=3.6017, s8=0.5883, s6=1.000, alpha6=1.0)
+            #calc = DFTD3(dft=calc, cutoff=np.sqrt(9000) * ase_units.Bohr, damping="bj", a1=0.5719, a2=3.6017, s8=0.5883, s6=1.000, alpha6=1.0)
 
             mm_ase_engine = ASEWrapper(system_name=system.name,
                                        interface=system.interface,
