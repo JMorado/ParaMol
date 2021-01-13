@@ -436,8 +436,9 @@ class HMCSampler(Task):
             coords, potential_initial_mm, kinetic_initial, forces_initial, potential_final_mm, kinetic_final, forces_final = mm_ase_engine.run_md(coords=coord_to_run,
                                                                                                                                                   label=int(self._label),
                                                                                                                                                   steps=n_steps_per_sweep,
-                                                                                                                                                  dt=unit.Quantity(1.0, unit.femtoseconds),
-                                                                                                                                                  temperature=temperature_kin_mm,)
+                                                                                                                                                  dt=1.0 * ase_units.fs,
+                                                                                                                                                  initial_temperature=temperature_kin_mm,)
+
             # Compute MM final kinetic and potential energy
             kinetic_initial = unit.Quantity(kinetic_initial, unit.kilojoules_per_mole)
             potential_initial_mm = unit.Quantity(potential_initial_mm, unit.kilojoules_per_mole)
