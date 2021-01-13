@@ -3,7 +3,7 @@
 
 # ParaMol 
 
-![ParaMol](docs/source/paramol.png)
+![ParaMol](docs/source/paramol-white.png)
 
 
 ParaMol is a Python library that aims to ease the process of force field parametrization of molecules. 
