@@ -18,20 +18,26 @@ class AmberSymmetrizer:
         self._angle_types = None
         self._torsion_types = None
         self._lj_types = None
+        self._charge_types = None
         self._sc_types = None
 
     def __str__(self):
         return "AmberParametrization module. Amber .prmtop file in use is {}".format(self._amber_prmtop)
 
-    def get_amber_symmetries(self):
+    def get_amber_symmetries(self, force_field_instance=None):
         """
-        Method that gets AMBER symmetries with the aid of Parmed.
+        Method that gets AMBER symmetries with the aid of Parmed. User-defined charge symmetries require the passing of the force_field_instance argument.
 
         Notes
         -----
         Currently the implemented term types are: bonds, angles, torsions, LJ.
         Note that, in order to save memory, AMBER considers parameters having the sames values to be the same, i.e., having the samme symmetry.
         Hence, a workaround for this issue is to attribute slightly different parameters to each force field term in the .frcmod so that AMBER does not assume that they are the same.
+
+        Parameters
+        ----------
+        force_field_instance : :obj:`ParaMol.Force_field.force_field.ForceField`
+            Instance of the ParaMol ForceField (unsymmetrized) to respect AMBER symmetries.
 
         Returns
         -------
@@ -90,7 +96,42 @@ class AmberSymmetrizer:
                                                     "sigma": lj_type.LJ_radius[i],
                                                     'id': lj_type[i]}
         """
-        return self._bond_types, self._angle_types, self._torsion_types, self._sc_types, self._lj_types
+        if force_field_instance is not None:
+            self.get_charge_symmetries(force_field_instance)
+
+        return self._bond_types, self._angle_types, self._torsion_types, self._sc_types, self._lj_types, self._charge_types
+
+    def get_charge_symmetries(self, force_field_instance):
+        """
+        Method that gets the user-defined charge symmetries .
+
+        Parameters
+        ----------
+        force_field_instance : :obj:`ParaMol.Force_field.force_field.ForceField`
+            Instance of the ParaMol ForceField (unsymmetrized) to respect AMBER symmetries.
+
+        Returns
+        -------
+        force_field_instance : :obj:`ParaMol.Force_field.force_field.ForceField`
+            Instance of the ParaMol ForceField symmetrized to respect AMBER symmetries.
+        """
+        self._charge_types = {}
+
+        idx = 0
+        for force_field_term in force_field_instance.force_field["NonbondedForce"]:
+            for parameter in force_field_term.parameters.values():
+                # If the param key is not torsion periodicity since this are not handled by ParaMol
+                if parameter.param_key == "charge" and parameter.param_key != "X":
+                    if parameter.symmetry_group not in self._charge_types:
+                        self._charge_types[parameter.symmetry_group] = {"atoms_idx": [idx]}
+                                                                        # , "charge": [parameter.value]}
+                    else:
+                        self._charge_types[parameter.symmetry_group]["atoms_idx"].append(idx)
+                        # self._charge_types[parameter.symmetry_group]["charge"].append(parameter.value)
+
+                    idx += 1
+
+        return self._charge_types
 
     def set_force_field_to_amber_format(self, force_field_instance):
         """
@@ -209,6 +250,7 @@ class AmberSymmetrizer:
         radians_to_degrees = 180.0 / np.pi
 
         # Iterate over all optimizable parameters
+        atom_idx = 0
         for parameter in optimizable_parameters:
             if parameter.symmetry_group[0] == "B":
                 idx = self._bond_types[parameter.symmetry_group]["idx"]
@@ -242,7 +284,21 @@ class AmberSymmetrizer:
                 elif parameter.param_key == "scee":
                     dihedral_type.scee = 1.0 / parameter.value
 
-        # REDO amber symmetries
+            else:
+                # Charges
+                if parameter.param_key == "charge":
+                    if parameter.symmetry_group == "X":
+                        self._amber_prmtop.atoms[atom_idx].charge = parameter.value
+                    else:
+                        assert self._charge_types is not None, "Charge symmetries were not set in AmberSymmetrizer. Use the amber_symmetrizer.get_charge_symmetries method to set them."
+                        for atom_sub_idx in self._charge_types[parameter.symmetry_group]["atoms_idx"]:
+                            self._amber_prmtop.atoms[atom_sub_idx].charge = parameter.value
+
+                    atom_idx += 1
+                else:
+                    return UserWarning("Trying to update parameter key {} that is not charge. Currently not not implemented.".format(parameter.param_key))
+
+        # REDO values of amber symmetries
         self.get_amber_symmetries()
 
         return self._amber_prmtop
