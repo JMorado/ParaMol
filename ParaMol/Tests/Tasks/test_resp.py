@@ -44,7 +44,7 @@ class TestRESPTask:
         # --------------------------------------------------------- #
         # Create the OpenMM engine for caffeine
         openmm_system = OpenMMEngine(init_openmm=True, **self.kwargs_dict)
-
+        openmm_system.set_non_bonded_parameters_to_zero()
         # Create Molecular System
         aniline = ParaMolSystem(name="aniline", engine=openmm_system, n_atoms=14)
 
@@ -96,6 +96,8 @@ class TestRESPTask:
         resp_fitting = RESPFitting()
 
         assert type(resp_fitting) is RESPFitting
+        aniline.engine.set_non_bonded_parameters_to_zero()
+        aniline.force_field.create_force_field(opt_charges=True)
 
         systems, parameter_space, objective_function, optimizer = resp_fitting.run_task(paramol_settings, [aniline], solver="explicit", total_charge=0)
         charges = np.asarray(parameter_space.optimizable_parameters_values)[:14]
@@ -114,11 +116,14 @@ class TestRESPTask:
         resp_fitting = RESPFitting()
 
         assert type(resp_fitting) is RESPFitting
+        aniline.engine.set_non_bonded_parameters_to_zero()
+        aniline.force_field.create_force_field(opt_charges=True)
 
         systems, parameter_space, objective_function, optimizer = resp_fitting.run_task(paramol_settings, [aniline], solver="explicit", total_charge=0)
         charges = np.asarray(parameter_space.optimizable_parameters_values)[:14]
-
+        print("L2222")
         diff = charges-charges_to_compare
+        print(charges_to_compare)
         for diff_charge in diff:
             assert abs(diff_charge) < 1e-4
 
@@ -133,17 +138,21 @@ class TestRESPTask:
         resp_fitting = RESPFitting()
 
         assert type(resp_fitting) is RESPFitting
+        aniline.engine.set_non_bonded_parameters_to_zero()
+        aniline.force_field.create_force_field(opt_charges=True)
 
         systems, parameter_space, objective_function, optimizer = resp_fitting.run_task(paramol_settings, [aniline], solver="explicit", total_charge=0)
         charges = np.asarray(parameter_space.optimizable_parameters_values)[:14]
 
         diff = charges-charges_to_compare
+        print(diff)
         for diff_charge in diff:
             assert abs(diff_charge) < 1e-4
 
         # Test SciPy solver
         paramol_settings.properties["include_regularization"] = False
         resp_fitting = RESPFitting()
+
         systems, parameter_space, objective_function, optimizer = resp_fitting.run_task(paramol_settings, [aniline], solver="scipy", total_charge=0)
         charges = np.asarray(parameter_space.optimizable_parameters_values)
 
