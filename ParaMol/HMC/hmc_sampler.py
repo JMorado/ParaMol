@@ -439,6 +439,33 @@ class HMCSampler(Task):
                                                                                                                                                   dt=1.0 * ase_units.fs,
                                                                                                                                                   initial_temperature=temperature_kin_mm,)
 
+            """
+  
+            if len(system.ref_coordinates) > 0 and self._n != 1:
+                # Do not need to compute the QM energy if there are structures in the top ensemble or if we are not in the first ever iteration.
+                system.engine.set_positions(system.ref_coordinates[-1])
+                potential_initial_mm = mm_ase_engine.run_calculation(coords=system.ref_coordinates[-1] * 10, label=int(self._label))
+                coord_to_run = system.ref_coordinates[-1] * 10
+            else:
+                # Compute MM initial kinetic and potential energy
+                potential_initial_mm = mm_ase_engine.run_calculation(coords=system.engine.get_positions().in_units_of(unit.angstrom)._value, label=int(self._label))
+                coord_to_run = system.engine.get_positions().in_units_of(unit.angstrom)._value
+
+            # Run short MD using ASE
+            coords, potential_initial_mm, kinetic_initial, forces_initial, potential_final_mm, kinetic_final, forces_final = mm_ase_engine.run_md(coords=coord_to_run,
+                                                                                                                                                  label=int(self._label),
+                                                                                                                                                  steps=n_steps_per_sweep,
+                                                                                                                                                  dt=0.5*ase_unit.fs,
+                                                                                                                                                  initial_temperature=300.0*ase_unit.kB,)
+            # Compute MM final kinetic and potential energy
+            kinetic_initial = unit.Quantity(kinetic_initial, unit.kilojoules_per_mole)
+            potential_initial_mm = unit.Quantity(potential_initial_mm, unit.kilojoules_per_mole)
+            kinetic_final = unit.Quantity(kinetic_final, unit.kilojoules_per_mole)
+            potential_final_mm = unit.Quantity(potential_final_mm, unit.kilojoules_per_mole)
+            coords = unit.Quantity(coords, unit.nanometers)
+
+            if self._hmc_acceptance_criterion_mm(potential_final_mm, potential_initial_mm, kinetic_final, kinetic_initial, temperature_pot_mm, temperature_kin_mm):
+            """
             # Compute MM final kinetic and potential energy
             kinetic_initial = unit.Quantity(kinetic_initial, unit.kilojoules_per_mole)
             potential_initial_mm = unit.Quantity(potential_initial_mm, unit.kilojoules_per_mole)

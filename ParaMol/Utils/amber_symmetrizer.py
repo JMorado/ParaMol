@@ -11,9 +11,16 @@ import numpy as np
 class AmberSymmetrizer:
     """
     ParaMol class that implements methods to symmetrize the ParaMol Force Field so that it respects AMBER atom-types.
+
+    Parameters
+    ----------
+    prmtop_file : str
+        AMBER prmtop file
+    xyz : str or array, optional
+        If provided, the coordinates and unit cell dimensions from the provided Amber inpcrd/restart file will be loaded into the molecule, or the coordinates will be loaded from the coordinate array
     """
-    def __init__(self, prmtop_file):
-        self._amber_prmtop = pmd.amber.AmberParm(prmtop_file)
+    def __init__(self, prmtop_file, xyz=None):
+        self._amber_prmtop = pmd.amber.AmberParm(prmtop_file, xyz=xyz)
         self._bond_types = None
         self._angle_types = None
         self._torsion_types = None
