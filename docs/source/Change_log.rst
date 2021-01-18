@@ -3,8 +3,8 @@ Change Log
 
 Version 1.0.2
 -------------
-- Fixes to AmberSymmetrizer.
-- Improved examples
+- Fixes and improvements to AmberSymmetrizer.
+- Updates to examples.
 
 Version 1.0.1
 -------------
@@ -17,4 +17,3 @@ Version 1.0.0
 - Available tasks: parametrization, adaptive parametrization, dihedral scans, RESP fitting, objective function plots, ab initio properties.
 - MM engines: OpenMM, RESP.
 - QM engines: ASE, DFTB+, AMBER.
-
