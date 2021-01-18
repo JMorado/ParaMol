@@ -591,7 +591,7 @@ class OpenMMEngine:
 
                 nonbonded_force.setParticleParameters(i, 0.0, 0.0, 0.0)
 
-            if self.context.getPlatform().getName() == "CPU":
+            if self.context.getPlatform().getName() in ["CPU", "Reference"]:
                 # CPU platform raises the following exception if sigma, epsilon and charge are set to 0
                 # Exception: updateParametersInContext: The number of non-excluded exceptions has changed
                 # Solution is to set them to very small numbers.
