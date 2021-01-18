@@ -1,7 +1,7 @@
 from setuptools import setup, find_packages
 setup(
     name='ParaMol',
-    version='1.0.0',
+    version='1.0.2',
     packages=find_packages(),
     url='https://github.com/JMorado/ParaMol',
     license='MIT',

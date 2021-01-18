@@ -22,8 +22,8 @@ copyright = '2020, João Morado'
 author = 'João Morado'
 
 # Version and release
-version = '1.0.0'
-release = '1.0.0'
+version = '1.0.2'
+release = '1.0.2'
 
 # Add any Sphinx extension module names here, as strings. They can be
 # extensions coming with Sphinx (named 'sphinx.ext.*') or your custom

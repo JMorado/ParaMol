@@ -1,6 +1,11 @@
 Change Log
 ==========
 
+Version 1.0.2
+-------------
+- Fixes to AmberSymmetrizer.
+- Improved examples
+
 Version 1.0.1
 -------------
 - Improvements to the RESP procedure.
