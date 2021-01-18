@@ -196,8 +196,11 @@ class RESP:
         """
         from numpy.linalg import inv
         from numpy.linalg import solve
-        print(self.initial_charges)
         assert self._weighting_method.upper() in ["UNIFORM", "MANUAL", "BOLTZMANN"], "RESP only accepts the following weighting methods:'UNIFORM', 'MANUAL' or 'BOLTZMANN'"
+
+        if self._regularization_type.upper() == "HYPERBOLIC":
+            print("Since HYPERBOLIC regularization was chosen, initial charges will be set to zero.")
+            self.initial_charges = np.zeros(len(self.initial_charges))
 
         n_iter = 1
 
@@ -238,7 +241,7 @@ class RESP:
             self._calculate_b(system, initialize=False)
 
             # q=A^{-1}B
-            # self.charges = np.matmul(self._B, inv(self._A))
+            #self.charges = np.matmul(self._B, inv(self._A))
             self.charges = solve(self._A, self._B)
 
             # Calculate RMSD
@@ -437,8 +440,6 @@ class RESP:
             for j in range(system.n_atoms):
                 # Add derivative of restrain w.r.t. atomic charge
                 self._B[m, j] = self._B[m, j] + self._calculate_regularization_derivative(j, self._scaling_factor, self._hyperbolic_beta) * self.initial_charges[j]
-
-            # Weight with conformation weight
 
         # Sum results over all conformations
         self._B = np.sum(self._B, axis=0)
