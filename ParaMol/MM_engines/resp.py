@@ -196,7 +196,7 @@ class RESP:
         """
         from numpy.linalg import inv
         from numpy.linalg import solve
-
+        print(self.initial_charges)
         assert self._weighting_method.upper() in ["UNIFORM", "MANUAL", "BOLTZMANN"], "RESP only accepts the following weighting methods:'UNIFORM', 'MANUAL' or 'BOLTZMANN'"
 
         n_iter = 1
@@ -498,7 +498,7 @@ class RESP:
 
         try:
             reg_deriv = - 2.0 * a * (self.initial_charges[at_idx]-self.charges[at_idx]) / self.charges[at_idx]
-        except FloatingPointError:
+        except (FloatingPointError, ZeroDivisionError):
             reg_deriv = 0
 
         return reg_deriv
