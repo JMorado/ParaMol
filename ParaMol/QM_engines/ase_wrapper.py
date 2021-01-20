@@ -53,7 +53,7 @@ class ASEWrapper:
         The convergence criterion to stop the optimization is that the force on all individual atoms should be less than `fmax`.
     opt_log_file : str, default="-"
         File where optimization log will be stored. Use '-' for stdout.
-    opt_traj_prefix : str, default="traj\_"
+    opt_traj_prefix : str, default="traj_"
         Prefix given to the pickle file used to store the trajectory during optimization.
     view_atoms : bool, default=`False`
         Whether or not to view atoms after a calculation.

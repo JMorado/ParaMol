@@ -204,6 +204,7 @@ class ParaMolSystem:
             # P(r_i) = exp(-beta*(E^ref(r_i)-E^mm(r_i)-<E^ref-E^mm>))
             assert temperature is not None, "Temperature was not chosen."
             assert emm is not None, "Non-Boltzmann weighting was chosen but MM energies were not provided."
+            assert self.ref_energies is not None, "Reference energies were not set."
 
             diff = np.asarray(emm)-np.asarray(self.ref_energies)
             diff = diff - np.mean(diff)
@@ -223,6 +224,8 @@ class ParaMolSystem:
             # Weight given by the Boltzmann distribution of the reference energies.
             # P(r_i) = exp(-beta*(E^ref(r_i)-<E^ref>))
             assert temperature is not None, "Temperature was not chosen."
+            assert self.ref_energies is not None, "Reference energies were not set."
+
             beta = (unit.BOLTZMANN_CONSTANT_kB / unit.kilojoule_per_mole * temperature * unit.kelvin) * unit.AVOGADRO_CONSTANT_NA
             beta = 1.0 / beta
 
