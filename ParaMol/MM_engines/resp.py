@@ -147,8 +147,9 @@ class RESP:
 
         self.charges = []
         if "NonbondedForce" in force_field:
-            for nonbonded_term in force_field["NonbondedForce"]:
-                self.charges.append(nonbonded_term.parameters["charge"].value)
+            for force_occurence in force_field["NonbondedForce"]:
+                for nonbonded_term in force_occurence:
+                    self.charges.append(nonbonded_term.parameters["charge"].value)
 
         return self.charges
 
@@ -168,8 +169,9 @@ class RESP:
         """
         self.initial_charges = []
         if "NonbondedForce" in force_field:
-            for nonbonded_term in force_field["NonbondedForce"]:
-                self.initial_charges.append(nonbonded_term.parameters["charge"].value)
+            for force_occurence in force_field["NonbondedForce"]:
+                for nonbonded_term in force_occurence:
+                    self.initial_charges.append(nonbonded_term.parameters["charge"].value)
 
         return self.initial_charges
 
@@ -288,23 +290,28 @@ class RESP:
             List of lists, wherein the inner lists contain symmetric-equivalent pairs of atoms.
         """
         self._symmetry_constraints = []
-
+        """
         if symmetry_constrained:
             symmetry_groups = []  # List used to keep track of symmetry groups
-
-            for i in range(len(system.force_field.force_field['NonbondedForce'])):
-                parameter_i = system.force_field.force_field['NonbondedForce'][i].parameters['charge']
-                if parameter_i.symmetry_group != system.force_field.symmetry_group_default \
-                        and parameter_i.symmetry_group not in symmetry_groups:
-                    # If parameter belong to the non-default symmetry group and this symmetry group was not already set
-                    symmetry_groups.append(parameter_i.symmetry_group)
-                    for j in range(i+1,len(system.force_field.force_field['NonbondedForce'])):
-                        parameter_j = system.force_field.force_field['NonbondedForce'][j].parameters['charge']
-                        if parameter_j.symmetry_group == symmetry_groups[-1]:
-                            # Add this symmetry constraint
-                            self._symmetry_constraints.append([i, j])
-                            self._n_constraints = self._n_constraints + 1
-
+            
+            i = 0
+            for occurrence_force in system.force_field.force_field['NonbondedForce']:
+                # For a given force occurrence, iterate over all force field terms
+                for force_field_term in occurrence_force:
+                    parameter_i = force_field_term.parameters['charge']
+                    if parameter_i.symmetry_group != system.force_field.symmetry_group_default and parameter_i.symmetry_group not in symmetry_groups:
+                        # If parameter belong to the non-default symmetry group and this symmetry group was not already set
+                        symmetry_groups.append(parameter_i.symmetry_group)
+                        
+                        
+                        for j in range(i+1,len(system.force_field.force_field['NonbondedForce'])):
+                            parameter_j = system.force_field.force_field['NonbondedForce'][j].parameters['charge']
+                            if parameter_j.symmetry_group == symmetry_groups[-1]:
+                                # Add this symmetry constraint
+                                self._symmetry_constraints.append([i, j])
+                                self._n_constraints = self._n_constraints + 1
+                    i += 1
+        """
         return self._symmetry_constraints
 
     # ------------------------------------------------------------ #
