@@ -414,8 +414,8 @@ class RESP:
 
         Returns
         -------
-        A : np.array
-            Array of the A matrix.
+        B : np.array
+            Array of the B matrix.
         """
 
         if initialize:
