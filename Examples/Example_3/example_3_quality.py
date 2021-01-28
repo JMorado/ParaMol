@@ -8,14 +8,13 @@ from ParaMol.MM_engines.openmm import *
 from ParaMol.QM_engines.qm_engine import *
 from ParaMol.Tasks.adaptive_parametrization import *
 from ParaMol.Utils.conformational_sampling import conformational_sampling
-from ParaMol.Utils.amber_symmetrizer import *
 
 # --------------------------------------------------------- #
 #                         Preparation                       #
 # --------------------------------------------------------- #
 # Create OpenMM system engine
 # Create the OpenMM engine for caffeine
-openmm_system = OpenMMEngine(init_openmm=True, topology_format='AMBER', top_file='caffeine.prmtop', crd_file='caffeine.inpcrd')
+openmm_system = OpenMMEngine(init_openmm=True, topology_format='AMBER', top_file='caffeine.prmtop', crd_format='AMBER', crd_file='caffeine.inpcrd')
 
 # Create ParaMol System
 caffeine = ParaMolSystem(name="caffeine", engine=openmm_system, n_atoms=24)

@@ -24,7 +24,7 @@ paramol_settings.properties["include_regularization"] = True
 #                         Preparation                       #
 # --------------------------------------------------------- #
 # Create the OpenMM engine for ethane
-openmm_system = OpenMMEngine(init_openmm=True, topology_format='AMBER', top_file='ethane.prmtop', crd_file='ethane.inpcrd')
+openmm_system = OpenMMEngine(init_openmm=True, topology_format='AMBER', top_file='ethane.prmtop', crd_format='AMBER', crd_file='ethane.inpcrd')
 
 # Create ethane ParaMol System
 ethane = ParaMolSystem(name="ethane", engine=openmm_system, n_atoms=8)
@@ -33,7 +33,7 @@ ethane = ParaMolSystem(name="ethane", engine=openmm_system, n_atoms=8)
 ethane.force_field.create_force_field(ff_file="ethane_sym.ff")
 
 # Create the OpenMM engine for propane
-openmm_system = OpenMMEngine(init_openmm=True, topology_format='AMBER', top_file='propane.prmtop', crd_file='propane.inpcrd')
+openmm_system = OpenMMEngine(init_openmm=True, topology_format='AMBER', top_file='propane.prmtop', crd_format='AMBER', crd_file='propane.inpcrd')
 
 # Create propane ParaMol System
 propane = ParaMolSystem(name="propane", engine=openmm_system, n_atoms=11)

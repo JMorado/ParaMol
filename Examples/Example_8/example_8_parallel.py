@@ -20,7 +20,7 @@ systems = []
 # Create four identical aniline systems
 for name in system_names:
     # Create the OpenMM engine for aniline
-    openmm_system = OpenMMEngine(init_openmm=True, topology_format='AMBER', top_file='aniline.prmtop', crd_file='aniline.inpcrd')
+    openmm_system = OpenMMEngine(init_openmm=True, topology_format='AMBER', top_file='aniline.prmtop', crd_format="AMBER" crd_file='aniline.inpcrd')
 
     # Create ParaMol System
     systems.append(ParaMolSystem(name=name, engine=openmm_system, n_atoms=14))

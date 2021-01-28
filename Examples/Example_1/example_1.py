@@ -13,7 +13,7 @@ from ParaMol.Utils.settings import *
 #                         Preparation                       #
 # --------------------------------------------------------- #
 # Create the OpenMM engine for carbon monoxide
-openmm_engine = OpenMMEngine(True, "AMBER", "co.prmtop", "co.inpcrd")
+openmm_engine = OpenMMEngine(True, "AMBER", "co.prmtop", "AMBER", "co.inpcrd")
 
 # Create the ParaMol System
 co = ParaMolSystem("carbon_monoxide", openmm_engine, 2)
