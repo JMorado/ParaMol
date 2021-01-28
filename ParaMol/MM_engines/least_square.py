@@ -4,7 +4,7 @@ import copy
 from ..Utils.geometry import *
 
 
-class LeastSquare:
+class LinearLeastSquare:
     """
     Linear Least Square Fitting solution.
 
@@ -86,9 +86,8 @@ class LeastSquare:
         # TODO: change this
         system = systems[0]
 
-        # Get optimizable parameters
-        self._parameter_space.get_optimizable_parameters([system], symmetry_constrained=True)
-        initial_param = np.asarray(copy.deepcopy(self._parameter_space.optimizable_parameters_values))
+        # Get optimizable parameters; symmetry constrained is False to allow to get all parameters.
+        self._parameter_space.get_optimizable_parameters([system], symmetry_constrained=False)
 
         # Compute A matrix
         self._calculate_a(system, alpha_bond, alpha_angle)
@@ -116,7 +115,7 @@ class LeastSquare:
         #                           Preconditioning                        #
         # ---------------------------------------------------------------- #
         # Preconditioning
-        self._calculate_scaling_constatns()
+        self._calculate_scaling_constants()
 
         for row in range(system.n_structures):
             self._A[row, :] = self._A[row, :] / self._scaling_constants
@@ -127,7 +126,13 @@ class LeastSquare:
         # ---------------------------------------------------------------- #
         if self._include_regularization:
             # Add regularization
-            self._A, self._B = self._add_regularization(system)
+            self._A, self._B = self._add_regularization()
+        # ---------------------------------------------------------------- #
+
+        # ---------------------------------------------------------------- #
+        #                           Symmetries                             #
+        # ---------------------------------------------------------------- #
+        self._add_symmetries(system)
         # ---------------------------------------------------------------- #
 
         # Perform LLS
@@ -137,16 +142,16 @@ class LeastSquare:
         self._parameters = self._parameters / self._scaling_constants
 
         # Reconstruct parameters
-        self._reconstruct_parameters(system, self._parameters)
+        self._reconstruct_parameters(self._parameters)
 
         # Get optimizable parameters
-        self._parameter_space.get_optimizable_parameters([system], symmetry_constrained=True)
+        self._parameter_space.get_optimizable_parameters([system], symmetry_constrained=False)
 
         return self._parameter_space.optimizable_parameters_values
 
     def _add_regularization(self):
         """
-        Method that adds the regularization part of the A adn B matrices.
+        Method that adds the regularization part of the A and B matrices.
 
         Returns
         -------
@@ -171,7 +176,7 @@ class LeastSquare:
 
         # Calculate B_reg
         #B_reg = np.zeros((n_parameters))
-        B_reg = self._initial_param_regularization / self._scaling_constants
+        B_reg = alpha * self._initial_param_regularization
 
         # Update B matrix
         self._B = np.concatenate((self._B, B_reg))
@@ -180,13 +185,59 @@ class LeastSquare:
 
         return self._A, self._B
 
-    def _calculate_prior_widths(self, method):
+    def _add_symmetries(self, system):
+        """
+        Method that adds the symmetrie part of the A and B matrices.
+
+        Returns
+        -------
+        self._A, self._B
+        """
+        n_symmetries = 0
+
+        symm_covered = []
+        A_symm = []
+        for i in range(len(self._param_symmetries_list)):
+            symm_i = self._param_symmetries_list[i]
+
+            if symm_i in symm_covered or symm_i in ["X_x", "X_y", "X"]:
+                continue
+
+            for j in range(i+1, len(self._param_symmetries_list)):
+                symm_j = self._param_symmetries_list[j]
+
+                if symm_i == symm_j:
+                    A_symm_row = np.zeros((self._n_parameters))
+                    A_symm_row[i] = 1.0
+                    A_symm_row[j] = 1.0
+                    A_symm.append(A_symm_row)
+                    n_symmetries += 1
+
+            symm_covered.append(symm_i)
+
+        A_symm = np.asarray(A_symm)
+
+        # Update matrices
+        if n_symmetries > 0:
+            self._A = np.vstack((self._A, A_symm))
+
+            # Calculate B_reg
+            B_symm = np.zeros((n_symmetries))
+
+            # Update B matrix
+            self._B = np.concatenate((self._B, B_symm))
+
+        print("{} symmetries were found".format(n_symmetries))
+
+        return self._A, self._B
+
+    def _calculate_prior_widths(self, method=None):
         """"
         Method that generates the prior_widths vector.
 
         Parameters
         ----------
-        method : str
+        method : str, optional
             Method used to generate the prior widths.
 
         Returns
@@ -203,14 +254,14 @@ class LeastSquare:
         self._prior_widths = np.asarray(self._prior_widths)
         return self._prior_widths
 
-    def _calculate_scaling_constatns(self, method):
+    def _calculate_scaling_constants(self, method=None):
         """
         Method that generates the scaling constant's vector.
 
         Parameters
         ----------
-        method : str
-            Method used to generate the scaling constants.
+        method : str, optional
+            Method used to generate the prior widths.
 
         Returns
         -------
@@ -322,6 +373,7 @@ class LeastSquare:
         self._initial_param_regularization = []
         self._param_keys_list = []
         self._p0 = []
+        self._param_symmetries_list = []
 
         r_matrix = []
         for parameter in self._parameter_space.optimizable_parameters:
@@ -342,11 +394,11 @@ class LeastSquare:
                 distances = np.asarray(distances)
 
                 if ff_term.parameters["bond_eq"].optimize:
-                    x0_x = np.min(distances)
-                    x0_y = np.max(distances)
+                    #x0_x = np.min(distances)
+                    #x0_y = np.max(distances)
                     # Alternative way of calculating x0_x and x0_y, leave it here
-                    # x0_x = ff_term.parameters["bond_eq"].value * (1 - alpha_bond)
-                    # x0_y = ff_term.parameters["bond_eq"].value * (1 + alpha_bond)
+                    x0_x = ff_term.parameters["bond_eq"].value * (1 - alpha_bond)
+                    x0_y = ff_term.parameters["bond_eq"].value * (1 + alpha_bond)
                     r_vec = np.empty((system.n_structures, 2))
                     for m in range(system.n_structures):
                         r_vec[m, 0] = 0.5 * (distances[m] - x0_x) * (distances[m] - x0_x)
@@ -359,6 +411,8 @@ class LeastSquare:
                     self._param_keys_list.append(parameter.param_key)
                     self._initial_param_regularization.append(parameter.value)
                     self._initial_param_regularization.append(parameter.value)
+                    self._param_symmetries_list.append(parameter.symmetry_group+"_x")
+                    self._param_symmetries_list.append(parameter.symmetry_group+"_y")
                 else:
                     x0 = ff_term.parameters["bond_eq"].value
                     r_vec = np.empty((system.n_structures, 1))
@@ -387,10 +441,10 @@ class LeastSquare:
                 angles = np.asarray(angles)
 
                 if ff_term.parameters["angle_eq"].optimize:
-                    # theta0_x = ff_term.parameters["angle_eq"].value * (1 - alpha_angle)
-                    # theta0_y = ff_term.parameters["angle_eq"].value * (1 + alpha_angle)
-                    theta0_x = np.min(angles)
-                    theta0_y = np.max(angles)
+                    theta0_x = ff_term.parameters["angle_eq"].value * (1 - alpha_angle)
+                    theta0_y = ff_term.parameters["angle_eq"].value * (1 + alpha_angle)
+                    #theta0_x = np.min(angles)
+                    #theta0_y = np.max(angles)
 
                     r_vec = np.empty((system.n_structures, 2))
                     for m in range(system.n_structures):
@@ -404,7 +458,8 @@ class LeastSquare:
                     self._param_keys_list.append(parameter.param_key)
                     self._initial_param_regularization.append(parameter.value)
                     self._initial_param_regularization.append(parameter.value)
-
+                    self._param_symmetries_list.append(parameter.symmetry_group+"_x")
+                    self._param_symmetries_list.append(parameter.symmetry_group+"_y")
                 else:
                     theta0 = ff_term.parameters["angle_eq"].value
                     r_vec = np.empty((system.n_structures, 1))
@@ -450,6 +505,8 @@ class LeastSquare:
                     self._param_keys_list.append(parameter.param_key)
                     self._initial_param_regularization.append(parameter.value)
                     self._initial_param_regularization.append(parameter.value)
+                    self._param_symmetries_list.append(parameter.symmetry_group+"_x")
+                    self._param_symmetries_list.append(parameter.symmetry_group+"_y")
                 else:
                     phase = ff_term.parameters["angle_eq"].value
                     r_vec = np.empty((system.n_structures, 1))

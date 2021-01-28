@@ -341,7 +341,7 @@ class ParameterSpace:
 
         return self.optimizable_parameters, self.optimizable_parameters_values
 
-    def update_systems(self, systems, parameters_values):
+    def update_systems(self, systems, parameters_values, symmetry_constrained=True):
         """
         Method that defines defines the point of contact with the external world.
 
@@ -351,6 +351,8 @@ class ParameterSpace:
             1D list with the adimensional mathematical parameters used in the optimization.
         systems: list of `ParaMol.System.system.ParaMolSystem`
             List of ParaMol System instance.
+        symmetry_constrained : bool
+            Whether or not the optimization is constrained by symmetries.
 
         Notes
         -----
@@ -379,7 +381,7 @@ class ParameterSpace:
         # Update ParaMol ForceField and MM engine
         for system, optimizable_parameters_values in zip(systems, self.optimizable_parameters_values_by_system):
             # Update the parameters in the system's ParaMolForce Field
-            system.force_field.update_force_field(optimizable_parameters_values)
+            system.force_field.update_force_field(optimizable_parameters_values, symmetry_constrained)
 
             # Update the parameters in the OpenMM context
             system.engine.set_bonded_parameters(system.force_field.force_field_optimizable)

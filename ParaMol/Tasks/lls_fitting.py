@@ -79,11 +79,12 @@ class LLSFitting(Task):
         else:
             assert type(parameter_space) is ParameterSpace
 
-        lst_sqr = RESP(parameter_space, settings.properties["include_regularization"], **settings.properties["regularization"], **settings.objective_function)
+        lst_sqr = LinearLeastSquare(parameter_space, settings.properties["include_regularization"], **settings.properties["regularization"], **settings.objective_function)
         parameters_values = lst_sqr.fit_parameters_lls(systems)
 
         # Update the parameters in the ParaMol Force Field and in the Engine
-        parameter_space.update_systems(systems, parameters_values)
+        # Symmetry constraint has to be False
+        parameter_space.update_systems(systems, parameters_values, symmetry_constrained=False)
 
         # Write ParameterSpace restart file
         self.write_restart_pickle(settings.restart, interface, "restart_parameter_space_file", parameter_space.__dict__)
@@ -98,3 +99,31 @@ class LLSFitting(Task):
         print("!=================================================================================!")
         return systems, parameter_space
 
+    @staticmethod
+    def _perform_assertions(settings, system):
+        """
+        Method that asserts if the parametrization asked by the user contains the necessary data (coordinates, forces, energies, esp).
+
+        Parameters
+        ----------
+        settings : dict
+            Dictionary containing global ParaMol settings.
+        system : :obj:`ParaMol.System.system.ParaMolSystem`
+            Instance of ParaMol System.
+
+        Returns
+        -------
+        True
+        """
+        assert system.ref_coordinates is not None, "Conformations data was not set."
+
+        if settings.properties["include_energies"]:
+            assert system.ref_energies is not None, "Energies were not set."
+        if settings.properties["include_forces"]:
+            raise NotImplementedError("Currently forces cannot be fitted using LLS.")
+            #assert system.ref_forces is not None, "Forces were not set."
+        if settings.properties["include_esp"]:
+            assert system.ref_esp is not None, "ESP was not set."
+            assert system.ref_esp_grid is not None, "ESP was not set."
+
+        return True
