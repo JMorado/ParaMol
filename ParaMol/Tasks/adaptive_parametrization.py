@@ -201,6 +201,9 @@ class AdaptiveParametrization(Task):
                 xml_file_name = os.path.join(settings.restart["restart_dir"], "{}_restart.xml".format(system.name))
                 # xml_file_name = "{}_sc_iter_{}.xml".format(system.name, iteration + 1)
                 system.engine.write_system_xml(xml_file_name)
+                xml_file_name = "{}_sc_iter_{}.xml".format(system.name, self.iteration + 1)
+                system.engine.write_system_xml(xml_file_name)
+
                 # system.write_data("paramol_data_sc_iter_{}.nc".format(iteration+1))
 
             # Compute RMSD and check for convergence

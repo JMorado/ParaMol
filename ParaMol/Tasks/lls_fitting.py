@@ -32,7 +32,7 @@ class LLSFitting(Task):
     #                       PUBLIC METHODS                       #
     #                                                            #
     # ---------------------------------------------------------- #
-    def run_task(self, settings, systems, parameter_space=None,  interface=None, adaptive_parametrization=False, apply_charge_correction=False, restart=False):
+    def run_task(self, settings, systems, parameter_space=None, interface=None, adaptive_parametrization=False, restart=False):
         """
         Method that performs the standard ParaMol parametrization.
 
@@ -48,8 +48,6 @@ class LLSFitting(Task):
             ParaMol system instance.
         adaptive_parametrization: bool
             Flag that signals if this parametrization is being done inside a an adaptive parametrization loop. If `False` the system's xml file is not written in this method (default is `False`).
-        apply_charge_correction : bool
-            Whether or not to apply charge correction. Important if charges are being optimized.
         restart : bool
             Flag that controls whether or not to perform a restart.
 

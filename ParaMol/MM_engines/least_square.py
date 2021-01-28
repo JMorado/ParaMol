@@ -63,7 +63,7 @@ class LinearLeastSquare:
         self._weighting_method = weighting_method
         self._weighting_temperature = weighting_temperature
 
-    def fit_parameters_lls(self, systems, alpha_bond=0.05, alpha_angle=0.001):
+    def fit_parameters_lls(self, systems, alpha_bond=0.05, alpha_angle=0.05):
         """
         Method that fits bonded parameters using LLS.
 
@@ -76,14 +76,13 @@ class LinearLeastSquare:
         systems : list of :obj:`ParaMol.System.system.ParaMolSystem`
             List containing instances of ParaMol systems.
         alpha_bond : float
-            P
         alpha_angle : float
 
         Returns
         -------
         systems, parameter_space, objective_function, optimizer
         """
-        # TODO: change this
+        # TODO: In the future, adapt this to multiple systems
         system = systems[0]
 
         # Get optimizable parameters; symmetry constrained is False to allow to get all parameters.
@@ -101,14 +100,11 @@ class LinearLeastSquare:
         # ---------------------------------------------------------------- #
         system.compute_conformations_weights(temperature=self._weighting_temperature, weighting_method=self._weighting_method, emm=self.mm_energies_zero)
 
-        # Calculate variance of QM energies
-        var_QM = np.var(system.ref_energies)
-
         # Weight conformations
         for row in range(system.n_structures):
-            self._A[row, :] = self._A[row, :] * np.sqrt(system.weights[row] / (system.n_structures*var_QM))
+            self._A[row, :] = self._A[row, :] * np.sqrt(system.weights[row])
 
-        self._B = self._B * np.sqrt(system.weights[row] / (system.n_structures*var_QM))
+        self._B = self._B * np.sqrt(system.weights[row])
         # ---------------------------------------------------------------- #
 
         # ---------------------------------------------------------------- #
@@ -203,13 +199,13 @@ class LinearLeastSquare:
             if symm_i in symm_covered or symm_i in ["X_x", "X_y", "X"]:
                 continue
 
-            for j in range(i+1, len(self._param_symmetries_list)):
+            for j in range(i + 1, len(self._param_symmetries_list)):
                 symm_j = self._param_symmetries_list[j]
 
                 if symm_i == symm_j:
                     A_symm_row = np.zeros((self._n_parameters))
                     A_symm_row[i] = 1.0
-                    A_symm_row[j] = 1.0
+                    A_symm_row[j] = -1.0
                     A_symm.append(A_symm_row)
                     n_symmetries += 1
 
@@ -423,6 +419,7 @@ class LinearLeastSquare:
                     self._p0.append(x0)
                     self._param_keys_list.append(parameter.param_key)
                     self._initial_param_regularization.append(parameter.value)
+                    self._param_symmetries_list.append(parameter.symmetry_group)
 
             # ---------------------------------------------------------------- #
             #                              Angles                              #
@@ -470,6 +467,7 @@ class LinearLeastSquare:
                     self._p0.append(theta0)
                     self._param_keys_list.append(parameter.param_key)
                     self._initial_param_regularization.append(parameter.value)
+                    self._param_symmetries_list.append(parameter.symmetry_group)
 
             # ---------------------------------------------------------------- #
             #                              Torsions                            #
@@ -517,6 +515,8 @@ class LinearLeastSquare:
                     self._p0.append(phase)
                     self._param_keys_list.append(parameter.param_key)
                     self._initial_param_regularization.append(parameter.value)
+                    self._param_symmetries_list.append(parameter.symmetry_group)
+
             elif parameter.param_key not in ["torsion_phase", "bond_eq", "angle_eq"]:
                 raise NotImplementedError("Fitting of {} not implemented in LLS.".format(parameter.param_key))
 
