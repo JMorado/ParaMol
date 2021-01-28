@@ -77,5 +77,5 @@ systems, parameter_space, objective_function, optimizer = parametrization.run_ta
 amber_symmetrizer.update_term_types_parameters(parameter_space.optimizable_parameters)
 
 # Write AMBER topology file (.prmtop) and .frcmod file
-amber_symmetrizer.save_prmtop("norfloxacin_opt.prmtop")
+amber_symmetrizer.save("norfloxacin_opt.prmtop")
 amber_symmetrizer.save_frcmod("norfloxacin_opt.frcmod")
