@@ -1,0 +1,100 @@
+# -*- coding: utf-8 -*-
+"""
+Description
+-----------
+This module defines the :obj:`ParaMol.Tasks.parametrization.Parametrization` class, which is a ParaMol task that performs force field parametrization.
+"""
+import numpy as np
+import logging
+
+# ParaMol libraries
+from .task import *
+from ..Parameter_space.parameter_space import *
+from ..Utils.interface import *
+from ..MM_engines.least_square import *
+
+
+# ------------------------------------------------------------
+#                                                            #
+#                       PARAMETRIZATION TASK                 #
+#                                                            #
+# ------------------------------------------------------------
+class LLSFitting(Task):
+    """
+    ParaMol Linear Least Square Fitting task.
+    """
+
+    def __init__(self):
+        pass
+
+    # ---------------------------------------------------------- #
+    #                                                            #
+    #                       PUBLIC METHODS                       #
+    #                                                            #
+    # ---------------------------------------------------------- #
+    def run_task(self, settings, systems, parameter_space=None,  interface=None, adaptive_parametrization=False, apply_charge_correction=False, restart=False):
+        """
+        Method that performs the standard ParaMol parametrization.
+
+        Parameters
+        ----------
+        settings : dict
+            Dictionary containing global ParaMol settings.
+        systems : list of :obj:`ParaMol.System.system.ParaMolSystem`
+            List containing instances of ParaMol systems.
+        parameter_space : :obj:`ParaMol.Parameter_space.parameter_space.ParameterSpace`
+            Instances of ParameterSpace.
+        interface: :obj:`ParaMol.Utils.interface.ParaMolInterface`
+            ParaMol system instance.
+        adaptive_parametrization: bool
+            Flag that signals if this parametrization is being done inside a an adaptive parametrization loop. If `False` the system's xml file is not written in this method (default is `False`).
+        apply_charge_correction : bool
+            Whether or not to apply charge correction. Important if charges are being optimized.
+        restart : bool
+            Flag that controls whether or not to perform a restart.
+
+        Returns
+        -------
+        systems, parameter_space, objective_function, optimizer
+        """
+
+        print("!=================================================================================!")
+        print("!                               LLS ENERGY FITTING                                !")
+        print("!=================================================================================!")
+        for system in systems:
+            # Perform basic assertions
+            self._perform_assertions(settings, system)
+            # Create force field optimizable for every system
+            system.force_field.create_force_field_optimizable()
+
+        # Create IO Interface
+        if interface is None:
+            interface = ParaMolInterface()
+        else:
+            assert type(interface) is ParaMolInterface
+
+        # Create ParameterSpace
+        if parameter_space is None:
+            parameter_space = self.create_parameter_space(settings, systems, interface, restart=restart, preconditioning=False)
+        else:
+            assert type(parameter_space) is ParameterSpace
+
+        lst_sqr = RESP(parameter_space, settings.properties["include_regularization"], **settings.properties["regularization"], **settings.objective_function)
+        parameters_values = lst_sqr.fit_parameters_lls(systems)
+
+        # Update the parameters in the ParaMol Force Field and in the Engine
+        parameter_space.update_systems(systems, parameters_values)
+
+        # Write ParameterSpace restart file
+        self.write_restart_pickle(settings.restart, interface, "restart_parameter_space_file", parameter_space.__dict__)
+
+        # Write final system to xml file
+        if not adaptive_parametrization:
+            for system in systems:
+                system.engine.write_system_xml("{}_reparametrized.xml".format(system.name))
+
+        print("!=================================================================================!")
+        print("!                   LLS ENERGY FITTING TERMINATED SUCCESSFULLY :)                 !")
+        print("!=================================================================================!")
+        return systems, parameter_space
+

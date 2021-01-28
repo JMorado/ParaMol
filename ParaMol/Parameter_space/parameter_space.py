@@ -133,7 +133,7 @@ class ParameterSpace:
             print('! {:<30s}{:<30.8f}{:<19s} !'.format(term_type, self.scaling_constants_dict[term_type], " "))
         print("!=================================================================================!")
 
-        return self.scaling_constants
+        return self.scaling_constants_dict, self.scaling_constants
 
     def calculate_prior_widths(self, method=None):
         """

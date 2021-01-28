@@ -14,6 +14,7 @@ from ..Parameter_space.parameter_space import *
 from ..Objective_function.objective_function import *
 from ..Utils.interface import *
 
+
 # ------------------------------------------------------------
 #                                                            #
 #                       PARAMETRIZATION TASK                 #
