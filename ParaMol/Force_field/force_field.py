@@ -142,8 +142,8 @@ class ForceField:
             # symmetry group. We have to iterate over force_field_optimizable and update them.
             for force in self.force_field_optimizable:
                 # For a given force, iterate over all force field terms
-                for occurrence_force in self.force_field_optimizable[force]:
-                    for force_field_term in occurrence_force:
+                for sub_force in self.force_field_optimizable[force]:
+                    for force_field_term in sub_force:
                         # For each term, iterate over all its Parameter instances
                         for parameter in force_field_term.parameters.values():
                             if parameter.optimize and parameter.symmetry_group != self.symmetry_group_default:
@@ -155,14 +155,14 @@ class ForceField:
         # TODO: check if there's a better way do this
         # Make all scee, scnb positive and eps and sigma positive
         if "Scaling14" in self.force_field_optimizable:
-            for occurrence_force in self.force_field_optimizable["Scaling14"]:
-                for ff_term in occurrence_force:
+            for sub_force in self.force_field_optimizable["Scaling14"]:
+                for ff_term in sub_force:
                     ff_term.parameters["scee"].value = abs(ff_term.parameters["scee"].value)
                     ff_term.parameters["scnb"].value = abs(ff_term.parameters["scnb"].value)
 
         if "NonbondedForce" in self.force_field_optimizable:
-            for occurrence_force in self.force_field_optimizable["NonbondedForce"]:
-                for ff_term in occurrence_force:
+            for sub_force in self.force_field_optimizable["NonbondedForce"]:
+                for ff_term in sub_force:
                     ff_term.parameters["lj_eps"].value = abs(ff_term.parameters["lj_eps"].value)
                     ff_term.parameters["lj_sigma"].value = abs(ff_term.parameters["lj_sigma"].value)
 
@@ -252,10 +252,10 @@ class ForceField:
         # Iterate over all existent forces
         for force in self.force_field:
             # For a given force, iterate over all occurrence of that force
-            for occurrence_force in self.force_field[force]:
+            for sub_force in self.force_field[force]:
                 sub_force_field_optimizable = []
                 # For a given force, iterate over all force field terms
-                for force_field_term in occurrence_force:
+                for force_field_term in sub_force:
                     # For each term, iterate over all its Parameter instances
                     for parameter in force_field_term.parameters.values():
                         if parameter.optimize:
@@ -299,9 +299,9 @@ class ForceField:
             symm_groups = {}
             # Iterate over all existent forces
             for force in self.force_field_optimizable:
-                for occurrence_force in self.force_field_optimizable[force]:
+                for sub_force in self.force_field_optimizable[force]:
                     # For a given force, iterate over all force field terms
-                    for force_field_term in occurrence_force:
+                    for force_field_term in sub_force:
                         # For each term, iterate over all its Parameter instances
                         for parameter in force_field_term.parameters.values():
                             if parameter.optimize:
@@ -337,9 +337,9 @@ class ForceField:
         else:
             # Iterate over all existent forces
             for force in self.force_field_optimizable:
-                for occurrence_force in self.force_field_optimizable[force]:
+                for sub_force in self.force_field_optimizable[force]:
                     # For a given force, iterate over all force field terms
-                    for force_field_term in occurrence_force:
+                    for force_field_term in sub_force:
                         # For each term, iterate over all its Parameter instances
                         for parameter in force_field_term.parameters.values():
                             if parameter.optimize:
@@ -583,11 +583,11 @@ class ForceField:
         # Iterate over all existent forces
         for force in self.force_field:
             # Iterate over all force field term
-            for k, occurrence_force in enumerate(self.force_field[force]):
+            for k, sub_force in enumerate(self.force_field[force]):
                 # For a given force occurrence, iterate over all force field terms
                 ff_file.write("{} {:3d} \n".format(force, self.force_groups[force][k]))
                 # For a given force, iterate over all force field terms
-                for force_field_term in occurrence_force:
+                for force_field_term in sub_force:
                     ff_term_line = ("{:3d} " + "{:3d} " * len(force_field_term.atoms)).format(force_field_term.idx, *force_field_term.atoms)
                     # For each term, iterate over all its Parameter instances
                     optimization_flags = ""
@@ -730,9 +730,9 @@ class ForceField:
         # Iterate over all forces
         for force in self.force_field:
             # Iterate over all force field term
-            for occurrence_force in self.force_field[force]:
+            for sub_force in self.force_field[force]:
                 # For a given force occurrence, iterate over all force field terms
-                for force_field_term in occurrence_force:
+                for force_field_term in sub_force:
                     # Iterate over all atoms of a given force field term
                     for at in force_field_term.atoms:
                         for i in range(len(lower_idx)):
@@ -775,9 +775,9 @@ class ForceField:
 
         for force in self.force_field:
             if force == 'PeriodicTorsionForce':
-                for occurrence_force in self.force_field[force]:
+                for sub_force in self.force_field[force]:
                     # For a given force occurrence, iterate over all force field terms
-                    for force_field_term in occurrence_force:
+                    for force_field_term in sub_force:
                         for parameter in force_field_term.parameters.values():
                             # If the param key is not torsion periodicity since this are not handled by ParaMol
                             if parameter.param_key != "torsion_periodicity":
@@ -786,9 +786,9 @@ class ForceField:
                                 elif change_other_torsions:
                                     parameter.optimize = 0
             elif change_other_parameters:
-                for occurrence_force in self.force_field[force]:
+                for sub_force in self.force_field[force]:
                     # For a given force occurrence, iterate over all force field terms
-                    for force_field_term in occurrence_force:
+                    for force_field_term in sub_force:
                         for parameter in force_field_term.parameters.values():
                             parameter.optimize = 0
             else:
@@ -820,18 +820,18 @@ class ForceField:
 
         for force in self.force_field:
             if force == 'Scaling14':
-                for occurrence_force in self.force_field[force]:
+                for sub_force in self.force_field[force]:
                     # For a given force occurrence, iterate over all force field terms
-                    for force_field_term in occurrence_force:
+                    for force_field_term in sub_force:
                         for parameter in force_field_term.parameters.values():
                             if force_field_term.atoms in atom_pairs:
                                 parameter.optimize = 1
                             elif change_other_sc:
                                 parameter.optimize = 0
             elif change_other_parameters:
-                for occurrence_force in self.force_field[force]:
+                for sub_force in self.force_field[force]:
                     # For a given force occurrence, iterate over all force field terms
-                    for force_field_term in occurrence_force:
+                    for force_field_term in sub_force:
                         for parameter in force_field_term.parameters.values():
                             parameter.optimize = 0
             else:
@@ -868,9 +868,9 @@ class ForceField:
         dihedral_types = []
         for force in self.force_field:
             if force == 'PeriodicTorsionForce':
-                for occurrence_force in self.force_field[force]:
+                for sub_force in self.force_field[force]:
                     # For a given force, iterate over all force field terms
-                    for force_field_term in occurrence_force:
+                    for force_field_term in sub_force:
                         for parameter in force_field_term.parameters.values():
                             if parameter.param_key is not "torsion_periodicity":
                                 if force_field_term.atoms in torsions:
@@ -879,9 +879,9 @@ class ForceField:
         # Change the necessary optimization states
         for force in self.force_field:
             if force == 'PeriodicTorsionForce':
-                for occurrence_force in self.force_field[force]:
+                for sub_force in self.force_field[force]:
                     # For a given force occurrence, iterate over all force field terms
-                    for force_field_term in occurrence_force:
+                    for force_field_term in sub_force:
                         for parameter in force_field_term.parameters.values():
                             # If the param key is not torsion periodicity since this are not handled by ParaMol
                             if parameter.param_key != "torsion_periodicity":
@@ -892,9 +892,9 @@ class ForceField:
                                 elif change_other_torsions:
                                     parameter.optimize = 0
             elif change_other_parameters:
-                for occurrence_force in self.force_field[force]:
+                for sub_force in self.force_field[force]:
                     # For a given force, iterate over all force field terms
-                    for force_field_term in occurrence_force:
+                    for force_field_term in sub_force:
                         for parameter in force_field_term.parameters.values():
                             parameter.optimize = 0
             else:
@@ -902,7 +902,7 @@ class ForceField:
 
         return self.force_field
 
-    def set_parameter_optimization(self, force_key, force_occurrence, idx, param_key, optimize):
+    def set_parameter_optimization(self, force_key, sub_force, idx, param_key, optimize):
         """
         Method that for the force field term with index `idx` of the force `force_key` set the parameter with name `param_key` to the optimization state in `optimize`.
 
@@ -910,7 +910,7 @@ class ForceField:
         ----------
         force_key : str
             Name of the force.
-        force_occurrence : int
+        sub_force : int
             Ocurrence of the force.
         idx : int
             Index of the force field term.
@@ -924,6 +924,6 @@ class ForceField:
         force_field : dict
             Dictionary that contains as keys force groups names and as values and the correspondent :obj:`ParaMol.Force_field.force_field_term.FFTerm`.
         """
-        self.force_field[force_key][force_occurrence][idx].parameters[param_key].optimize = optimize
+        self.force_field[force_key][sub_force][idx].parameters[param_key].optimize = optimize
 
         return self.force_field

@@ -369,8 +369,8 @@ class TorsionsParametrization(Task):
         for bond in rotatable_bonds:
             tmp = []
 
-            for force_occurrence in system.force_field.force_field['PeriodicTorsionForce']:
-                for force_field_term in force_occurrence:
+            for sub_force in system.force_field.force_field['PeriodicTorsionForce']:
+                for force_field_term in sub_force:
                     if (force_field_term.atoms[1] == bond[0] or force_field_term.atoms[1] == bond[1]) and (
                             force_field_term.atoms[2] == bond[0] or force_field_term.atoms[2] == bond[1]):
                         if force_field_term.atoms not in rotatable_torsions:

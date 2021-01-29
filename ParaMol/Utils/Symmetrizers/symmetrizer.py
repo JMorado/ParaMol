@@ -123,9 +123,9 @@ class Symmetrizer:
             Instance of the ParaMol ForceField symmetrized to respect AMBER symmetries.
         """
         self._charge_types = {}
-        for occurrence_force in force_field_instance.force_field["NonbondedForce"]:
+        for sub_force in force_field_instance.force_field["NonbondedForce"]:
             idx = 0
-            for force_field_term in occurrence_force:
+            for force_field_term in sub_force:
                 for parameter in force_field_term.parameters.values():
                     # If the param key is not torsion periodicity since this are not handled by ParaMol
                     if parameter.param_key == "charge" and parameter.param_key != "X":
@@ -156,8 +156,8 @@ class Symmetrizer:
         """
         # Set bonds to AMBER format
         # Iterate over terms in harmonic bond force
-        for occurrence_force in force_field_instance.force_field["HarmonicBondForce"]:
-            for force_field_term in occurrence_force:
+        for sub_force in force_field_instance.force_field["HarmonicBondForce"]:
+            for force_field_term in sub_force:
                 amber_bonds = [bond for bond in self._top_file.bonds]
                 # Iterate over all AMBER bonds
                 for bond_idx in range(len(amber_bonds)):
@@ -172,8 +172,8 @@ class Symmetrizer:
                         break
 
         # Iterate over terms in harmonic angle force
-        for occurrence_force in force_field_instance.force_field["HarmonicAngleForce"]:
-            for force_field_term in occurrence_force:
+        for sub_force in force_field_instance.force_field["HarmonicAngleForce"]:
+            for force_field_term in sub_force:
                 amber_angles = [angle for angle in self._top_file.angles]
                 # Iterate over all amber angles
                 for angle_idx in range(len(amber_angles)):
@@ -188,8 +188,8 @@ class Symmetrizer:
                         break
 
         # Iterate over terms in torsions
-        for occurrence_force in force_field_instance.force_field["PeriodicTorsionForce"]:
-            for force_field_term in occurrence_force:
+        for sub_force in force_field_instance.force_field["PeriodicTorsionForce"]:
+            for force_field_term in sub_force:
                 amber_torsions = [torsion for torsion in self._top_file.dihedrals]
                 # Iterate over all amber torsions
                 for torsion_idx in range(len(amber_torsions)):
@@ -207,8 +207,8 @@ class Symmetrizer:
                         break
 
         # Iterate over scaling factors; this also
-        for occurrence_force in force_field_instance.force_field["Scaling14"]:
-            for force_field_term in occurrence_force:
+        for sub_force in force_field_instance.force_field["Scaling14"]:
+            for force_field_term in sub_force:
                 # Iterate over all amber torsions
                 periodicities = []
                 types = []

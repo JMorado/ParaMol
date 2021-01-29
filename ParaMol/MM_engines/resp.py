@@ -147,8 +147,8 @@ class RESP:
 
         self.charges = []
         if "NonbondedForce" in force_field:
-            for force_occurence in force_field["NonbondedForce"]:
-                for nonbonded_term in force_occurence:
+            for sub_force in force_field["NonbondedForce"]:
+                for nonbonded_term in sub_force:
                     self.charges.append(nonbonded_term.parameters["charge"].value)
 
         return self.charges
@@ -169,8 +169,8 @@ class RESP:
         """
         self.initial_charges = []
         if "NonbondedForce" in force_field:
-            for force_occurence in force_field["NonbondedForce"]:
-                for nonbonded_term in force_occurence:
+            for sub_force in force_field["NonbondedForce"]:
+                for nonbonded_term in sub_force:
                     self.initial_charges.append(nonbonded_term.parameters["charge"].value)
 
         return self.initial_charges
@@ -295,9 +295,9 @@ class RESP:
             symmetry_groups = []  # List used to keep track of symmetry groups
             
             i = 0
-            for occurrence_force in system.force_field.force_field['NonbondedForce']:
+            for sub_force in system.force_field.force_field['NonbondedForce']:
                 # For a given force occurrence, iterate over all force field terms
-                for force_field_term in occurrence_force:
+                for force_field_term in sub_force:
                     parameter_i = force_field_term.parameters['charge']
                     if parameter_i.symmetry_group != system.force_field.symmetry_group_default and parameter_i.symmetry_group not in symmetry_groups:
                         # If parameter belong to the non-default symmetry group and this symmetry group was not already set
