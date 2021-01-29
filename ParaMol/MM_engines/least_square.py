@@ -85,9 +85,6 @@ class LinearLeastSquare:
         # TODO: In the future, adapt this to multiple systems
         system = systems[0]
 
-        # Get optimizable parameters; symmetry constrained is False to allow to get all parameters.
-        self._parameter_space.get_optimizable_parameters([system], symmetry_constrained=False)
-
         # Compute A matrix
         self._calculate_a(system, alpha_bond, alpha_angle)
         self._n_parameters = self._A.shape[1]

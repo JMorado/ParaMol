@@ -73,7 +73,7 @@ class LLSFitting(Task):
 
         # Create ParameterSpace
         if parameter_space is None:
-            parameter_space = self.create_parameter_space(settings, systems, interface, restart=restart, preconditioning=False)
+            parameter_space = self.create_parameter_space(settings, systems, interface, restart=restart, preconditioning=False, symmetry_constrained=False)
         else:
             assert type(parameter_space) is ParameterSpace
 
