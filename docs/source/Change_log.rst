@@ -1,6 +1,11 @@
 Change Log
 ==========
 
+Version 1.1.0
+-------------
+- Implementation of LLS to derive bonded parameters. Bonds, angles and torsions can now be determined directly through LLS fitting to QM energies. Currently, the only type of regularization that can be used with LLS fitting is the L2 regularization.
+- Besides the previously implemented AMBER symmetrized, now GROMACS and CHARMM symmetrizes are also available.
+
 Version 1.0.2
 -------------
 - Fixes and improvements to AmberSymmetrizer.
