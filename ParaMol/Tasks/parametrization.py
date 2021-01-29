@@ -220,8 +220,9 @@ class Parametrization(Task):
         
         Notes
         ----
-        Due to numerical errors, the total charge of the system may not be equal to the real total charge of the system.
-        Hence, in order to overcome this problem, which causes unexpected behaviour specially when constraints are being applied, the excess or deficiency of charge is shared equally amongst all atoms. This usually changes the charge in each atom by a very small amount.
+        Due to numerical errors, the numerical total charge of the system may not be equal to the real total charge of the system.
+        Hence, in order to overcome this problem, which causes unexpected behaviour specially when constraints are being applied, the excess or deficiency of charge is shared equally amongst all atoms.
+        This usually changes the charge in each atom by a very small (negligible) amount.
         Note that this method only changes the charges in the ParaMol ForceField of the ParaMolSystem. Therefore, it is required to update the OpenMM systems after this method is called.
         
         Returns
@@ -238,8 +239,9 @@ class Parametrization(Task):
             logging.info("Charge correction {}e per atom.".format(charge_correction))
 
             # Add charge correction to all atoms
-            for nonbonded_term in system.force_field.force_field["NonbondedForce"]:
-                nonbonded_term.parameters["charge"].value -= charge_correction
+            for sub_force in system.force_field.force_field["NonbondedForce"]:
+                for nonbonded_term in sub_force:
+                    nonbonded_term.parameters["charge"].value -= charge_correction
 
             total_charge = self._get_total_charge(system)
             logging.info("Total charge after correction: {}e .\n".format(total_charge))
@@ -271,8 +273,9 @@ class Parametrization(Task):
         """
         total_charge = 0.0
         if "NonbondedForce" in system.force_field.force_field:
-            for nonbonded_term in system.force_field.force_field["NonbondedForce"]:
-                total_charge += nonbonded_term.parameters["charge"].value
+            for sub_force in system.force_field.force_field["NonbondedForce"]:
+                for nonbonded_term in sub_force:
+                    total_charge += nonbonded_term.parameters["charge"].value
 
         return total_charge
 

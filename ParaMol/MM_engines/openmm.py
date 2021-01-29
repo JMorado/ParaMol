@@ -93,6 +93,10 @@ class OpenMMEngine:
         Number of atoms of the system.
     cell : np.ndarray, shape=(3, 3), dtype=float
         Array containing the box size cell vectors (in angstroms). Method get_cell has to be run to set this attribute variable.
+    scnb : float
+        1-4 scaling factor for LJ interactions(0.833333).
+    scee : float
+        1-4 scaling factor for electrostatic interaction
     """
     force_groups_dict = {'HarmonicBondForce': 0,
                          'HarmonicAngleForce': 1,
@@ -134,6 +138,10 @@ class OpenMMEngine:
         self.masses_list = None
         self.n_atoms = None
         self.cell = None
+
+        # 1-4 Scaling parameters
+        self.scnb = 0.833333  # scee
+        self.scee = 0.5  # scnb
 
         # Params to be passed to OpenMM
         self._create_system_params = create_system_params
@@ -517,7 +525,7 @@ class OpenMMEngine:
                 bond_force.setBondParameters(bond_term.idx, *bond_term.atoms, bond_term.parameters["bond_eq"].value,
                                              bond_term.parameters["bond_k"].value)
 
-        bond_force.updateParametersInContext(self.context)
+            bond_force.updateParametersInContext(self.context)
 
         return self.context
 
@@ -542,7 +550,7 @@ class OpenMMEngine:
                 angle_force.setAngleParameters(angle_term.idx, *angle_term.atoms, angle_term.parameters["angle_eq"].value,
                                                angle_term.parameters["angle_k"].value)
 
-        angle_force.updateParametersInContext(self.context)
+            angle_force.updateParametersInContext(self.context)
 
         return self.context
 
@@ -575,7 +583,7 @@ class OpenMMEngine:
                                                    torsion_term.parameters["torsion_phase"].value % div_value,
                                                    torsion_term.parameters["torsion_k"].value)
 
-        torsion_force.updateParametersInContext(self.context)
+            torsion_force.updateParametersInContext(self.context)
 
         return self.context
 
@@ -622,11 +630,13 @@ class OpenMMEngine:
             Updated OpenMM Context.
         """
 
-        if self.force_groups_dict['NonbondedForce'] in self.force_groups:
-            nonbonded_force = self.system.getForce(self.force_groups.index(self.force_groups_dict['NonbondedForce']))
-            for i in range(nonbonded_force.getNumParticles()):
-                q, sigma, eps = nonbonded_force.getParticleParameters(i)
+        for k, nonbonded_force_index in enumerate(self.forces_indexes["NonbondedForce"]):
+            nonbonded_force = self.system.getForce(nonbonded_force_index)
 
+            for i in range(nonbonded_force.getNumParticles()):
+                #q, sigma, eps = nonbonded_force.getParticleParameters(i)
+
+                # Set particle parameters to zero
                 nonbonded_force.setParticleParameters(i, 0.0, 0.0, 0.0)
 
             if self.context.getPlatform().getName() in ["CPU", "Reference"]:
@@ -643,8 +653,8 @@ class OpenMMEngine:
                     at1, at2, q, sigma, eps = nonbonded_force.getExceptionParameters(i)
                     nonbonded_force.setExceptionParameters(i, at1, at2, 0.0, 0.0, 0.0)
 
-        # Update parameters in context
-        nonbonded_force.updateParametersInContext(self.context)
+            # Update parameters in context
+            nonbonded_force.updateParametersInContext(self.context)
 
         return self.context
 
@@ -664,6 +674,8 @@ class OpenMMEngine:
         """
 
         if "NonbondedForce" in force_field_optimizable and "Scaling14" not in force_field_optimizable:
+            # If updating the non bonded force but not updating the 1-4 scaling factors
+
             nonbonded_force_terms = force_field_optimizable["NonbondedForce"]
 
             for k, nonbonded_force_index in enumerate(self.forces_indexes["NonbondedForce"]):
@@ -675,9 +687,9 @@ class OpenMMEngine:
 
                 nonbonded_force.updateParametersInContext(self.context)
 
-                # Scaling 1-4 parameters are not being optimized
-                scnb = 0.833333  # scee
-                scee = 0.5       # scnb
+                # ---------------------------------------------------------------- #
+                #                      Non-Bonded Exceptions                       #
+                # ---------------------------------------------------------------- #
                 for i in range(nonbonded_force.getNumExceptions()):
                     at1, at2, charge_prod, sigma, eps, = nonbonded_force.getExceptionParameters(i)
 
@@ -685,8 +697,10 @@ class OpenMMEngine:
                         continue
 
                     # Lorentz-Berthelot rules:
+
                     # \epsilon_{ij} = \sqrt{\epsilon_{ii} * \epsilon_{jj}}
-                    epsilon = scee * np.sqrt(nonbonded_force_terms[at1].parameters["lj_eps"].value*nonbonded_force_terms[at2].parameters["lj_eps"].value)
+                    epsilon = self.scee * np.sqrt(nonbonded_force_terms[k][at1].parameters["lj_eps"].value*nonbonded_force_terms[k][at2].parameters["lj_eps"].value)
+
                     #epsilon = scee * np.sqrt(np.abs(nonbonded_force_terms[at1].parameters["lj_eps"].value) *
                     #                         np.abs(nonbonded_force_terms[at2].parameters["lj_eps"].value)) * \
                     #          np.sign(nonbonded_force_terms[at1].parameters["lj_eps"].value) * \
@@ -697,41 +711,46 @@ class OpenMMEngine:
                     sigma = 0.5 * (nonbonded_force_terms[k][at1].parameters["lj_sigma"].value +
                                    nonbonded_force_terms[k][at2].parameters["lj_sigma"].value)
 
-                    charge_prod = scnb * \
+                    charge_prod = self.scnb * \
                                   nonbonded_force_terms[k][at1].parameters["charge"].value * \
                                   nonbonded_force_terms[k][at2].parameters["charge"].value
 
                     nonbonded_force.setExceptionParameters(i, at1, at2, charge_prod, sigma, epsilon)
+
+                # Update parameters in context
                 nonbonded_force.updateParametersInContext(self.context)
 
         elif "NonbondedForce" not in force_field_optimizable and "Scaling14" in force_field_optimizable:
-            # Scaling 1-4 parameters are being optimized
+            # If updating the 1-4 scaling factors but not the non bonded force
+
             scaling_constants = force_field_optimizable["Scaling14"]
 
             for k, nonbonded_force_index in enumerate(self.forces_indexes["NonbondedForce"]):
                 nonbonded_force = self.system.getForce(nonbonded_force_index)
 
-                for i in range(len(scaling_constants)):
+                for i in range(len(scaling_constants[k])):
                     at1, at2, _, sigma, _ = nonbonded_force.getExceptionParameters(i)
                     chg1, sigma1, eps1 = nonbonded_force.getParticleParameters(at1)
                     chg2, sigma2, eps2 = nonbonded_force.getParticleParameters(at2)
-                    scee = scaling_constants[k][i].parameters['scee'].value
-                    scnb = scaling_constants[k][i].parameters['scnb'].value
+                    scee_local = scaling_constants[k][i].parameters['scee'].value
+                    scnb_local = scaling_constants[k][i].parameters['scnb'].value
 
-                    scee = abs(scee)
-                    scnb = abs(scnb)
+                    scee_local = abs(scee_local)
+                    scnb_local = abs(scnb_local)
 
                     # Lorentz-Berthelot rules:
                     # \epsilon_{ij} = \sqrt{\epsilon_{ii} * \epsilon_{jj}}
-                    epsilon = scnb * np.sqrt(eps1*eps2)
+                    epsilon = scnb_local * np.sqrt(eps1*eps2)
 
                     # scee*q1*q2
-                    charge_prod = scee * chg1 * chg2
+                    charge_prod = scee_local * chg1 * chg2
 
                     nonbonded_force.setExceptionParameters(i, at1, at2, charge_prod, sigma, epsilon)
-                nonbonded_force.updateParametersInContext(self.context)
 
+                # Update parameters in context
+                nonbonded_force.updateParametersInContext(self.context)
         else:
+            # Not updating any non bonded parameter
             pass
 
         return self.context
