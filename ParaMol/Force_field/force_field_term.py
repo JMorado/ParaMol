@@ -36,7 +36,7 @@ class FFTerm:
     parameters : dict
         Dictionary that contains the mapping between `param_key` and :obj:`ParaMol.Force_field.force_field_term_parameter.Parameter`.
     """
-    def __init__(self, force_group, idx, atoms, symmetry_group = "X"):
+    def __init__(self, force_group, idx, atoms, symmetry_group="X"):
         self.force_group = force_group
         self.idx = idx
         self.atoms = atoms
@@ -76,6 +76,6 @@ class FFTerm:
         parameters : dict
             Dictionary containing the current mapping between `param_key` and :obj:`ParaMol.Force_field.force_field_term_parameter.Parameter`.
         """
-        self.parameters[param_key] = Parameter(symmetry_group, optimize, param_key, value)
+        self.parameters[param_key] = Parameter(symmetry_group, optimize, param_key, value, self)
 
         return self.parameters

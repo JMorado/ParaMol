@@ -9,4 +9,5 @@ __all__ = ['settings',
            'amber_symmetrizer',
            'interface',
            'gaussian_esp',
-           'conformational_sampling']
+           'conformational_sampling'
+           'Symmetrizers']

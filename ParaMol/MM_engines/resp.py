@@ -147,8 +147,9 @@ class RESP:
 
         self.charges = []
         if "NonbondedForce" in force_field:
-            for nonbonded_term in force_field["NonbondedForce"]:
-                self.charges.append(nonbonded_term.parameters["charge"].value)
+            for sub_force in force_field["NonbondedForce"]:
+                for nonbonded_term in sub_force:
+                    self.charges.append(nonbonded_term.parameters["charge"].value)
 
         return self.charges
 
@@ -168,8 +169,9 @@ class RESP:
         """
         self.initial_charges = []
         if "NonbondedForce" in force_field:
-            for nonbonded_term in force_field["NonbondedForce"]:
-                self.initial_charges.append(nonbonded_term.parameters["charge"].value)
+            for sub_force in force_field["NonbondedForce"]:
+                for nonbonded_term in sub_force:
+                    self.initial_charges.append(nonbonded_term.parameters["charge"].value)
 
         return self.initial_charges
 
@@ -265,7 +267,7 @@ class RESP:
 
         print("\nFinal net charge: {:.4e}".format(np.sum(self.charges[:system.n_atoms])))
 
-        return self.charges
+        return self.charges[:system.n_atoms]
 
     def set_symmetry_constraints(self, system, symmetry_constrained):
         """
@@ -292,18 +294,34 @@ class RESP:
         if symmetry_constrained:
             symmetry_groups = []  # List used to keep track of symmetry groups
 
-            for i in range(len(system.force_field.force_field['NonbondedForce'])):
-                parameter_i = system.force_field.force_field['NonbondedForce'][i].parameters['charge']
-                if parameter_i.symmetry_group != system.force_field.symmetry_group_default \
-                        and parameter_i.symmetry_group not in symmetry_groups:
-                    # If parameter belong to the non-default symmetry group and this symmetry group was not already set
-                    symmetry_groups.append(parameter_i.symmetry_group)
-                    for j in range(i+1,len(system.force_field.force_field['NonbondedForce'])):
-                        parameter_j = system.force_field.force_field['NonbondedForce'][j].parameters['charge']
-                        if parameter_j.symmetry_group == symmetry_groups[-1]:
-                            # Add this symmetry constraint
-                            self._symmetry_constraints.append([i, j])
-                            self._n_constraints = self._n_constraints + 1
+            i = 0
+            for sub_force_idx_i in range(len(system.force_field.force_field['NonbondedForce'])):
+                # For a given force occurrence, iterate over all force field terms
+                for m in range(len(system.force_field.force_field['NonbondedForce'][sub_force_idx_i])):
+
+                    parameter_i = system.force_field.force_field['NonbondedForce'][sub_force_idx_i][m].parameters['charge']
+
+                    if parameter_i.symmetry_group != system.force_field.symmetry_group_default and parameter_i.symmetry_group not in symmetry_groups:
+                        # If parameter belong to the non-default symmetry group and this symmetry group was not already set
+
+                        symmetry_groups.append(parameter_i.symmetry_group)
+
+                        for sub_force_idx_j in range(sub_force_idx_i, len(system.force_field.force_field['NonbondedForce'])):
+                            j = 0
+
+                            if sub_force_idx_i == sub_force_idx_j:
+                                start_idx = m+1
+                            else:
+                                start_idx = 0
+
+                            for n in range(start_idx, len(system.force_field.force_field['NonbondedForce'][sub_force_idx_j])):
+                                parameter_j = system.force_field.force_field['NonbondedForce'][sub_force_idx_j][n].parameters['charge']
+                                if parameter_j.symmetry_group == symmetry_groups[-1]:
+                                    # Add this symmetry constraint
+                                    self._symmetry_constraints.append([i, i+j+1])
+                                    self._n_constraints = self._n_constraints + 1
+                                j += 1
+                    i += 1
 
         return self._symmetry_constraints
 
@@ -407,8 +425,8 @@ class RESP:
 
         Returns
         -------
-        A : np.array
-            Array of the A matrix.
+        B : np.array
+            Array of the B matrix.
         """
 
         if initialize:

@@ -22,6 +22,8 @@ class Parameter:
         Key of the parameter.
     value : float/int
         Value of the parameter.
+    ff_term : ParaMol.Force_field.force_field_term.FFTerm
+        Force field term to which this parameter original belongs
 
     Attributes
     ----------
@@ -35,13 +37,16 @@ class Parameter:
         Value of the parameter.
     multiplicity :
         Multiplicity of the parameter, i.e., how many parameters with the same `symmetry_group` exist and `param_key` exist. Only relevant for symmetry-constrained optimizations.
+    ff_term : ParaMol.Force_field.force_field_term.FFTerm
+        Force field term to which this parameter original belongs
     """
-    def __init__(self, symmetry_group, optimize, param_key, value):
+    def __init__(self, symmetry_group, optimize, param_key, value, ff_term=None):
         self.symmetry_group = symmetry_group
         self.optimize = optimize
         self.value = value
         self.param_key = param_key
         self.multiplicity = 1.0
+        self.ff_term = ff_term
 
     def __str__(self):
         """

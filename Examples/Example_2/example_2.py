@@ -6,13 +6,13 @@ from ParaMol.MM_engines.openmm import *
 from ParaMol.Tasks.resp_fitting import *
 from ParaMol.Utils.settings import *
 from ParaMol.Utils.gaussian_esp import *
-from ParaMol.Utils.amber_symmetrizer import *
+from ParaMol.Utils.Symmetrizers.amber_symmetrizer import *
 
 # --------------------------------------------------------- #
 #                         Preparation                       #
 # --------------------------------------------------------- #
 # Create the OpenMM engine for caffeine
-openmm_system = OpenMMEngine(init_openmm=True, topology_format='AMBER', top_file='aniline.prmtop', crd_file='aniline.inpcrd')
+openmm_system = OpenMMEngine(init_openmm=True, topology_format='AMBER', top_file='aniline.prmtop', crd_format='AMBER', crd_file='aniline.inpcrd')
 
 # Create Molecular System
 aniline = ParaMolSystem(name="aniline", engine=openmm_system, n_atoms=14)
@@ -37,9 +37,9 @@ aniline.ref_coordinates, aniline.ref_esp_grid, aniline.ref_esp = gaussian_esp.re
 # --------------------------------------------------------- #
 # Symmetry ParaMol ForceField so that it respects symmetries
 # In this example, we are not setting any symmetry, but we still need to do this step as we want to save a .mol2 file
-amber_symmetrizer = AmberSymmetrizer(prmtop_file="aniline.prmtop")
-amber_symmetrizer.get_amber_symmetries(aniline.force_field)
-amber_symmetrizer.set_force_field_to_amber_format(aniline.force_field)
+amber_symmetrizer = AmberSymmetrizer(top_file="aniline.prmtop")
+amber_symmetrizer.get_symmetries(aniline.force_field)
+amber_symmetrizer.symmetrize_force_field(aniline.force_field)
 
 # Set number of structures
 aniline.n_structures = len(aniline.ref_coordinates)
@@ -56,4 +56,4 @@ aniline.force_field.write_ff_file("aniline_resp.ff")
 
 # Update amber symmetrizer and save .mol2 file
 amber_symmetrizer.update_term_types_parameters(parameter_space.optimizable_parameters)
-amber_symmetrizer.save_mol2("aniline_resp.mol2")
+amber_symmetrizer.save("aniline_resp.mol2")

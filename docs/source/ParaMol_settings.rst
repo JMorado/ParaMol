@@ -37,11 +37,12 @@ The list of all ParaMol settings is here presented using the syntax **input_para
 Parameter Space Parameters (parameter_space)
 --------------------------------------------
 * **prior_widths_method** (`str`, "default"): Method used to calculate the prior_widths. Available methods are 'default', 'arithmetic' and 'geometric'.
-* **scaling_constants** (`str`, "default"): Method used to calculate the scaling constants. Available methods are 'default', 'arithmetic' and 'geometric'.
+* **scaling_constants** (`str`, "arithmetic"): Method used to calculate the scaling constants. Available methods are 'default', 'arithmetic' and 'geometric'.
 * **parameters_magnitude** (`dict`, see below): Dictionary containing the mapping between parameter keys and their natural magnitude values. This is used to calculate the scaling constants and prior widths if the 'default' option is chosen.
-   * **charge** (`float`, 0.2): Charge (in elementary charge units).
+   * **charge** (`float`, 0.5): Charge (in elementary charge units).
    * **lj_sigma** (`float`, 0.30): Lennard-Jones 12-6 sigma parameter (in nanometers).
    * **lj_eps** (`float`, 0.20): Lennard-Jones 12-6 epsilon parameter (in kJ/mol).
+   * **torsion_k** (`float`, 4*4.184): Torsion height (:math:`kJ mol^{-1}`).
    * **torsion_phase** (`float`, pi): Torsion phase (in radians).
    * **bond_eq** (`float`, 0.05): Bond equilibrium length (in nanometers) .
    * **bond_k** (`float`, 100000): Bond force constant (in :math:`kJ mol^{-1} nm^{-2}`).
@@ -79,7 +80,7 @@ Optimizer Parameters (optimizer)
 
 Objective function parameters (objective_function)
 ---------------------------------------------------
-* **parallel** (`bool`, True): Flag that signals if the objective function calculation is to be performed in parallel.
+* **parallel** (`bool`, False): Flag that signals if the objective function calculation is to be performed in parallel.
 * **platform_name** (`str`, "Reference"): Name of the OpenMM platform to be used to calculate the objective function. Only options are 'Reference', 'CPU' and 'OpenCL'.
 * **weighting_method** (`str`, "uniform"): Method used to weigh the conformations. Available methods are "uniform, "boltzmann" and "non-boltzmann".
 * **weighting_temperature** (`simtk.unit.Quantity`, 300.0*unit.kelvin): Temperature used in the weighing. Only relevant if `weighing_method` is "boltzmann" or "non_boltzmann".

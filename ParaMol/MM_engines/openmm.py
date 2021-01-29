@@ -27,13 +27,17 @@ class OpenMMEngine:
         Whether or not to create the OpenMM system, topology, integrator and context and platform upon creation of an OpenMMEngine instance.
         Note that the only objects created are the ones not passed as parameters.
     topology_format : str, optional, default=None
-        Available options are "AMBER" or "XML".
+        Available options are "AMBER", "GROMACS", "CHARMM", or "XML".
     top_file : str, optional, default=None
-        Path to the AMBER topology file.
+        Path to the AMBER, GROMACS or CHARMM topology file.
+    crd_format : str
+        Available options are "AMBER", "GROMACS", "CHARMM", or "PDB".
+    crd_file : str, optional, default=None
+        Path to the AMBER, GROMACS or CHARMM coordinates file.
+    charmm_param_file : str
+        Path to the CHARMM param file.
     xml_file : str, optional, default=None
         Path to the .xml OpenMM system file.
-    crd_file : str, optional, default=None
-        Path to the AMBER coordinates file.
     platform_name : str, optional, default='Reference'
         Name of the OpenMM platform.
     integrator_params : dict, optional, default={'temperature' : 300.0 * unit.kelvin, 'stepSize' : 0.001 * unit.picoseconds, 'frictionCoeff' : 2.0 / unit.picoseconds}
@@ -54,13 +58,17 @@ class OpenMMEngine:
     Attributes
     ----------
     topology_format : str
-        Available options are "AMBER" or "XML".
+        Available options are "AMBER", "GROMACS", "CHARMM", or "XML".
     top_file : str
-        Path to the AMBER topology file.
+        Path to the AMBER, GROMACS or CHARMM  topology file.
+    crd_format : str
+        Available options are "AMBER", "GROMACS", "CHARMM", or "PDB".
+    charmm_param_file : str
+        Path to the CHARMM param file.
     xml_file : str
         Path to the .xml OpenMM system file.
     crd_file : str
-        Path to the AMBER coordinates file.
+        Path to the AMBER, GROMACS or CHARMM  coordinates file.
     platform_name : str, optional, default='Reference'
         Name of the OpenMM platform.
     system : simtk.openmm.openmm.System
@@ -85,6 +93,10 @@ class OpenMMEngine:
         Number of atoms of the system.
     cell : np.ndarray, shape=(3, 3), dtype=float
         Array containing the box size cell vectors (in angstroms). Method get_cell has to be run to set this attribute variable.
+    scnb : float
+        1-4 scaling factor for LJ interactions(0.833333).
+    scee : float
+        1-4 scaling factor for electrostatic interaction
     """
     force_groups_dict = {'HarmonicBondForce': 0,
                          'HarmonicAngleForce': 1,
@@ -92,17 +104,21 @@ class OpenMMEngine:
                          'NonbondedForce': 11,
                          'CMMotionRemover': 3,
                          'CustomBondForce': 5,
-                         'CustomAngleForce': 6,}
+                         'CustomAngleForce': 6,
+                         'CustomTorsionForce': 7,
+                         "CMAPTorsionForce": 12}
 
-    def __init__(self, init_openmm=False, topology_format=None, top_file=None, crd_file=None, xml_file=None,
+    def __init__(self, init_openmm=False, topology_format=None, top_file=None, crd_format=None, crd_file=None, charmm_param_file=None, xml_file=None,
                  platform_name='Reference', system=None, integrator=None, platform=None, context=None, topology=None,
                  integrator_params={'temperature': 300.0 * unit.kelvin, 'stepSize': 0.001 * unit.picoseconds, 'frictionCoeff': 2.0 / unit.picoseconds},
                  create_system_params= {'nonbondedMethod': app.NoCutoff, 'nonbondedCutoff': 1.2 * unit.nanometer, 'constraints': None, 'rigidWater': True}):
 
         self.topology_format = topology_format
+        self.crd_format = crd_format
         self.xml_file = xml_file
         self.top_file = top_file
         self.crd_file = crd_file
+        self.charmm_param_file = charmm_param_file
 
         # OpenMM essential object instances
         self.system = system
@@ -116,11 +132,16 @@ class OpenMMEngine:
 
         # Molecule-specific variables
         self.force_groups = []
+        self.forces_indexes = {}
         self.atom_list = None
         self.atomic_number_list = None
         self.masses_list = None
         self.n_atoms = None
         self.cell = None
+
+        # 1-4 Scaling parameters
+        self.scnb = 0.833333  # scee
+        self.scee = 0.5  # scnb
 
         # Params to be passed to OpenMM
         self._create_system_params = create_system_params
@@ -155,11 +176,11 @@ class OpenMMEngine:
         """
         from simtk.openmm import XmlSerializer
 
-        assert self.topology_format is not None, "No topology_format was provided."
-        if self.topology_format == "XML":
-            assert self.xml_file is not None, "Topology format is XML but no XML file was provided."
-        elif self.topology_format == "AMBER":
-            assert self.top_file is not None, "Topology format is XML but no XML file was provided."
+        assert self.topology_format is not None, "No topology format was provided."
+        assert self.crd_format is not None, "No coordinate format was provided."
+
+        if self.topology_format.upper() in ["AMBER", "GROMACS", "CHARMM"]:
+            assert self.top_file is not None, "Topology format is {} but no topology file was provided.".format(self.topology_format)
         else:
             raise NotImplementedError("Topology format {} is not known.".format(self.topology_format))
 
@@ -171,25 +192,49 @@ class OpenMMEngine:
             assert self.platform_name in ["Reference", "CPU", "OpenCL", "CUDA"], """create_system flag is True but no
                correct platform was provided."""
 
-        if self.topology is None:
-            top = app.AmberPrmtopFile(self.top_file)
-            self.topology = top.topology
+        # Read topology
+        if self.topology_format.upper() == "AMBER":
+            if self.topology is None:
+                top = app.AmberPrmtopFile(self.top_file)
+                self.topology = top.topology
+        elif self.topology_format.upper() == "GROMACS":
+            if self.topology is None:
+                top = app.GromacsTopFile(self.top_file)
+                self.topology = top.topology
+        elif self.topology_format.upper() == "CHARMM":
+            if self.topology is None:
+                top = app.CharmmPsfFile(self.top_file)
+                self.topology = top.topology
+                charmm_params = app.CharmmParameterSet('charmm.rtf', self.charmm_param_file)
+        else:
+            raise NotImplementedError("Topology format {} is not currently supported.".format(self.topology_format))
 
-        crd = app.AmberInpcrdFile(self.crd_file)
+        # Read coordinate file
+        if self.crd_format.upper() == "AMBER":
+            crd = app.AmberInpcrdFile(self.crd_file)
+        elif self.crd_format.upper() == "GROMACS":
+            crd = app.GromacsGroFile(self.crd_file)
+        elif self.crd_format.upper() == "CHARMM":
+            crd = app.CharmmCrdFile(self.crd_file)
+        elif self.crd_format.upper() == "PDB":
+            crd = app.PDBFile(self.crd_file)
+        else:
+            raise NotImplementedError("Coordinate format {} is not currently supported.".format(self.crd_format))
 
         if self.system is None:
-            if self.topology_format.upper() == "AMBER":
+            if self.xml_file is None:
                 assert create_system_params is not None, "No settings to create the system were provided."
 
-                logging.info("Creating OpenMM System from AMBER file.")
-                self.system = top.createSystem(**create_system_params)
-            elif self.topology_format.upper() == "XML":
+                logging.info("Creating OpenMM System from {} file.".format(self.topology_format))
+                if self.topology_format.upper() == "CHARMM":
+                    self.system = top.createSystem(charmm_params, **create_system_params)
+                else:
+                    self.system = top.createSystem(**create_system_params)
+            else:
                 logging.info("Creating OpenMM System from XML file.")
                 xml_file = open(self.xml_file)
                 self.system = XmlSerializer.deserializeSystem(xml_file.read())
                 xml_file.close()
-            else:
-                raise NotImplementedError("Topology format {} is not recognized.".format(self.topology_format))
 
         if self.integrator is None:
             assert integrator_params is not None, "No settings to create the integrator were provided."
@@ -205,9 +250,6 @@ class OpenMMEngine:
 
         # Set positions in context
         self.context.setPositions(crd.positions)
-
-        # Set force groups of the system
-        self.force_groups = self._set_force_groups()
 
         return self.system
 
@@ -476,13 +518,14 @@ class OpenMMEngine:
         context : simtk.openmm.openmm.Context
             Updated OpenMM Context.
         """
-        bond_force = self.system.getForce(self.force_groups_dict["HarmonicBondForce"])
+        for k, bond_force_index in enumerate(self.forces_indexes["HarmonicBondForce"]):
+            bond_force = self.system.getForce(bond_force_index)
 
-        for bond_term in ff_bond_terms:
-            bond_force.setBondParameters(bond_term.idx, *bond_term.atoms, bond_term.parameters["bond_eq"].value,
-                                         bond_term.parameters["bond_k"].value)
+            for bond_term in ff_bond_terms[k]:
+                bond_force.setBondParameters(bond_term.idx, *bond_term.atoms, bond_term.parameters["bond_eq"].value,
+                                             bond_term.parameters["bond_k"].value)
 
-        bond_force.updateParametersInContext(self.context)
+            bond_force.updateParametersInContext(self.context)
 
         return self.context
 
@@ -500,13 +543,14 @@ class OpenMMEngine:
         context : simtk.openmm.openmm.Context
             Updated OpenMM Context.
         """
-        angle_force = self.system.getForce(self.force_groups_dict["HarmonicAngleForce"])
+        for k, angle_force_index in enumerate(self.forces_indexes["HarmonicAngleForce"]):
+            angle_force = self.system.getForce(angle_force_index)
 
-        for angle_term in ff_angle_terms:
-            angle_force.setAngleParameters(angle_term.idx, *angle_term.atoms, angle_term.parameters["angle_eq"].value,
-                                           angle_term.parameters["angle_k"].value)
+            for angle_term in ff_angle_terms[k]:
+                angle_force.setAngleParameters(angle_term.idx, *angle_term.atoms, angle_term.parameters["angle_eq"].value,
+                                               angle_term.parameters["angle_k"].value)
 
-        angle_force.updateParametersInContext(self.context)
+            angle_force.updateParametersInContext(self.context)
 
         return self.context
 
@@ -524,20 +568,22 @@ class OpenMMEngine:
         context : simtk.openmm.openmm.Context
             Updated OpenMM Context.
         """
-        torsion_force = self.system.getForce(self.force_groups_dict["PeriodicTorsionForce"])
 
-        for torsion_term in ff_torsion_terms:
-            div_value = np.sign(torsion_term.parameters["torsion_phase"].value) * 2.0 * np.pi
+        for k, torsion_force_index in enumerate(self.forces_indexes["PeriodicTorsionForce"]):
+            torsion_force = self.system.getForce(torsion_force_index)
 
-            if div_value == 0.0:
-                div_value = 2.0 * np.pi
+            for torsion_term in ff_torsion_terms[k]:
+                div_value = np.sign(torsion_term.parameters["torsion_phase"].value) * 2.0 * np.pi
 
-            torsion_force.setTorsionParameters(torsion_term.idx, *torsion_term.atoms,
-                                               torsion_term.parameters["torsion_periodicity"].value,
-                                               torsion_term.parameters["torsion_phase"].value % div_value,
-                                               torsion_term.parameters["torsion_k"].value)
+                if div_value == 0.0:
+                    div_value = 2.0 * np.pi
 
-        torsion_force.updateParametersInContext(self.context)
+                torsion_force.setTorsionParameters(torsion_term.idx, *torsion_term.atoms,
+                                                   torsion_term.parameters["torsion_periodicity"].value,
+                                                   torsion_term.parameters["torsion_phase"].value % div_value,
+                                                   torsion_term.parameters["torsion_k"].value)
+
+            torsion_force.updateParametersInContext(self.context)
 
         return self.context
 
@@ -584,11 +630,13 @@ class OpenMMEngine:
             Updated OpenMM Context.
         """
 
-        if self.force_groups_dict['NonbondedForce'] in self.force_groups:
-            nonbonded_force = self.system.getForce(self.force_groups.index(self.force_groups_dict['NonbondedForce']))
-            for i in range(nonbonded_force.getNumParticles()):
-                q, sigma, eps = nonbonded_force.getParticleParameters(i)
+        for k, nonbonded_force_index in enumerate(self.forces_indexes["NonbondedForce"]):
+            nonbonded_force = self.system.getForce(nonbonded_force_index)
 
+            for i in range(nonbonded_force.getNumParticles()):
+                #q, sigma, eps = nonbonded_force.getParticleParameters(i)
+
+                # Set particle parameters to zero
                 nonbonded_force.setParticleParameters(i, 0.0, 0.0, 0.0)
 
             if self.context.getPlatform().getName() in ["CPU", "Reference"]:
@@ -605,8 +653,8 @@ class OpenMMEngine:
                     at1, at2, q, sigma, eps = nonbonded_force.getExceptionParameters(i)
                     nonbonded_force.setExceptionParameters(i, at1, at2, 0.0, 0.0, 0.0)
 
-        # Update parameters in context
-        nonbonded_force.updateParametersInContext(self.context)
+            # Update parameters in context
+            nonbonded_force.updateParametersInContext(self.context)
 
         return self.context
 
@@ -626,70 +674,83 @@ class OpenMMEngine:
         """
 
         if "NonbondedForce" in force_field_optimizable and "Scaling14" not in force_field_optimizable:
+            # If updating the non bonded force but not updating the 1-4 scaling factors
+
             nonbonded_force_terms = force_field_optimizable["NonbondedForce"]
-            nonbonded_force = self.system.getForce(nonbonded_force_terms[0].force_group)
-            for nonbonded_term in nonbonded_force_terms:
-                nonbonded_force.setParticleParameters(nonbonded_term.idx, nonbonded_term.parameters["charge"].value,
-                                                      nonbonded_term.parameters["lj_sigma"].value, nonbonded_term.parameters["lj_eps"].value)
 
-            nonbonded_force.updateParametersInContext(self.context)
+            for k, nonbonded_force_index in enumerate(self.forces_indexes["NonbondedForce"]):
+                nonbonded_force = self.system.getForce(nonbonded_force_index)
 
-            # Scaling 1-4 parameters are not being optimized
-            scnb = 0.833333  # scee
-            scee = 0.5       # scnb
-            for i in range(nonbonded_force.getNumExceptions()):
-                at1, at2, charge_prod, sigma, eps, = nonbonded_force.getExceptionParameters(i)
+                for nonbonded_term in nonbonded_force_terms[k]:
+                    nonbonded_force.setParticleParameters(nonbonded_term.idx, nonbonded_term.parameters["charge"].value,
+                                                          nonbonded_term.parameters["lj_sigma"].value, nonbonded_term.parameters["lj_eps"].value)
 
-                if abs(charge_prod._value) < 1e-8:
-                    continue
+                nonbonded_force.updateParametersInContext(self.context)
 
-                # Lorentz-Berthelot rules:
-                # \epsilon_{ij} = \sqrt{\epsilon_{ii} * \epsilon_{jj}}
-                epsilon = scee * np.sqrt(nonbonded_force_terms[at1].parameters["lj_eps"].value*nonbonded_force_terms[at2].parameters["lj_eps"].value)
-                #epsilon = scee * np.sqrt(np.abs(nonbonded_force_terms[at1].parameters["lj_eps"].value) *
-                #                         np.abs(nonbonded_force_terms[at2].parameters["lj_eps"].value)) * \
-                #          np.sign(nonbonded_force_terms[at1].parameters["lj_eps"].value) * \
-                #          np.sign(nonbonded_force_terms[at2].parameters["lj_eps"].value)
+                # ---------------------------------------------------------------- #
+                #                      Non-Bonded Exceptions                       #
+                # ---------------------------------------------------------------- #
+                for i in range(nonbonded_force.getNumExceptions()):
+                    at1, at2, charge_prod, sigma, eps, = nonbonded_force.getExceptionParameters(i)
 
-                # \sigma_{ij} = (\sigma_{ii} + \sigma_{jj}) / 2
-                # Not necessary to scale this value because epsilon controls the LJ 12-6 interaction scaling.
-                sigma = 0.5 * (nonbonded_force_terms[at1].parameters["lj_sigma"].value +
-                               nonbonded_force_terms[at2].parameters["lj_sigma"].value)
+                    if abs(charge_prod._value) < 1e-8:
+                        continue
 
-                charge_prod = scnb * \
-                              nonbonded_force_terms[at1].parameters["charge"].value * \
-                              nonbonded_force_terms[at2].parameters["charge"].value
+                    # Lorentz-Berthelot rules:
 
-                nonbonded_force.setExceptionParameters(i, at1, at2, charge_prod, sigma, epsilon)
-            nonbonded_force.updateParametersInContext(self.context)
+                    # \epsilon_{ij} = \sqrt{\epsilon_{ii} * \epsilon_{jj}}
+                    epsilon = self.scee * np.sqrt(nonbonded_force_terms[k][at1].parameters["lj_eps"].value*nonbonded_force_terms[k][at2].parameters["lj_eps"].value)
+
+                    #epsilon = scee * np.sqrt(np.abs(nonbonded_force_terms[at1].parameters["lj_eps"].value) *
+                    #                         np.abs(nonbonded_force_terms[at2].parameters["lj_eps"].value)) * \
+                    #          np.sign(nonbonded_force_terms[at1].parameters["lj_eps"].value) * \
+                    #          np.sign(nonbonded_force_terms[at2].parameters["lj_eps"].value)
+
+                    # \sigma_{ij} = (\sigma_{ii} + \sigma_{jj}) / 2
+                    # Not necessary to scale this value because epsilon controls the LJ 12-6 interaction scaling.
+                    sigma = 0.5 * (nonbonded_force_terms[k][at1].parameters["lj_sigma"].value +
+                                   nonbonded_force_terms[k][at2].parameters["lj_sigma"].value)
+
+                    charge_prod = self.scnb * \
+                                  nonbonded_force_terms[k][at1].parameters["charge"].value * \
+                                  nonbonded_force_terms[k][at2].parameters["charge"].value
+
+                    nonbonded_force.setExceptionParameters(i, at1, at2, charge_prod, sigma, epsilon)
+
+                # Update parameters in context
+                nonbonded_force.updateParametersInContext(self.context)
 
         elif "NonbondedForce" not in force_field_optimizable and "Scaling14" in force_field_optimizable:
-            # Scaling 1-4 parameters are being optimized
+            # If updating the 1-4 scaling factors but not the non bonded force
+
             scaling_constants = force_field_optimizable["Scaling14"]
 
-            nonbonded_force = self.system.getForce(scaling_constants[0].force_group)
+            for k, nonbonded_force_index in enumerate(self.forces_indexes["NonbondedForce"]):
+                nonbonded_force = self.system.getForce(nonbonded_force_index)
 
-            for i in range(len(scaling_constants)):
-                at1, at2, _, sigma, _ = nonbonded_force.getExceptionParameters(i)
-                chg1, sigma1, eps1 = nonbonded_force.getParticleParameters(at1)
-                chg2, sigma2, eps2 = nonbonded_force.getParticleParameters(at2)
-                scee = scaling_constants[i].parameters['scee'].value
-                scnb = scaling_constants[i].parameters['scnb'].value
+                for i in range(len(scaling_constants[k])):
+                    at1, at2, _, sigma, _ = nonbonded_force.getExceptionParameters(i)
+                    chg1, sigma1, eps1 = nonbonded_force.getParticleParameters(at1)
+                    chg2, sigma2, eps2 = nonbonded_force.getParticleParameters(at2)
+                    scee_local = scaling_constants[k][i].parameters['scee'].value
+                    scnb_local = scaling_constants[k][i].parameters['scnb'].value
 
-                scee = abs(scee)
-                scnb = abs(scnb)
+                    scee_local = abs(scee_local)
+                    scnb_local = abs(scnb_local)
 
-                # Lorentz-Berthelot rules:
-                # \epsilon_{ij} = \sqrt{\epsilon_{ii} * \epsilon_{jj}}
-                epsilon = scnb * np.sqrt(eps1*eps2)
+                    # Lorentz-Berthelot rules:
+                    # \epsilon_{ij} = \sqrt{\epsilon_{ii} * \epsilon_{jj}}
+                    epsilon = scnb_local * np.sqrt(eps1*eps2)
 
-                # scee*q1*q2
-                charge_prod = scee * chg1 * chg2
+                    # scee*q1*q2
+                    charge_prod = scee_local * chg1 * chg2
 
-                nonbonded_force.setExceptionParameters(i, at1, at2, charge_prod, sigma, epsilon)
-            nonbonded_force.updateParametersInContext(self.context)
+                    nonbonded_force.setExceptionParameters(i, at1, at2, charge_prod, sigma, epsilon)
 
+                # Update parameters in context
+                nonbonded_force.updateParametersInContext(self.context)
         else:
+            # Not updating any non bonded parameter
             pass
 
         return self.context
@@ -796,12 +857,22 @@ class OpenMMEngine:
         """
 
         self.force_groups = []
-        for force in self.system.getForces():
+        self.forces_indexes = {}
+
+        force_idx = 0
+        forces = self.system.getForces()
+        for force in forces:
             # Get force group name
             force_key = force.__class__.__name__
             # Set force group number
             force.setForceGroup(self.force_groups_dict[force_key])
             # Get force group number
             self.force_groups.append(force.getForceGroup())
+
+            if force_key not in self.forces_indexes:
+                self.forces_indexes[force_key] = []
+
+            self.forces_indexes[force_key].append(force_idx)
+            force_idx += 1
 
         return self.force_groups

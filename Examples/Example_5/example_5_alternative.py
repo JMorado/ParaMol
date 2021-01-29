@@ -7,13 +7,13 @@ from ParaMol.QM_engines.qm_engine import *
 from ParaMol.Tasks.parametrization import *
 from ParaMol.Tasks.torsions_scan import *
 from ParaMol.Utils.settings import *
-from ParaMol.Utils.amber_symmetrizer import *
+from ParaMol.Utils.Symmetrizers.amber_symmetrizer import *
 
 # --------------------------------------------------------- #
 #                         Preparation                       #
 # --------------------------------------------------------- #
 # Create the OpenMM engine for norfloxacin
-openmm_system = OpenMMEngine(init_openmm=True, topology_format='AMBER', top_file='norfloxacin.prmtop', crd_file='norfloxacin.inpcrd')
+openmm_system = OpenMMEngine(init_openmm=True, topology_format='AMBER', top_file='norfloxacin.prmtop', crd_format='AMBER', crd_file='norfloxacin.inpcrd')
 
 # Create ParaMol System
 norfloxacin = ParaMolSystem(name="norfloxacin", engine=openmm_system, n_atoms=41)
@@ -33,9 +33,9 @@ paramol_settings.properties["include_regularization"] = True
 #                Symmetrize ParaMol ForceField              #
 # --------------------------------------------------------- #
 # Symmetry ParaMol ForceField so that it respects atom-type symmetries
-amber_symmetrizer = AmberSymmetrizer(prmtop_file="norfloxacin.prmtop")
-amber_symmetrizer.get_amber_symmetries()
-amber_symmetrizer.set_force_field_to_amber_format(norfloxacin.force_field)
+amber_symmetrizer = AmberSymmetrizer(top_file="norfloxacin.prmtop")
+amber_symmetrizer.get_symmetries()
+amber_symmetrizer.symmetrize_force_field(norfloxacin.force_field)
 
 # --------------------------------------------------------- #
 #                     Set the QM Engine                     #
@@ -79,5 +79,5 @@ systems, parameter_space, objective_function, optimizer = parametrization.run_ta
 amber_symmetrizer.update_term_types_parameters(parameter_space.optimizable_parameters)
 
 # Write AMBER topology file (.prmtop) and .frcmod file
-amber_symmetrizer.save_prmtop("norfloxacin_opt.prmtop")
+amber_symmetrizer.save("norfloxacin_opt.prmtop")
 amber_symmetrizer.save_frcmod("norfloxacin_opt.frcmod")

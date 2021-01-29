@@ -157,7 +157,7 @@ class Regularization(Property):
         if a is None:
             a = self._scaling_factor
 
-        diff = (np.asarray(current_parameters) - self._initial_parameters_values)
+        diff = (np.asarray(current_parameters) - self._initial_parameters_values) / self._prior_widths
 
         reg = np.power(diff, 2)
         self.value = a * np.sum(reg)
@@ -187,7 +187,8 @@ class Regularization(Property):
         if a is None:
             a = self._scaling_factor
 
-        diff = (np.asarray(current_parameters) - self._initial_parameters_values)
+        diff = (np.asarray(current_parameters) - self._initial_parameters_values) / self._prior_widths
+
         reg = np.abs(diff)
         self.value = a * np.sum(reg)
 

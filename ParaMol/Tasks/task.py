@@ -52,7 +52,7 @@ class Task:
         raise NotImplementedError("Task {} is not implemented yet.". format(self._task_name))
 
     @staticmethod
-    def create_parameter_space(settings, systems, interface=None, preconditioning=True, restart=False):
+    def create_parameter_space(settings, systems, interface=None, preconditioning=True, symmetry_constrained=True, restart=False):
         """
         Method that created the ParameterSpace object instance.
 
@@ -68,6 +68,8 @@ class Task:
             Flag that signal whether or not the preconditioning of the parameters is done when this method is run.
         restart : bool
             Flag that controls whether or not to perform a restart.
+        symmetry_constrained : bool
+            Whether or not to apply symmetry constraints when calling get_optimizable_parameters (should be True, except for RESP explicit and LLS).
 
         Returns
         -------
@@ -82,7 +84,7 @@ class Task:
             assert interface is not None
 
             for system in systems:
-                system.force_field.get_optimizable_parameters(symmetry_constrained=True)
+                system.force_field.get_optimizable_parameters(symmetry_constrained=symmetry_constrained)
 
             parameter_space.__dict__ = Task.read_restart_pickle(settings.restart, interface, "restart_parameter_space_file")
 
@@ -91,7 +93,7 @@ class Task:
             else:
                 parameter_space.update_systems(systems, parameter_space.optimizable_parameters_values)
         else:
-            parameter_space.get_optimizable_parameters(systems)
+            parameter_space.get_optimizable_parameters(systems, symmetry_constrained)
 
             if preconditioning:
                 parameter_space.calculate_scaling_constants()
@@ -145,6 +147,7 @@ class Task:
                                             prior_widths=parameter_space.prior_widths,
                                             **properties_settings["regularization"])
 
+            regularization.set_prior_widths(parameter_space.prior_widths / parameter_space.scaling_constants)
             regularization.set_initial_parameters_values(parameter_space.initial_optimizable_parameters_values_scaled)
             properties.append(regularization)
 

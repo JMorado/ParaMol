@@ -4,7 +4,7 @@ Description
 This module defines the :obj:`ParaMol.Force_field.force_field.ForceField` class which is the ParaMol representation of a force field that contains all the information about the force field terms and correspondent parameters (even relatively to those that will not enter the optimization).
 """
 
-import os
+import os, copy
 import numpy as np
 import logging
 
@@ -124,6 +124,7 @@ class ForceField:
             # symmetry group and save the new paramter values of the others
             for i in range(len(self.optimizable_parameters)):
                 parameter = self.optimizable_parameters[i]
+
                 if parameter.symmetry_group == self.symmetry_group_default:
                     # If symmetry group of optimizable parameter is default just update it
                     parameter.value = optimizable_parameters_values[i]
@@ -142,11 +143,12 @@ class ForceField:
             # symmetry group. We have to iterate over force_field_optimizable and update them.
             for force in self.force_field_optimizable:
                 # For a given force, iterate over all force field terms
-                for force_field_term in self.force_field_optimizable[force]:
-                    # For each term, iterate over all its Parameter instances
-                    for parameter in force_field_term.parameters.values():
-                        if parameter.optimize and parameter.symmetry_group != self.symmetry_group_default:
-                            parameter.value = symm_groups[parameter.symmetry_group][parameter.param_key]
+                for sub_force in self.force_field_optimizable[force]:
+                    for force_field_term in sub_force:
+                        # For each term, iterate over all its Parameter instances
+                        for parameter in force_field_term.parameters.values():
+                            if parameter.optimize and parameter.symmetry_group != self.symmetry_group_default:
+                                parameter.value = symm_groups[parameter.symmetry_group][parameter.param_key]
         else:
             for i in range(len(self.optimizable_parameters)):
                 self.optimizable_parameters[i].value = optimizable_parameters_values[i]
@@ -154,14 +156,16 @@ class ForceField:
         # TODO: check if there's a better way do this
         # Make all scee, scnb positive and eps and sigma positive
         if "Scaling14" in self.force_field_optimizable:
-            for ff_term in self.force_field_optimizable["Scaling14"]:
-                ff_term.parameters["scee"].value = abs(ff_term.parameters["scee"].value)
-                ff_term.parameters["scnb"].value = abs(ff_term.parameters["scnb"].value)
+            for sub_force in self.force_field_optimizable["Scaling14"]:
+                for ff_term in sub_force:
+                    ff_term.parameters["scee"].value = abs(ff_term.parameters["scee"].value)
+                    ff_term.parameters["scnb"].value = abs(ff_term.parameters["scnb"].value)
 
         if "NonbondedForce" in self.force_field_optimizable:
-            for ff_term in self.force_field_optimizable["NonbondedForce"]:
-                ff_term.parameters["lj_eps"].value = abs(ff_term.parameters["lj_eps"].value)
-                ff_term.parameters["lj_sigma"].value = abs(ff_term.parameters["lj_sigma"].value)
+            for sub_force in self.force_field_optimizable["NonbondedForce"]:
+                for ff_term in sub_force:
+                    ff_term.parameters["lj_eps"].value = abs(ff_term.parameters["lj_eps"].value)
+                    ff_term.parameters["lj_sigma"].value = abs(ff_term.parameters["lj_sigma"].value)
 
         return self.optimizable_parameters
 
@@ -195,7 +199,11 @@ class ForceField:
             Dictionary that contains as keys force groups names and as values and the correspondent :obj:`ParaMol.Force_field.force_field_term.FFTerm`.
         """
         # Iterate over all forces present in the system and determine the force groups
+        assert self._openmm.system is not None, "System was not set"
+        """
+        # Left here only if needed in the future
         forces = self._openmm.system.getForces()
+
         for i in range(len(forces)):
             force = forces[i]
             # Get force group name
@@ -205,11 +213,13 @@ class ForceField:
             force.setForceGroup(i)
             assert force_key not in self.force_groups, "\t * ERROR: Force {} already in the dictionary.".format(force_key)
             self.force_groups[force_key] = i
+        """
+        self.force_groups = copy.deepcopy(self._openmm.forces_indexes)
 
         # Add extra force group for 1-4 scaling factors
         force_key = "Scaling14"
         assert force_key not in self.force_groups, "\t * ERROR: Force {} already in the dictionary.".format(force_key)
-        self.force_groups["Scaling14"] = self.force_groups["NonbondedForce"]
+        self.force_groups[force_key] = self.force_groups["NonbondedForce"]
 
         # Create the force field from OpenMM
         self.create_harmonic_bond_force_field(opt_bonds)
@@ -234,18 +244,30 @@ class ForceField:
                                              "method before"
         self.force_field_optimizable = {}
 
+        # Structure:
+        # force_field["HarmonicBondForce"] = [first_occurrence, second_occurrence]
+        # where
+        # first_occurrence = [ff_term_1_1, ff_term_1_2, ...]
+        # second_occurrence = [ff_term_2_1, ff_term_2_2, ...]
+
         # Iterate over all existent forces
         for force in self.force_field:
-            # For a given force, iterate over all force field terms
-            for force_field_term in self.force_field[force]:
-                # For each term, iterate over all its Parameter instances
-                for parameter in force_field_term.parameters.values():
-                    if parameter.optimize:
-                        if force not in self.force_field_optimizable:
-                            self.force_field_optimizable[force] = []
-                        self.force_field_optimizable[force].append(force_field_term)
+            # For a given force, iterate over all occurrence of that force
+            for sub_force in self.force_field[force]:
+                sub_force_field_optimizable = []
+                # For a given force, iterate over all force field terms
+                for force_field_term in sub_force:
+                    # For each term, iterate over all its Parameter instances
+                    for parameter in force_field_term.parameters.values():
+                        if parameter.optimize:
+                            if force not in self.force_field_optimizable:
+                                self.force_field_optimizable[force] = []
 
-                        break
+                            sub_force_field_optimizable.append(force_field_term)
+                            break
+
+                if force in self.force_field_optimizable:
+                    self.force_field_optimizable[force].append(sub_force_field_optimizable)
 
         return self.force_field_optimizable
 
@@ -278,50 +300,52 @@ class ForceField:
             symm_groups = {}
             # Iterate over all existent forces
             for force in self.force_field_optimizable:
-                # For a given force, iterate over all force field terms
-                for force_field_term in self.force_field_optimizable[force]:
-                    # For each term, iterate over all its Parameter instances
-                    for parameter in force_field_term.parameters.values():
-                        if parameter.optimize:
-                            if parameter.symmetry_group == self.symmetry_group_default:
-                                # If symmetry group is the default ("X")
-                                self.optimizable_parameters.append(parameter)
-                                self.optimizable_parameters_values.append(parameter.value)
-                            elif parameter.symmetry_group in symm_groups.keys():
-                                # If group is not the default one ("X")
-                                # but that symmetry_group is already in symm_groups
-                                if parameter.param_key not in symm_groups[parameter.symmetry_group]:
-                                    # Add missing param_key
+                for sub_force in self.force_field_optimizable[force]:
+                    # For a given force, iterate over all force field terms
+                    for force_field_term in sub_force:
+                        # For each term, iterate over all its Parameter instances
+                        for parameter in force_field_term.parameters.values():
+                            if parameter.optimize:
+                                if parameter.symmetry_group == self.symmetry_group_default:
+                                    # If symmetry group is the default ("X")
+                                    self.optimizable_parameters.append(parameter)
+                                    self.optimizable_parameters_values.append(parameter.value)
+                                elif parameter.symmetry_group in symm_groups.keys():
+                                    # If group is not the default one ("X")
+                                    # but that symmetry_group is already in symm_groups
+                                    if parameter.param_key not in symm_groups[parameter.symmetry_group]:
+                                        # Add missing param_key
+                                        symm_groups[parameter.symmetry_group].append(parameter.param_key)
+                                        self.optimizable_parameters.append(parameter)
+                                        self.optimizable_parameters_values.append(parameter.value)
+                                        # Parameter multiplicity
+                                        ref_parameters[parameter.symmetry_group].update({parameter.param_key : parameter})
+                                        parameter.multiplicity = 1
+                                    else:
+                                        # Increase multiplicity of the reference parameter
+                                        ref_parameters[parameter.symmetry_group][parameter.param_key].multiplicity += 1
+                                else:
+                                    # If group is not the default one ("X") and not in symm_groups
+                                    symm_groups[parameter.symmetry_group] = []
                                     symm_groups[parameter.symmetry_group].append(parameter.param_key)
                                     self.optimizable_parameters.append(parameter)
                                     self.optimizable_parameters_values.append(parameter.value)
-                                    # Parameter multiplicity
-                                    ref_parameters[parameter.symmetry_group].update({parameter.param_key : parameter})
-                                    parameter.multiplicity = 1
-                                else:
-                                    # Increase multiplicity of the reference parameter
-                                    ref_parameters[parameter.symmetry_group][parameter.param_key].multiplicity += 1
-                            else:
-                                # If group is not the default one ("X") and not in symm_groups
-                                symm_groups[parameter.symmetry_group] = []
-                                symm_groups[parameter.symmetry_group].append(parameter.param_key)
-                                self.optimizable_parameters.append(parameter)
-                                self.optimizable_parameters_values.append(parameter.value)
 
-                                # Parameter multiplicity
-                                ref_parameters[parameter.symmetry_group] = {parameter.param_key : parameter}
-                                parameter.multiplicity = 1
+                                    # Parameter multiplicity
+                                    ref_parameters[parameter.symmetry_group] = {parameter.param_key : parameter}
+                                    parameter.multiplicity = 1
 
         else:
             # Iterate over all existent forces
             for force in self.force_field_optimizable:
-                # For a given force, iterate over all force field terms
-                for force_field_term in self.force_field_optimizable[force]:
-                    # For each term, iterate over all its Parameter instances
-                    for parameter in force_field_term.parameters.values():
-                        if parameter.optimize:
-                            self.optimizable_parameters.append(parameter)
-                            self.optimizable_parameters_values.append(parameter.value)
+                for sub_force in self.force_field_optimizable[force]:
+                    # For a given force, iterate over all force field terms
+                    for force_field_term in sub_force:
+                        # For each term, iterate over all its Parameter instances
+                        for parameter in force_field_term.parameters.values():
+                            if parameter.optimize:
+                                self.optimizable_parameters.append(parameter)
+                                self.optimizable_parameters_values.append(parameter.value)
 
         return self.optimizable_parameters, self.optimizable_parameters_values
 
@@ -346,18 +370,24 @@ class ForceField:
         # Create empty list for
         self.force_field[force_key] = []
 
-        bond_force = self._openmm.system.getForce(self.force_groups[force_key])
-        for i in range(bond_force.getNumBonds()):
-            # Create the FFTerm for this bond term
-            at1, at2, length, k = bond_force.getBondParameters(i)
-            force_field_term = FFTerm(self.force_groups[force_key], i, [at1, at2])
+        for force_idx in self.force_groups[force_key]:
+            bond_force = self._openmm.system.getForce(force_idx)
 
-            # Add parameters to this FFTerm
-            force_field_term.add_parameter(self.symmetry_group_default, int(opt_bonds), "bond_eq", length._value)
-            force_field_term.add_parameter(self.symmetry_group_default, int(opt_bonds), "bond_k", k._value)
+            sub_force_field = []
+            for i in range(bond_force.getNumBonds()):
+                # Create the FFTerm for this bond term
+                at1, at2, length, k = bond_force.getBondParameters(i)
+                force_field_term = FFTerm(self.force_groups[force_key], i, [at1, at2])
 
-            # Append FFTerm to ForceField
-            self.force_field[force_key].append(force_field_term)
+                # Add parameters to this FFTerm
+                force_field_term.add_parameter(self.symmetry_group_default, int(opt_bonds), "bond_eq", length._value)
+                force_field_term.add_parameter(self.symmetry_group_default, int(opt_bonds), "bond_k", k._value)
+
+                # Append FFTerm to sub_force_field
+                sub_force_field.append(force_field_term)
+
+            # Append sub_force_field to force_field[force_key]
+            self.force_field[force_key].append(sub_force_field)
 
         return self.force_field
 
@@ -381,18 +411,24 @@ class ForceField:
         # Create empty list for
         self.force_field[force_key] = []
 
-        angle_force = self._openmm.system.getForce(self.force_groups[force_key])
-        for i in range(angle_force.getNumAngles()):
-            # Create the FFTerm for this bond term
-            at1, at2, at3, angle, k = angle_force.getAngleParameters(i)
-            force_field_term = FFTerm(self.force_groups[force_key], i, [at1, at2, at3])
+        for force_idx in self.force_groups[force_key]:
+            angle_force = self._openmm.system.getForce(force_idx)
 
-            # Add parameters to this FFTerm
-            force_field_term.add_parameter(self.symmetry_group_default, int(opt_angles), "angle_eq", angle._value)
-            force_field_term.add_parameter(self.symmetry_group_default, int(opt_angles), "angle_k", k._value)
+            sub_force_field = []
+            for i in range(angle_force.getNumAngles()):
+                # Create the FFTerm for this bond term
+                at1, at2, at3, angle, k = angle_force.getAngleParameters(i)
+                force_field_term = FFTerm(self.force_groups[force_key], i, [at1, at2, at3])
 
-            # Append FFTerm to ForceField
-            self.force_field[force_key].append(force_field_term)
+                # Add parameters to this FFTerm
+                force_field_term.add_parameter(self.symmetry_group_default, int(opt_angles), "angle_eq", angle._value)
+                force_field_term.add_parameter(self.symmetry_group_default, int(opt_angles), "angle_k", k._value)
+
+                # Append FFTerm to sub_force_field
+                sub_force_field.append(force_field_term)
+
+            # Append sub_force_field to force_field[force_key]
+            self.force_field[force_key].append(sub_force_field)
 
         return self.force_field
 
@@ -415,21 +451,27 @@ class ForceField:
                                                   "Force group {} already exists.".format(force_key)
         # Create empty list for
         self.force_field[force_key] = []
+        for force_idx in self.force_groups[force_key]:
+            dihedral_force = self._openmm.system.getForce(force_idx)
 
-        dihedral_force = self._openmm.system.getForce(self.force_groups[force_key])
-        for i in range(dihedral_force.getNumTorsions()):
-            # Create the FFTerm for this bond term
-            at1, at2, at3, at4, per, phase, k = dihedral_force.getTorsionParameters(i)
-            force_field_term = FFTerm(self.force_groups[force_key], i, [at1, at2, at3, at4])
+            sub_force_field = []
 
-            # Add parameters to this FFTerm
-            # OBS: currently not possible to optimize the periodicity
-            force_field_term.add_parameter(self.symmetry_group_default, 0, "torsion_periodicity", int(per))
-            force_field_term.add_parameter(self.symmetry_group_default, int(opt_torsions), "torsion_phase", phase._value)
-            force_field_term.add_parameter(self.symmetry_group_default, int(opt_torsions), "torsion_k", k._value)
+            for i in range(dihedral_force.getNumTorsions()):
+                # Create the FFTerm for this bond term
+                at1, at2, at3, at4, per, phase, k = dihedral_force.getTorsionParameters(i)
+                force_field_term = FFTerm(self.force_groups[force_key], i, [at1, at2, at3, at4])
 
-            # Append FFTerm to ForceField
-            self.force_field[force_key].append(force_field_term)
+                # Add parameters to this FFTerm
+                # OBS: currently not possible to optimize the periodicity
+                force_field_term.add_parameter(self.symmetry_group_default, 0, "torsion_periodicity", int(per))
+                force_field_term.add_parameter(self.symmetry_group_default, int(opt_torsions), "torsion_phase", phase._value)
+                force_field_term.add_parameter(self.symmetry_group_default, int(opt_torsions), "torsion_k", k._value)
+
+                # Append FFTerm to sub_force_field
+                sub_force_field.append(force_field_term)
+
+        # Append sub_force_field to force_field[force_key]
+        self.force_field[force_key].append(sub_force_field)
 
         return self.force_field
 
@@ -454,62 +496,70 @@ class ForceField:
         force_key = "NonbondedForce"
         assert force_key not in self.force_field, "\t * ERROR: " \
                                                   "Force group {} already exists.".format(force_key)
+
         # Create empty list for
         self.force_field[force_key] = []
+        for force_idx in self.force_groups[force_key]:
+            nonbonded_force = self._openmm.system.getForce(force_idx)
 
-        nonbonded_force = self._openmm.system.getForce(self.force_groups[force_key])
-        for i in range(nonbonded_force.getNumParticles()):
-            # Create the FFTerm for this bond term
-            charge, sigma, eps = nonbonded_force.getParticleParameters(i)
-            force_field_term = FFTerm(self.force_groups[force_key], i, [i])
-
-            # Add parameters to this FFTerm
-            force_field_term.add_parameter(self.symmetry_group_default, int(opt_charges), "charge", charge._value)
-            force_field_term.add_parameter(self.symmetry_group_default, int(opt_lj), "lj_sigma", sigma._value)
-            force_field_term.add_parameter(self.symmetry_group_default, int(opt_lj), "lj_eps", eps._value)
-
-            # Append FFTerm to ForceField
-            self.force_field[force_key].append(force_field_term)
-
-        # Create empty list for 1-4 scaling
-        force_key = "Scaling14"
-        assert force_key not in self.force_field, "\t * ERROR: " \
-                                                  "Force group {} already exists.".format(force_key)
-        # Create empty list for
-        self.force_field[force_key] = []
-
-        for i in range(nonbonded_force.getNumExceptions()):
-            at1, at2, charge_prod, sigma, eps, = nonbonded_force.getExceptionParameters(i)
-            force_field_term = FFTerm(self.force_groups[force_key], i, [at1, at2])
-
-            if abs(charge_prod._value) < 1e-8 and abs(eps._value) < 1e-8:
-                # No scaling
-                scee = 0.0
-                scnb = 0.0
-                force_field_term.add_parameter(self.symmetry_group_default, 0, "scee", float(scee))
-                force_field_term.add_parameter(self.symmetry_group_default, 0, "scnb", float(scnb))
-                continue
-            else:
-                # Determine default scaling
-                charge_at1, sigma_at1, eps_at1 = nonbonded_force.getParticleParameters(at1)
-                charge_at2, sigma_at2, eps_at2 = nonbonded_force.getParticleParameters(at2)
-
-                try:
-                    scee = charge_prod / (charge_at1 * charge_at2)
-                except:
-                    scee = 1 / 1.2
-
-                try:
-                    scnb = eps / np.sqrt(eps_at1 * eps_at2)
-                except:
-                    scnb = 1 / 2.0
+            sub_force_field = []
+            for i in range(nonbonded_force.getNumParticles()):
+                # Create the FFTerm for this bond term
+                charge, sigma, eps = nonbonded_force.getParticleParameters(i)
+                force_field_term = FFTerm(self.force_groups[force_key], i, [i])
 
                 # Add parameters to this FFTerm
-                force_field_term.add_parameter(self.symmetry_group_default, int(opt_sc), "scee", float(scee))
-                force_field_term.add_parameter(self.symmetry_group_default, int(opt_sc), "scnb", float(scnb))
+                force_field_term.add_parameter(self.symmetry_group_default, int(opt_charges), "charge", charge._value)
+                force_field_term.add_parameter(self.symmetry_group_default, int(opt_lj), "lj_sigma", sigma._value)
+                force_field_term.add_parameter(self.symmetry_group_default, int(opt_lj), "lj_eps", eps._value)
 
-            # Append FFTerm to ForceField
-            self.force_field[force_key].append(force_field_term)
+                # Append FFTerm to sub_force_field
+                sub_force_field.append(force_field_term)
+
+            # Append sub_force_field to force_field[force_key]
+            self.force_field[force_key].append(sub_force_field)
+
+            # Create empty list for 1-4 scaling
+            force_key = "Scaling14"
+            assert force_key not in self.force_field, "\t * ERROR: " \
+                                                      "Force group {} already exists.".format(force_key)
+            # Create empty list for
+            self.force_field[force_key] = []
+            sub_force_field = []
+            for i in range(nonbonded_force.getNumExceptions()):
+                at1, at2, charge_prod, sigma, eps, = nonbonded_force.getExceptionParameters(i)
+                force_field_term = FFTerm(self.force_groups[force_key], i, [at1, at2])
+
+                if abs(charge_prod._value) < 1e-8 and abs(eps._value) < 1e-8:
+                    # No scaling
+                    scee = 0.0
+                    scnb = 0.0
+                    force_field_term.add_parameter(self.symmetry_group_default, 0, "scee", float(scee))
+                    force_field_term.add_parameter(self.symmetry_group_default, 0, "scnb", float(scnb))
+                    continue
+                else:
+                    # Determine default scaling
+                    charge_at1, sigma_at1, eps_at1 = nonbonded_force.getParticleParameters(at1)
+                    charge_at2, sigma_at2, eps_at2 = nonbonded_force.getParticleParameters(at2)
+
+                    try:
+                        scee = charge_prod / (charge_at1 * charge_at2)
+                    except:
+                        scee = 1 / 1.2
+                    try:
+                        scnb = eps / np.sqrt(eps_at1 * eps_at2)
+                    except:
+                        scnb = 1 / 2.0
+
+                    # Add parameters to this FFTerm
+                    force_field_term.add_parameter(self.symmetry_group_default, int(opt_sc), "scee", float(scee))
+                    force_field_term.add_parameter(self.symmetry_group_default, int(opt_sc), "scnb", float(scnb))
+
+                # Append FFTerm to sub_force_field
+                sub_force_field.append(force_field_term)
+
+            # Append sub_force_field to force_field[force_key]
+            self.force_field[force_key].append(sub_force_field)
 
         return self.force_field
 
@@ -533,20 +583,23 @@ class ForceField:
 
         # Iterate over all existent forces
         for force in self.force_field:
-            ff_file.write("{} {:3d} \n".format(force, self.force_groups[force]))
-            # For a given force, iterate over all force field terms
-            for force_field_term in self.force_field[force]:
-                ff_term_line = ("{:3d} " + "{:3d} " * len(force_field_term.atoms)).format(force_field_term.idx, *force_field_term.atoms)
-                # For each term, iterate over all its Parameter instances
-                optimization_flags = ""
-                for parameter in force_field_term.parameters.values():
-                    ff_term_line += "{:16.8f} ".format(parameter.value)
-                    optimization_flags += "{:3d} ".format(int(parameter.optimize))
+            # Iterate over all force field term
+            for k, sub_force in enumerate(self.force_field[force]):
+                # For a given force occurrence, iterate over all force field terms
+                ff_file.write("{} {:3d} \n".format(force, self.force_groups[force][k]))
+                # For a given force, iterate over all force field terms
+                for force_field_term in sub_force:
+                    ff_term_line = ("{:3d} " + "{:3d} " * len(force_field_term.atoms)).format(force_field_term.idx, *force_field_term.atoms)
+                    # For each term, iterate over all its Parameter instances
+                    optimization_flags = ""
+                    for parameter in force_field_term.parameters.values():
+                        ff_term_line += "{:16.8f} ".format(parameter.value)
+                        optimization_flags += "{:3d} ".format(int(parameter.optimize))
 
-                ff_term_line += optimization_flags
-                ff_term_line += "  " + str(parameter.symmetry_group) + " \n"
+                    ff_term_line += optimization_flags
+                    ff_term_line += "  " + str(parameter.symmetry_group) + " \n"
 
-                ff_file.write(ff_term_line)
+                    ff_file.write(ff_term_line)
 
         ff_file.write("END \n")
         return ff_file.close()
@@ -576,10 +629,22 @@ class ForceField:
             elif len(line_split) == 2:
                 # A new force was found; set the force key and force group
                 force_key = line_split[0]
-                force_group = int(line_split[1])
-                self.force_groups[force_key] = force_group
-                # Create empty list for the force_key
-                self.force_field[force_key] = []
+                force_index = int(line_split[1])
+
+                if force_key not in self.force_groups:
+                    self.force_groups[force_key] = []
+
+                self.force_groups[force_key].append(force_index)
+
+                if force_key not in self.force_field:
+                    # Create empty list for the force_key
+                    self.force_field[force_key] = []
+
+                self.force_field[force_key].append([])
+
+                # current_occurrence of this force_key
+                current_occurrence = len(self.force_field[force_key])-1
+
                 continue
             else:
                 if force_key == 'HarmonicBondForce':
@@ -589,7 +654,7 @@ class ForceField:
                     force_field_term.add_parameter(symm_group, int(bond_eq_opt), "bond_eq", float(bond_eq))
                     force_field_term.add_parameter(symm_group, int(bond_k_opt), "bond_k", float(bond_k))
                     # Append FFTerm to ForceField
-                    self.force_field[force_key].append(force_field_term)
+                    self.force_field[force_key][current_occurrence].append(force_field_term)
 
                 elif force_key == 'HarmonicAngleForce':
                     idx, at1, at2, at3, angle_eq, angle_k, angle_eq_opt, angle_k_opt, symm_group = line_split
@@ -598,7 +663,7 @@ class ForceField:
                     force_field_term.add_parameter(symm_group, int(angle_eq_opt), "angle_eq", float(angle_eq))
                     force_field_term.add_parameter(symm_group, int(angle_k_opt), "angle_k", float(angle_k))
                     # Append FFTerm to ForceField
-                    self.force_field[force_key].append(force_field_term)
+                    self.force_field[force_key][current_occurrence].append(force_field_term)
 
                 elif force_key == 'PeriodicTorsionForce':
                     idx, at1, at2, at3, at4, torsion_periodicity, torsion_phase,\
@@ -613,7 +678,7 @@ class ForceField:
                     force_field_term.add_parameter(symm_group, int(torsion_phase_opt), "torsion_phase", float(torsion_phase))
                     force_field_term.add_parameter(symm_group, int(torsion_k_opt), "torsion_k", float(torsion_k))
                     # Append FFTerm to ForceField
-                    self.force_field[force_key].append(force_field_term)
+                    self.force_field[force_key][current_occurrence].append(force_field_term)
 
                 elif force_key == 'NonbondedForce':
                     idx, at, charge, sigma, eps, charge_opt, sigma_opt, eps_opt, symm_group = line_split
@@ -624,7 +689,7 @@ class ForceField:
                     force_field_term.add_parameter(symm_group, int(sigma_opt), "lj_sigma", float(sigma))
                     force_field_term.add_parameter(symm_group, int(eps_opt), "lj_eps", float(eps))
                     # Append FFTerm to ForceField
-                    self.force_field[force_key].append(force_field_term)
+                    self.force_field[force_key][current_occurrence].append(force_field_term)
 
                 elif force_key == 'Scaling14':
                     idx, at1, at2, scee, scnb, scee_opt, scnb_opt, symm_group = line_split
@@ -634,7 +699,7 @@ class ForceField:
                     force_field_term.add_parameter(symm_group, int(scee_opt), "scee", float(scee))
                     force_field_term.add_parameter(symm_group, int(scnb_opt), "scnb", float(scnb))
                     # Append FFTerm to ForceField
-                    self.force_field[force_key].append(force_field_term)
+                    self.force_field[force_key][current_occurrence].append(force_field_term)
 
         return ff_file.close()
 
@@ -666,22 +731,24 @@ class ForceField:
         # Iterate over all forces
         for force in self.force_field:
             # Iterate over all force field term
-            for force_field_term in self.force_field[force]:
-                # Iterate over all atoms of a given force field term
-                for at in force_field_term.atoms:
-                    for i in range(len(lower_idx)):
-                        low_limit = lower_idx[i]
-                        upper_limit = upper_idx[i]
+            for sub_force in self.force_field[force]:
+                # For a given force occurrence, iterate over all force field terms
+                for force_field_term in sub_force:
+                    # Iterate over all atoms of a given force field term
+                    for at in force_field_term.atoms:
+                        for i in range(len(lower_idx)):
+                            low_limit = lower_idx[i]
+                            upper_limit = upper_idx[i]
 
-                        if (at >= low_limit) and (at <= upper_limit):
-                            for parameter in force_field_term.parameters.values():
-                                parameter.optimize = 1
-                        elif (at < low_limit) or (at > upper_limit) and change_other:
-                            for parameter in force_field_term.parameters.values():
-                                parameter.optimize = 0
-                        else:
-                            # If outside range but change other is False
-                            pass
+                            if (at >= low_limit) and (at <= upper_limit):
+                                for parameter in force_field_term.parameters.values():
+                                    parameter.optimize = 1
+                            elif (at < low_limit) or (at > upper_limit) and change_other:
+                                for parameter in force_field_term.parameters.values():
+                                    parameter.optimize = 0
+                            else:
+                                # If outside range but change other is False
+                                pass
 
         return self.force_field
 
@@ -709,18 +776,22 @@ class ForceField:
 
         for force in self.force_field:
             if force == 'PeriodicTorsionForce':
-                for force_field_term in self.force_field[force]:
-                    for parameter in force_field_term.parameters.values():
-                        # If the param key is not torsion periodicity since this are not handled by ParaMol
-                        if parameter.param_key != "torsion_periodicity":
-                            if force_field_term.atoms in torsions:
-                                parameter.optimize = 1
-                            elif change_other_torsions:
-                                parameter.optimize = 0
+                for sub_force in self.force_field[force]:
+                    # For a given force occurrence, iterate over all force field terms
+                    for force_field_term in sub_force:
+                        for parameter in force_field_term.parameters.values():
+                            # If the param key is not torsion periodicity since this are not handled by ParaMol
+                            if parameter.param_key != "torsion_periodicity":
+                                if force_field_term.atoms in torsions:
+                                    parameter.optimize = 1
+                                elif change_other_torsions:
+                                    parameter.optimize = 0
             elif change_other_parameters:
-                for force_field_term in self.force_field[force]:
-                    for parameter in force_field_term.parameters.values():
-                        parameter.optimize = 0
+                for sub_force in self.force_field[force]:
+                    # For a given force occurrence, iterate over all force field terms
+                    for force_field_term in sub_force:
+                        for parameter in force_field_term.parameters.values():
+                            parameter.optimize = 0
             else:
                 pass
 
@@ -750,16 +821,20 @@ class ForceField:
 
         for force in self.force_field:
             if force == 'Scaling14':
-                for force_field_term in self.force_field[force]:
-                    for parameter in force_field_term.parameters.values():
-                        if force_field_term.atoms in atom_pairs:
-                            parameter.optimize = 1
-                        elif change_other_sc:
-                            parameter.optimize = 0
+                for sub_force in self.force_field[force]:
+                    # For a given force occurrence, iterate over all force field terms
+                    for force_field_term in sub_force:
+                        for parameter in force_field_term.parameters.values():
+                            if force_field_term.atoms in atom_pairs:
+                                parameter.optimize = 1
+                            elif change_other_sc:
+                                parameter.optimize = 0
             elif change_other_parameters:
-                for force_field_term in self.force_field[force]:
-                    for parameter in force_field_term.parameters.values():
-                        parameter.optimize = 0
+                for sub_force in self.force_field[force]:
+                    # For a given force occurrence, iterate over all force field terms
+                    for force_field_term in sub_force:
+                        for parameter in force_field_term.parameters.values():
+                            parameter.optimize = 0
             else:
                 pass
 
@@ -794,35 +869,41 @@ class ForceField:
         dihedral_types = []
         for force in self.force_field:
             if force == 'PeriodicTorsionForce':
-                for force_field_term in self.force_field[force]:
-                    for parameter in force_field_term.parameters.values():
-                        if parameter.param_key is not "torsion_periodicity":
-                            if force_field_term.atoms in torsions:
-                                dihedral_types.append(parameter.symmetry_group)
+                for sub_force in self.force_field[force]:
+                    # For a given force, iterate over all force field terms
+                    for force_field_term in sub_force:
+                        for parameter in force_field_term.parameters.values():
+                            if parameter.param_key is not "torsion_periodicity":
+                                if force_field_term.atoms in torsions:
+                                    dihedral_types.append(parameter.symmetry_group)
 
         # Change the necessary optimization states
         for force in self.force_field:
             if force == 'PeriodicTorsionForce':
-                for force_field_term in self.force_field[force]:
-                    for parameter in force_field_term.parameters.values():
-                        # If the param key is not torsion periodicity since this are not handled by ParaMol
-                        if parameter.param_key != "torsion_periodicity":
-                            if parameter.symmetry_group in dihedral_types:
-                                parameter.optimize = 1
-                                if parameter.param_key == "torsion_k" and set_zero:
-                                    parameter.value = 0.0
-                            elif change_other_torsions:
-                                parameter.optimize = 0
+                for sub_force in self.force_field[force]:
+                    # For a given force occurrence, iterate over all force field terms
+                    for force_field_term in sub_force:
+                        for parameter in force_field_term.parameters.values():
+                            # If the param key is not torsion periodicity since this are not handled by ParaMol
+                            if parameter.param_key != "torsion_periodicity":
+                                if parameter.symmetry_group in dihedral_types:
+                                    parameter.optimize = 1
+                                    if parameter.param_key == "torsion_k" and set_zero:
+                                        parameter.value = 0.0
+                                elif change_other_torsions:
+                                    parameter.optimize = 0
             elif change_other_parameters:
-                for force_field_term in self.force_field[force]:
-                    for parameter in force_field_term.parameters.values():
-                        parameter.optimize = 0
+                for sub_force in self.force_field[force]:
+                    # For a given force, iterate over all force field terms
+                    for force_field_term in sub_force:
+                        for parameter in force_field_term.parameters.values():
+                            parameter.optimize = 0
             else:
                 pass
 
         return self.force_field
 
-    def set_parameter_optimization(self, force_key, idx, param_key, optimize):
+    def set_parameter_optimization(self, force_key, sub_force, idx, param_key, optimize):
         """
         Method that for the force field term with index `idx` of the force `force_key` set the parameter with name `param_key` to the optimization state in `optimize`.
 
@@ -830,6 +911,8 @@ class ForceField:
         ----------
         force_key : str
             Name of the force.
+        sub_force : int
+            Ocurrence of the force.
         idx : int
             Index of the force field term.
         param_key : str
@@ -842,6 +925,6 @@ class ForceField:
         force_field : dict
             Dictionary that contains as keys force groups names and as values and the correspondent :obj:`ParaMol.Force_field.force_field_term.FFTerm`.
         """
-        self.force_field[force_key][idx].parameters[param_key].optimize = optimize
+        self.force_field[force_key][sub_force][idx].parameters[param_key].optimize = optimize
 
         return self.force_field

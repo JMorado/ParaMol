@@ -22,7 +22,6 @@ import numpy as np
 import copy
 import logging
 
-
 class TorsionScan(Task):
     """
     ParaMol implementation of torsion scans.
@@ -331,12 +330,13 @@ class TorsionScan(Task):
         #                       Perform 1D Scan                       #
         # ----------------------------------------------------------- #
         print("ParaMol will now start the torsional scan.")
+        positions_initial = copy.deepcopy(positions)
 
         for torsion_value in torsion_scan_values:
             print("Step for torsion angle with value {}.".format(torsion_value))
 
             # Set positions in OpenMM context
-            dummy_context.setPositions(positions)
+            dummy_context.setPositions(positions_initial)
 
             # Set RDKit geometry to the current in the OpenMM context
             positions = dummy_context.getState(getPositions=True).getPositions()
@@ -386,11 +386,16 @@ class TorsionScan(Task):
                         # We have to create temporary systems and context so that they do not affect they main ones
                         tmp_system = copy.deepcopy(dummy_system)
                         tmp_system = self.freeze_torsion(tmp_system, torsion_to_scan, torsion_value, mm_opt_force_constant)
-                        tmp_context = Context(tmp_system, copy.deepcopy(dummy_integrator), dummy_platform)
+                        integ = copy.deepcopy(dummy_integrator)
+                        tmp_context = Context(tmp_system, integ, dummy_platform)
                         tmp_context.setPositions(positions)
                         LocalEnergyMinimizer.minimize(tmp_context, tolerance=mm_opt_tolerance, maxIterations=mm_opt_max_iter)
-                        positions = tmp_context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(
-                            asNumpy=True)
+                        for i in range(100):
+                            integ.setTemperature(10 * (100 - i) * unit.kelvin)
+                            integ.step(5000)
+
+                        LocalEnergyMinimizer.minimize(tmp_context, tolerance=mm_opt_tolerance, maxIterations=mm_opt_max_iter)
+                        positions = tmp_context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(asNumpy=True)
 
                         del tmp_system, tmp_context
                     elif optimize_mm_type.upper() == "FREEZE_ATOMS":
@@ -398,6 +403,12 @@ class TorsionScan(Task):
                         LocalEnergyMinimizer.minimize(dummy_context, tolerance=mm_opt_tolerance, maxIterations=mm_opt_max_iter)
                         positions = dummy_context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(
                             asNumpy=True)
+
+                        for i in range(100):
+                            dummy_integrator.setTemperature(3 * (100 - i) * unit.kelvin)
+                            dummy_integrator.step(1000)
+                        LocalEnergyMinimizer.minimize(dummy_context, tolerance=mm_opt_tolerance, maxIterations=mm_opt_max_iter)
+                        positions = dummy_context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(asNumpy=True)
                     else:
                         raise NotImplementedError("Optimize MM type {} is unknown.".format(optimize_mm_type.upper()))
 
@@ -933,10 +944,10 @@ class TorsionScan(Task):
             Instance of ParaMol System with updated ForceField.
         """
         for bond in rotatable_bonds:
-            for force_field_term in system.force_field.force_field['PeriodicTorsionForce']:
-                if (force_field_term.atoms[1] == bond[0] or force_field_term.atoms[1] == bond[1]) and (
-                        force_field_term.atoms[2] == bond[0] or force_field_term.atoms[2] == bond[1]):
-                    force_field_term.parameters['torsion_k'].value = 0.0
+            for sub_force in system.force_field.force_field['PeriodicTorsionForce']:
+                for force_field_term in sub_force:
+                    if (force_field_term.atoms[1] == bond[0] or force_field_term.atoms[1] == bond[1]) and (force_field_term.atoms[2] == bond[0] or force_field_term.atoms[2] == bond[1]):
+                        force_field_term.parameters['torsion_k'].value = 0.0
         return system
 
     @staticmethod

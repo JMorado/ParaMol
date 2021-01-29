@@ -5,6 +5,7 @@ from ParaMol.MM_engines.openmm import *
 class TestOpenMMEngine:
     # Kwargs dictionary for AMBER topology system. These are shared between all instances.
     kwargs_dict = {"topology_format": "AMBER",
+                   "crd_format": "AMBER",
                    "top_file": "ParaMol/Tests/aniline.prmtop",
                    "crd_file": "ParaMol/Tests/aniline.inpcrd"}
 
@@ -20,7 +21,7 @@ class TestOpenMMEngine:
         """
         Tests the initialization of the OpenMMWrapper by creating systems from XML topology format.
         """
-        self.kwargs_dict["topology_format"] = "XML"
+        self.kwargs_dict["topology_format"] = "AMBER"
         self.kwargs_dict["xml_file"] = "ParaMol/Tests/aniline.xml"
 
         openmm_engine = OpenMMEngine(True, **self.kwargs_dict)

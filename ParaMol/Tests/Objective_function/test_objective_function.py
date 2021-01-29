@@ -14,6 +14,7 @@ import simtk.unit as unit
 class TestObjectiveFunction:
     # Kwargs dictionary for AMBER topology system. These are shared between all instances.
     kwargs_dict = {"topology_format": "AMBER",
+                   "crd_format": "AMBER",
                    "top_file": "ParaMol/Tests/aniline.prmtop",
                    "crd_file": "ParaMol/Tests/aniline.inpcrd"}
 

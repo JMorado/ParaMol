@@ -81,7 +81,7 @@ class Settings:
                                                           "scee": 1.0,
                                                           "scnb": 1.0},
                                 "prior_widths_method": "default",
-                                "scaling_constants_method": "default",}
+                                "scaling_constants_method": "arithmetic",}
 
         # ---------------------------------------------------------- #
         #                                                            #
