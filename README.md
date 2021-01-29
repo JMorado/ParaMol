@@ -8,7 +8,7 @@
 
 ParaMol is a Python library that aims to ease the process of force field parametrization of molecules. 
 
-Current Version: 1.0.1
+Current Version: 1.1.0
 
 
 # Quick Installation
@@ -25,6 +25,7 @@ The current development version can be installed via conda:
 
 # Available Tasks
 - Parametrization.
+- LLS fitting.
 - Adaptive parametrization.
 - RESP charge fitting.
 - ab initio properties calculation.
@@ -34,8 +35,10 @@ The current development version can be installed via conda:
 
 # Current features
  - Parallel and serial computation of the objective .</li>
+ - LLS fitting of bonded terms. </li>
+ - Available symmetrizers: AMBER, GROMACS, CHARMM.
  - Optimization algorithms: Scipy Optimizers, Monte Carlo, Gradient Descent, Simulated Annealing.</li>
- - QM engines: ASE, DFTB+, AMBER.</li>
+ - QM engines: DFTB+, AMBER, or any QM engine available through ASE.</li>
  
 # Tests
  ParaMol uses the [pytest](https://docs.pytest.org/en/stable/) framework to test the code. pytest can be install through pip:
