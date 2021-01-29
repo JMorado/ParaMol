@@ -56,4 +56,4 @@ aniline.force_field.write_ff_file("aniline_resp.ff")
 
 # Update amber symmetrizer and save .mol2 file
 amber_symmetrizer.update_term_types_parameters(parameter_space.optimizable_parameters)
-amber_symmetrizer.save_mol2("aniline_resp.mol2")
+amber_symmetrizer.save("aniline_resp.mol2")
