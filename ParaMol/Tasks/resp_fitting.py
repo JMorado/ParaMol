@@ -106,7 +106,7 @@ class RESPFitting(Task):
 
             # Create Parameter Space
             if parameter_space is None:
-                parameter_space = self.create_parameter_space(settings, systems, preconditioning=False)
+                parameter_space = self.create_parameter_space(settings, systems, preconditioning=False, symmetry_constrained=False)
             else:
                 assert type(parameter_space) is ParameterSpace
 
@@ -127,9 +127,8 @@ class RESPFitting(Task):
                 system.resp_engine.set_symmetry_constraints(system, True)
                 # Perform RESP charge fitting
                 charges = system.resp_engine.fit_resp_charges_explicitly(system, rmsd_tol, max_iter)
-
                 # Update system
-                parameter_space.update_systems(systems, charges)
+                parameter_space.update_systems(systems, charges, symmetry_constrained=False)
         else:
             raise NotImplementedError("RESP solver {} is not implemented.".format(solver))
 

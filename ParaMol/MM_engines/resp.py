@@ -267,7 +267,7 @@ class RESP:
 
         print("\nFinal net charge: {:.4e}".format(np.sum(self.charges[:system.n_atoms])))
 
-        return self.charges
+        return self.charges[:system.n_atoms]
 
     def set_symmetry_constraints(self, system, symmetry_constrained):
         """

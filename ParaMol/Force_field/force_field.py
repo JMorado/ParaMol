@@ -124,6 +124,7 @@ class ForceField:
             # symmetry group and save the new paramter values of the others
             for i in range(len(self.optimizable_parameters)):
                 parameter = self.optimizable_parameters[i]
+
                 if parameter.symmetry_group == self.symmetry_group_default:
                     # If symmetry group of optimizable parameter is default just update it
                     parameter.value = optimizable_parameters_values[i]
