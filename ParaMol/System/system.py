@@ -271,7 +271,7 @@ class ParaMolSystem:
 
         n_gen = len(parameters_generation)
         current_gen = n_gen-1
-        rmsd = 9999.0
+        rmsd = 999999.0
         threshold = 1e-6
 
         if n_gen < 2:
@@ -306,7 +306,7 @@ class ParaMolSystem:
                     final_weights[G, :] = final_weights[G, :] + A[j] * ( weights[G, :] / weights[j, :] )
 
                 wham_weights[G, :] = final_weights[G, :]
-                A[G] = np.sum(wham_weights[G,:])
+                A[G] = np.sum(wham_weights[G, :])
                 A = A / np.sum(A)
 
             rmsd = np.sqrt( np.sum((final_weights[current_gen, :] - prev_weight)**2) / self.n_structures )
