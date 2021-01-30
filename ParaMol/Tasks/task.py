@@ -144,11 +144,12 @@ class Task:
             parameter_space.calculate_prior_widths(parameter_space_settings["prior_widths_method"])
 
             regularization = Regularization(initial_parameters_values=parameter_space.initial_optimizable_parameters_values_scaled,
-                                            prior_widths=parameter_space.prior_widths,
+                                            prior_widths=parameter_space.prior_widths / parameter_space.scaling_constants,
                                             **properties_settings["regularization"])
 
             regularization.set_prior_widths(parameter_space.prior_widths / parameter_space.scaling_constants)
             regularization.set_initial_parameters_values(parameter_space.initial_optimizable_parameters_values_scaled)
+
             properties.append(regularization)
 
         return properties
