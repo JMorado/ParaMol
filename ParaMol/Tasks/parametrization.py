@@ -95,8 +95,9 @@ class Parametrization(Task):
                 objective_function.init_parallel()
 
             # Recalculate variance in case reference data has changed.
-            for property in objective_function.properties:
-                property.calculate_variance()
+            if objective_function.properties is not None:
+                for property in objective_function.properties:
+                    property.calculate_variance()
             '''
             for prop in objective_function.properties:
                 if prop.name == "REGULARIZATION":
