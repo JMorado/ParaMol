@@ -98,7 +98,9 @@ class Task:
             if preconditioning:
                 parameter_space.calculate_scaling_constants()
                 parameter_space.jacobi_preconditioning()
-            
+
+            parameter_space.calculate_prior_widths()
+
             parameter_space.initial_optimizable_parameters_values = copy.deepcopy(parameter_space.optimizable_parameters_values)
             parameter_space.initial_optimizable_parameters_values_scaled = copy.deepcopy(parameter_space.optimizable_parameters_values_scaled)
 
@@ -141,8 +143,6 @@ class Task:
 
         # Create regularization if required
         if properties_settings["include_regularization"]:
-            parameter_space.calculate_prior_widths(parameter_space_settings["prior_widths_method"])
-
             regularization = Regularization(initial_parameters_values=parameter_space.initial_optimizable_parameters_values_scaled,
                                             prior_widths=parameter_space.prior_widths / parameter_space.scaling_constants,
                                             **properties_settings["regularization"])
