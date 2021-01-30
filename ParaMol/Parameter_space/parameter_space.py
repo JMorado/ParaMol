@@ -116,6 +116,8 @@ class ParameterSpace:
 
         Returns
         -------
+        scaling_constants_dict : dict
+            Dictionary containing the scaling constants for each parameter class.
         scaling_constants : np.array, shape=(n_params)
             Numpy array containing the scaling constants for each parameter.
         """
@@ -146,11 +148,13 @@ class ParameterSpace:
 
         Returns
         -------
-        scaling_constants : np.array, shape=(n_params)
-            Numpy array containing the prior widths for each parameter.
+        prior_widths_dict : dict
+            Dictionary containing the prior widths for each parameter class.
+        prior_widths : np.array, shape=(n_params)
+            Numpy array containing the scaling constants for each parameter.
         """
         if method is None:
-            method = self.scaling_constants_method
+            method = self.prior_widths_method
 
         logging.info("Calculating prior widths using the method {}".format(method))
 

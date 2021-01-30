@@ -332,7 +332,7 @@ class ObjectiveFunction:
             from ParaMol.Tasks.task import Task
             from ParaMol.Utils.interface import ParaMolInterface
 
-            Task("").write_restart_pickle(self.restart_settings, ParaMolInterface(), "restart_parameter_space_file", self.parameter_space.__dict__)
+            #Task("").write_restart_pickle(self.restart_settings, ParaMolInterface(), "restart_parameter_space_file", self.parameter_space.__dict__)
 
             for system in self.systems:
                 system.engine.write_system_xml("{}_checkpoint.xml".format(system.name))

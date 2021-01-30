@@ -118,7 +118,10 @@ class AdaptiveParametrization(Task):
             # Read data into system
             for system in systems:
                 system.read_data(os.path.join(settings.restart["restart_dir"], "{}_data_restart.nc".format(system.name)))
-
+                # Perform WHAM re-weighting
+                if wham_reweighing:
+                    print("Reweighting configurations of system {}.".format(system.name))
+                    system.wham_reweighing(self.parameters_generations)
         else:
             # Get copy of current parameters values
             self.old_param = copy.deepcopy(parameter_space.optimizable_parameters_values_scaled)
@@ -180,12 +183,12 @@ class AdaptiveParametrization(Task):
                     system.ref_forces = np.asarray(system.ref_forces)
                     system.ref_coordinates = np.asarray(system.ref_coordinates)
 
-                # Sampling done for this system, write reference data
-                self.sampling_done[i] = True
+                    # Sampling done for this system, write reference data
+                    self.sampling_done[i] = True
 
-                # Write restarts
-                self.write_restart_pickle(settings.restart, interface, "restart_adaptive_parametrization_file", self.__dict__)
-                system.write_data(os.path.join(settings.restart["restart_dir"], "{}_data_restart.nc".format(system.name)))
+                    # Write restarts
+                    self.write_restart_pickle(settings.restart, interface, "restart_adaptive_parametrization_file", self.__dict__)
+                    system.write_data(os.path.join(settings.restart["restart_dir"], "{}_data_restart.nc".format(system.name)))
 
             # Perform parametrization
             systems, parameter_space, objective_function, optimizer = parametrization.run_task(settings=settings,
@@ -212,11 +215,6 @@ class AdaptiveParametrization(Task):
 
             print("Parameter RMSD value is {}".format(self.rmsd))
 
-            if self.rmsd < rmsd_tol:
-                print("Self-consistent parametrization achieved convergence in {} iterations using a tolerance of {}.".format(self.iteration+1,rmsd_tol))
-
-                return systems, parameter_space, objective_function, optimizer
-
             # Append parameters of these generation so that they are used to re-weight the conformations
             self.parameters_generations.append(parameter_space.optimizable_parameters_values)
             self.old_param = self.new_param
@@ -225,6 +223,11 @@ class AdaptiveParametrization(Task):
             # Write parameters generation to pickle file
             self.sampling_done = [False for _ in systems]
             self.write_restart_pickle(settings.restart, interface, "restart_adaptive_parametrization_file", self.__dict__)
+
+            if self.rmsd < rmsd_tol:
+                print("Self-consistent parametrization achieved convergence in {} iterations using a tolerance of {}.".format(self.iteration+1,rmsd_tol))
+
+                return systems, parameter_space, objective_function, optimizer
 
             if restart:
                 restart = False
