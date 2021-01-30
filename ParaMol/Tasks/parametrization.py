@@ -93,6 +93,10 @@ class Parametrization(Task):
             if settings.objective_function["parallel"]:
                 # Number of structures might have been changed and therefore it is necessary to re-initialize the parallel objective function
                 objective_function.init_parallel()
+
+            # Recalculate variance in case reference data has changed.
+            for property in objective_function.properties:
+                property.calculate_variance()
             '''
             for prop in objective_function.properties:
                 if prop.name == "REGULARIZATION":
@@ -140,11 +144,11 @@ class Parametrization(Task):
         print("Using {} structures in the optimization.".format(np.sum([system.n_structures for system in systems])))
         parameters_values = self._perform_optimization(settings, optimizer, objective_function, parameter_space)
 
-        # Print Final Info of Objective Function
-        objective_function.f(parameters_values, opt_mode=False)
-
         # Update the parameters in the force field
         parameter_space.update_systems(systems, parameters_values)
+
+        # Print Final Info of Objective Function
+        objective_function.f(parameter_space.optimizable_parameters_values_scaled, opt_mode=False)
 
         # Write ParameterSpace restart file
         self.write_restart_pickle(settings.restart, interface, "restart_parameter_space_file", parameter_space.__dict__)
