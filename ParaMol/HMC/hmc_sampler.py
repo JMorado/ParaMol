@@ -149,6 +149,11 @@ class HMCSampler(Task):
                                            opt_log_file="ase_md.log")
 
                 temperature_kin_mm_units = unit.Quantity(temperature_kin_mm / ase_units.kB, unit.kelvin)
+
+                if self._last_accepted_mm_energy is None:
+                    coord_to_run = np.asarray(system.ref_coordinates[-1]) * 10
+                    pot = mm_ase_engine.run_calculation(coords=coord_to_run, label=int(self._label))
+                    self._last_accepted_mm_energy = pot
             else:
                 mm_ase_engine = None
                 temperature_kin_mm_units = temperature_kin_mm
