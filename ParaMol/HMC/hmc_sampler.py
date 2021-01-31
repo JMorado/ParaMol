@@ -175,6 +175,7 @@ class HMCSampler(Task):
             system.convert_system_ref_arrays_to_list()
 
             # Calculate last accepted mm energy if not available
+            self._last_accepted_mm_energy = None
             if self._last_accepted_mm_energy is None:
                 if mm_ase_engine is None:
                     potential_final_mm = unit.Quantity(system.engine.get_potential_energy(system.ref_coordinates[-1]), unit.kilojoules_per_mole)
@@ -192,15 +193,14 @@ class HMCSampler(Task):
             self._n_total_mm = 0
             self._n_accepted_mm = 0
 
-            # Data used for the parametrization
-            self._param_coordinates = []
-            self._param_energies = []
-            self._param_forces = []
-            self._param_n_structures = 0
-            self._param_sampling_freq_qm_id = 0
-            self._param_sampling_freq_mm_id = 0
-
             if parametrization:
+                # Data used for the parametrization
+                self._param_coordinates = []
+                self._param_energies = []
+                self._param_forces = []
+                self._param_n_structures = 0
+                self._param_sampling_freq_qm_id = 0
+                self._param_sampling_freq_mm_id = 0
                 self._parametrize = True
             else:
                 self._parametrize = False
@@ -306,18 +306,19 @@ class HMCSampler(Task):
                     # No structures have been accepted yet.
                     pass
 
-                # TODO: include code related to partial momentum refreshment
-                if sampling_freq_qm == self._param_sampling_freq_qm_id and len(system.ref_coordinates) > 0:
-                    self._param_coordinates.append(system.ref_coordinates[-1])
-                    self._param_energies.append(system.ref_energies[-1])
-                    if calculate_forces:
-                        self._param_forces.append(system.ref_forces[-1])
-                    self._param_n_structures += 1
+                if parametrization:
+                    # TODO: include code related to partial momentum refreshment
+                    if sampling_freq_qm == self._param_sampling_freq_qm_id and len(system.ref_coordinates) > 0:
+                        self._param_coordinates.append(system.ref_coordinates[-1])
+                        self._param_energies.append(system.ref_energies[-1])
+                        if calculate_forces:
+                            self._param_forces.append(system.ref_forces[-1])
+                        self._param_n_structures += 1
 
-                    # Reset sampling counter
-                    self._param_sampling_freq_qm_id = 1
-                else:
-                    self._param_sampling_freq_qm_id += 1
+                        # Reset sampling counter
+                        self._param_sampling_freq_qm_id = 1
+                    else:
+                        self._param_sampling_freq_qm_id += 1
 
             # Write restart files
             if self._n % checkpoint_freq == 0:
