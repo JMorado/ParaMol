@@ -330,10 +330,18 @@ class LinearLeastSquare:
                 if ff_term.parameters["torsion_phase"].optimize:
                     k_xy = np.asarray(final_parameters[m:m + 2])
                     delta_xy = np.asarray(self._p0[m:m + 2])
+
+                    # Define phasors
+                    p_x = k_xy[0]*np.exp(1j*delta_xy[0])
+                    p_y = k_xy[1]*np.exp(1j*delta_xy[1])
+                    p_xy = p_x + p_y
+
                     # Update value of "bond_k"
-                    parameter.value = np.sqrt(np.sum(k_xy*k_xy))
+                    parameter.value = np.linalg.norm(p_xy)
+                    # parameter.value = np.sqrt(np.sum(k_xy*k_xy)) # alternative expression
+
                     # Update value of "bond_eq"
-                    ff_term.parameters["torsion_phase"].value = np.arctan2(k_xy[1], k_xy[0])
+                    ff_term.parameters["torsion_phase"].value = np.angle(p_xy)
                     m += 2
                 else:
                     k_xy = final_parameters[m]
@@ -435,10 +443,10 @@ class LinearLeastSquare:
                 angles = np.asarray(angles)
 
                 if ff_term.parameters["angle_eq"].optimize:
-                    theta0_x = ff_term.parameters["angle_eq"].value * (1 - alpha_angle)
-                    theta0_y = ff_term.parameters["angle_eq"].value * (1 + alpha_angle)
-                    #theta0_x = np.min(angles)
-                    #theta0_y = np.max(angles)
+                    #theta0_x = ff_term.parameters["angle_eq"].value * (1 - alpha_angle)
+                    #theta0_y = ff_term.parameters["angle_eq"].value * (1 + alpha_angle)
+                    theta0_x = np.min(angles)
+                    theta0_y = np.max(angles)
 
                     r_vec = np.empty((system.n_structures, 2))
                     for m in range(system.n_structures):
@@ -485,8 +493,10 @@ class LinearLeastSquare:
                 dihedrals = np.asarray(dihedrals)
 
                 if ff_term.parameters["torsion_phase"].optimize:
-                    phase_x = 0 #-np.pi/4
-                    phase_y = np.pi/2 #np.pi/4
+                    #phase_x = 0 #-np.pi/4
+                    #phase_y = np.pi/2 #np.pi/4
+                    phase_x = -np.pi/4
+                    phase_y = np.pi/4
 
                     r_vec = np.empty((system.n_structures, 2))
                     for m in range(system.n_structures):

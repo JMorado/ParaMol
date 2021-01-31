@@ -14,7 +14,7 @@ from ParaMol.Utils.settings import *
 #                         Preparation                       #
 # --------------------------------------------------------- #
 # Create the OpenMM engine for aniline
-openmm_system = OpenMMEngine(init_openmm=True, topology_format='AMBER', top_file='aniline.prmtop', crd_file='aniline.inpcrd')
+openmm_system = OpenMMEngine(init_openmm=True, topology_format='AMBER', top_file='aniline.prmtop', crd_format='AMBER', crd_file='aniline.inpcrd')
 
 # Create ParaMol System
 aniline = ParaMolSystem(name="aniline", engine=openmm_system, n_atoms=14)
