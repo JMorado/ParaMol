@@ -150,10 +150,6 @@ class HMCSampler(Task):
 
                 temperature_kin_mm_units = unit.Quantity(temperature_kin_mm / ase_units.kB, unit.kelvin)
 
-                if self._last_accepted_mm_energy is None:
-                    coord_to_run = np.asarray(system.ref_coordinates[-1]) * 10
-                    pot = mm_ase_engine.run_calculation(coords=coord_to_run, label=int(self._label))
-                    self._last_accepted_mm_energy = pot
             else:
                 mm_ase_engine = None
                 temperature_kin_mm_units = temperature_kin_mm
@@ -177,6 +173,16 @@ class HMCSampler(Task):
 
             # Convert np.arrays to list
             system.convert_system_ref_arrays_to_list()
+
+            # Calculate last accepted mm energy if not available
+            if self._last_accepted_mm_energy is None:
+                if mm_ase_engine is None:
+                    potential_final_mm = unit.Quantity(system.engine.get_potential_energy(system.ref_coordinates[-1]), unit.kilojoules_per_mole)
+                else:
+                    coord_to_run = np.asarray(system.ref_coordinates[-1]) * 10
+                    potential_final_mm = mm_ase_engine.run_calculation(coords=coord_to_run, label=int(self._label))
+
+                self._last_accepted_mm_energy = potential_final_mm
         else:
             self._n = 1
             self._n_total_qm = 0
