@@ -49,6 +49,8 @@ class LinearLeastSquare:
         # Private variables
         self._A = None
         self._B = None
+        self._Aw = None
+        self._Bw = None
         self._param_keys_list = None
         self._p0 = None
         self._initial_param_regularization = None
@@ -82,6 +84,7 @@ class LinearLeastSquare:
         -------
         systems, parameter_space, objective_function, optimizer
         """
+        assert self._weighting_method.upper() != "NON_BOLTZMANN", "LLS does not support {} weighting method.".format(self._weighting_method)
         # TODO: In the future, adapt this to multiple systems
         system = systems[0]
 
@@ -95,13 +98,13 @@ class LinearLeastSquare:
         # ---------------------------------------------------------------- #
         #                 Calculate conformations weights                  #
         # ---------------------------------------------------------------- #
-        system.compute_conformations_weights(temperature=self._weighting_temperature, weighting_method=self._weighting_method, emm=self.mm_energies_zero)
+        system.compute_conformations_weights(temperature=self._weighting_temperature, weighting_method=self._weighting_method, emm=None)
 
         # Weight conformations
         for row in range(system.n_structures):
             self._A[row, :] = self._A[row, :] * np.sqrt(system.weights[row])
 
-        self._B = self._B * np.sqrt(system.weights[row])
+        self._B = self._B * np.sqrt(system.weights)
         # ---------------------------------------------------------------- #
 
         # ---------------------------------------------------------------- #
@@ -139,6 +142,111 @@ class LinearLeastSquare:
 
         # Get optimizable parameters
         self._parameter_space.get_optimizable_parameters([system], symmetry_constrained=False)
+
+        return self._parameter_space.optimizable_parameters_values
+
+    def fit_parameters_lls2(self, systems, alpha_bond=0.05, alpha_angle=0.05):
+        """
+        Method that fits bonded parameters using LLS.
+
+        Notes
+        -----
+        Only one ParaMol system is supported at once.
+
+        Parameters
+        ----------
+        systems : list of :obj:`ParaMol.System.system.ParaMolSystem`
+            List containing instances of ParaMol systems.
+        alpha_bond : float
+        alpha_angle : float
+
+        Returns
+        -------
+        systems, parameter_space, objective_function, optimizer
+        """
+        # TODO: In the future, adapt this to multiple systems
+        system = systems[0]
+
+
+        n_iter = 1
+        #
+        rmsd = 999
+        rmsd_tol = 1e-20
+        max_iter = 100000
+
+
+        # Self-consistent solution
+        while n_iter < max_iter and rmsd > rmsd_tol:
+            # Compute A matrix
+            self._calculate_a(system, alpha_bond, alpha_angle)
+            self._n_parameters = self._A.shape[1]
+
+            # Compute B matrix
+            self._calculate_b(system)
+
+            # ---------------------------------------------------------------- #
+            #                 Calculate conformations weights                  #
+            # ---------------------------------------------------------------- #
+            system.compute_conformations_weights(temperature=self._weighting_temperature, weighting_method=self._weighting_method, emm=system.get_energies_ensemble())
+            print(system.get_energies_ensemble())
+            # Weight conformations
+            for row in range(system.n_structures):
+                self._A[row, :] = self._A[row, :] * np.sqrt(system.weights[row])
+
+            self._B = self._B * np.sqrt(system.weights)
+            # ---------------------------------------------------------------- #
+
+            # ---------------------------------------------------------------- #
+            #                           Preconditioning                        #
+            # ---------------------------------------------------------------- #
+            # Preconditioning
+            self._calculate_scaling_constants()
+
+            for row in range(system.n_structures):
+                self._A[row, :] = self._A[row, :] / self._scaling_constants
+            # ---------------------------------------------------------------- #
+            new_param = self._parameter_space.optimizable_parameters_values / self._parameter_space.scaling_constants
+
+            # ---------------------------------------------------------------- #
+            #                           Regularization                         #
+            # ---------------------------------------------------------------- #
+            if self._include_regularization:
+                # Add regularization
+                self._A, self._B = self._add_regularization()
+            # ---------------------------------------------------------------- #
+
+            # ---------------------------------------------------------------- #
+            #                           Symmetries                             #
+            # ---------------------------------------------------------------- #
+            self._add_symmetries(system)
+            # ---------------------------------------------------------------- #
+            # Perform LLS
+            self._parameters = np.linalg.lstsq(self._A, self._B, rcond=None)[0]
+
+            # Revert scaling
+            self._parameters = self._parameters / self._scaling_constants
+
+            # Reconstruct parameters
+            self._reconstruct_parameters(self._parameters)
+
+            # Get optimizable parameters
+            self._parameter_space.get_optimizable_parameters([system], symmetry_constrained=False)
+
+            self._parameter_space.update_systems(systems, self._parameter_space.optimizable_parameters_values, symmetry_constrained=False)
+
+            old_param = copy.deepcopy(new_param)
+            new_param = self._parameter_space.optimizable_parameters_values /self._parameter_space.scaling_constants
+            rmsd = np.sqrt(np.sum((old_param - new_param) ** 2) / len(self._parameter_space.optimizable_parameters_values))
+            a = np.sum(system.weights * (system.get_energies_ensemble() - system.ref_energies - np.mean(system.get_energies_ensemble() - system.ref_energies)) ** 2) / (np.var(system.ref_energies))
+
+            n_iter+=1
+            print("RMSD",n_iter, rmsd, a)
+        print("RMSD",n_iter, rmsd)
+
+        system.compute_conformations_weights(temperature=self._weighting_temperature, weighting_method=self._weighting_method, emm=system.get_energies_ensemble())
+
+        a = np.sum(system.weights*(system.get_energies_ensemble()-system.ref_energies-np.mean(system.get_energies_ensemble()-system.ref_energies)) **2) / (np.var(system.ref_energies))
+        print("FINAL",a)
 
         return self._parameter_space.optimizable_parameters_values
 
@@ -493,8 +601,8 @@ class LinearLeastSquare:
                 dihedrals = np.asarray(dihedrals)
 
                 if ff_term.parameters["torsion_phase"].optimize:
-                    #phase_x = 0 #-np.pi/4
-                    #phase_y = np.pi/2 #np.pi/4
+                    #phase_x = 0
+                    #phase_y = np.pi/2
                     phase_x = -np.pi/4
                     phase_y = np.pi/4
 
@@ -550,9 +658,7 @@ class LinearLeastSquare:
         self._B : np.array
             Array containing the B matrix.
         """
-        mm_energies_initial = system.get_energies_ensemble()
-
-        # Calculate the MM energies of all conformations, for the case in hiwch all FF terms are present except the ones being fitted
+        # Calculate the MM energies of all conformations, for the case in which all FF terms are present except the ones being fitted
         # This is equivalent o zero all parameters and update the FF
         old_parameter_values = copy.deepcopy(self._parameter_space.optimizable_parameters_values)
 
@@ -562,17 +668,16 @@ class LinearLeastSquare:
         # Update FF and OpenMM Engine
         self._parameter_space.update_systems([system], zero_values)
 
+        # Set MM zero energies
         mm_energies_zero = system.get_energies_ensemble()
-
         self.mm_energies_zero = mm_energies_zero
-        # Energy contribution associated with the initial guess parameters
-        corr = mm_energies_initial-mm_energies_zero
 
         # Update FF and OpenMM Engine
         self._parameter_space.update_systems([system], old_parameter_values)
 
         # Calculate self._B
         self._B = np.asarray(system.ref_energies) - mm_energies_zero
+
         if self._include_regularization:
             pass
 
