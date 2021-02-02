@@ -688,24 +688,29 @@ class ParaMolSystem:
         -------
         True if file was closed successfully. False otherwise.
         """
-        if output_file_name is None:
-            output_file_name = '{}_traj.xyz'.format(self.name)
 
-        atom_list = self.engine.get_atom_list()
+        if self.ref_coordinates is not None:
+            if output_file_name is None:
+                output_file_name = '{}_traj.xyz'.format(self.name)
 
-        # Write conformations
-        with open(output_file_name, 'w') as xyz_file:
-            config_id = 0
-            for conformation in self.ref_coordinates:
-                xyz_file.write("{} \n {} {} \n".format(self.n_atoms, config_id, xyz_comment))
-                for atom, symbol in zip(conformation, atom_list):
-                    xyz_file.write("{} {} {} {} \n".format(symbol, atom[0] * 10.0, atom[1] * 10.0, atom[2] * 10.0))
+            atom_list = self.engine.get_atom_list()
 
-                # Keep track of the configuration number
-                config_id += 1
+            # Write conformations
+            with open(output_file_name, 'w') as xyz_file:
+                config_id = 0
+                for conformation in self.ref_coordinates:
+                    xyz_file.write("{} \n {} {} \n".format(self.n_atoms, config_id, xyz_comment))
+                    for atom, symbol in zip(conformation, atom_list):
+                        xyz_file.write("{} {} {} {} \n".format(symbol, atom[0] * 10.0, atom[1] * 10.0, atom[2] * 10.0))
 
-        print("xyz file of system {} was written to file {}".format(self.name, output_file_name))
-        return xyz_file.close()
+                    # Keep track of the configuration number
+                    config_id += 1
+
+            print("xyz file of system {} was written to file {}".format(self.name, output_file_name))
+
+            return xyz_file.close()
+
+        return False
 
     ########
     # Deprecated
