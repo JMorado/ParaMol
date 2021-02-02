@@ -102,9 +102,9 @@ class LinearLeastSquare:
 
         # Weight conformations
         for row in range(system.n_structures):
-            self._A[row, :] = self._A[row, :] * np.sqrt(system.weights[row])
+            self._A[row, :] = self._A[row, :] * np.sqrt(system.weights[row]) / np.sqrt(np.var(system.ref_energies))
 
-        self._B = self._B * np.sqrt(system.weights)
+        self._B = self._B * np.sqrt(system.weights) / np.sqrt(np.var(system.ref_energies))
         # ---------------------------------------------------------------- #
 
         # ---------------------------------------------------------------- #
@@ -260,6 +260,8 @@ class LinearLeastSquare:
         """
         # Create alpha=scaling_factor / scaling_constants
         alpha = self._scaling_factor / self._scaling_constants
+        # Divide by two to make this approach equivalent to the remainder of ParaMol
+        alpha = 0.5 * alpha
 
         # Calculate prior widths
         self._calculate_prior_widths()
@@ -621,7 +623,7 @@ class LinearLeastSquare:
                     self._param_symmetries_list.append(parameter.symmetry_group+"_x")
                     self._param_symmetries_list.append(parameter.symmetry_group+"_y")
                 else:
-                    phase = ff_term.parameters["angle_eq"].value
+                    phase = ff_term.parameters["torsion_phase"].value
                     r_vec = np.empty((system.n_structures, 1))
                     for m in range(system.n_structures):
                         r_vec[m, 0] = (1+np.cos(ff_term.parameters["torsion_periodicity"].value*dihedrals[m]-phase))
