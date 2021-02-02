@@ -32,7 +32,7 @@ class LLSFitting(Task):
     #                       PUBLIC METHODS                       #
     #                                                            #
     # ---------------------------------------------------------- #
-    def run_task(self, settings, systems, parameter_space=None, interface=None, adaptive_parametrization=False, restart=False):
+    def run_task(self, settings, systems, parameter_space=None, objective_function=None, interface=None, adaptive_parametrization=False, restart=False):
         """
         Method that performs the standard ParaMol parametrization.
 
@@ -77,12 +77,33 @@ class LLSFitting(Task):
         else:
             assert type(parameter_space) is ParameterSpace
 
+        # Create properties and objective function
+        if objective_function is None:
+            properties = self.create_properties(settings.properties, settings.parameter_space, systems, parameter_space)
+            objective_function = self.create_objective_function(settings.objective_function, settings.restart, parameter_space, properties, systems)
+        else:
+            assert type(objective_function) is ObjectiveFunction
+            if settings.objective_function["parallel"]:
+                # Number of structures might have been changed and therefore it is necessary to re-initialize the parallel objective function
+                objective_function.init_parallel()
+
+            # Recalculate variance in case reference data has changed.
+            if objective_function.properties is not None:
+                for property in objective_function.properties:
+                    property.calculate_variance()
+
+        # Print Initial Info of Objective Function
+        objective_function.f(parameter_space.optimizable_parameters_values, opt_mode=False)
+
         lst_sqr = LinearLeastSquare(parameter_space, settings.properties["include_regularization"], **settings.properties["regularization"], **settings.objective_function)
         parameters_values = lst_sqr.fit_parameters_lls(systems)
 
         # Update the parameters in the ParaMol Force Field and in the Engine
         # Symmetry constraint has to be False
         parameter_space.update_systems(systems, parameters_values, symmetry_constrained=False)
+
+        # Print Final Info of Objective Function
+        objective_function.f(parameter_space.optimizable_parameters_values, opt_mode=False)
 
         # Write ParameterSpace restart file
         self.write_restart_pickle(settings.restart, interface, "restart_parameter_space_file", parameter_space.__dict__)
