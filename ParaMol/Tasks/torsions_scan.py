@@ -22,6 +22,7 @@ import numpy as np
 import copy
 import logging
 
+
 class TorsionScan(Task):
     """
     ParaMol implementation of torsion scans.
@@ -457,9 +458,12 @@ class TorsionScan(Task):
 
             self.scan_angles.append(torsion_value)
 
-            if sampling:
-                positions = positions_before_sampling
+            #if sampling:
+            #    positions = positions_before_sampling
 
+            #system.ref_coordinates = [i._value for i in self.qm_conformations_list]
+            #print(system.ref_coordinates)
+            #system.write_coordinates_xyz("traj.xyz")
             # Write scan restart
             self.write_restart_pickle(restart_settings, interface, "restart_scan_file", self.__dict__)
 
@@ -727,7 +731,7 @@ class TorsionScan(Task):
     #                        STATIC METHODS                        #
     #                                                              #
     # ------------------------------------------------------------ #
-    '''
+
     # TODO: check if this can be removed
     @staticmethod
     def get_mm_relaxed_conformations(system, torsions_to_freeze, tolerance=0.01, max_iter=0, force_constant=999999.0, threshold=1e-2):
@@ -795,7 +799,7 @@ class TorsionScan(Task):
         mm_relaxed_conformations = np.asarray(mm_relaxed_conformations)
 
         return mm_relaxed_conformations
-    '''
+
 
     @staticmethod
     def get_rdkit_mol_conf(system, pdb_file_name="temp_file.pdb"):

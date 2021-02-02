@@ -62,7 +62,8 @@ class TorsionsParametrization(Task):
     #                       PUBLIC  METHODS                        #
     #                                                              #
     # ------------------------------------------------------------ #
-    def run_task(self, settings, systems, parameter_space=None, objective_function=None, optimizer=None, interface=None, scan_settings=[-180.0,180.0,10], torsions_to_freeze=None, ase_constraints=None, optimize_mm=False, optimize_mm_type="FREEZE_ATOMS", optimize_qm_before_scan=False, parametrization_type="SIMULTANEOUS", restart=False):
+    def run_task(self, settings, systems, parameter_space=None, objective_function=None, optimizer=None, interface=None, scan_settings=[-180.0,180.0,10],
+                 torsions_to_freeze=None, ase_constraints=None, optimize_mm=False, optimize_mm_type="FREEZE_ATOMS", optimize_qm_before_scan=False, parametrization_type="SIMULTANEOUS", restart=False):
         """
         Method that can be used to perform automatic parametrization of the rotatable (soft) torsions using 1-D scans.
         "SIMULTANEOUS" is preferred as "SEQUENTIAL" is still being tested.

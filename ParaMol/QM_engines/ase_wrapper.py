@@ -294,6 +294,7 @@ class ASEWrapper:
             atoms.set_cell(self._cell)
             atoms.center()
 
+        constraints_list = []
         # Apply necessary dihedral constraints
         if dihedral_freeze is not None:
             dihedrals_to_fix = []
@@ -301,16 +302,19 @@ class ASEWrapper:
                 dihedrals_to_fix.append([atoms.get_dihedral(*dihedral) * np.pi / 180.0, dihedral])
 
             constraint = FixInternals(bonds=[], angles=[], dihedrals=dihedrals_to_fix)
-            atoms.set_constraint(constraint)
+            constraints_list.append(constraint)
 
         # Apply any ASE constraints
         # More information: https://wiki.fysik.dtu.dk/ase/ase/constraints.html
         if ase_constraints is not None:
             for constraint in ase_constraints:
-                atoms.set_constraint(constraint)
+                constraints_list.append(constraint)
+
+        if len(constraints_list) > 0:
+            atoms.set_constraint(constraints_list)
 
         # Randomize velocities
-        MaxwellBoltzmannDistribution(atoms, initial_temperature, force_temp=False, rng=np.random)
+        MaxwellBoltzmannDistribution(atoms, initial_temperature, force_temp=True, rng=np.random)
 
         # Get data
         kinetic_intial = atoms.get_kinetic_energy() * 96.48530749925794  # eV to kJ/mol
