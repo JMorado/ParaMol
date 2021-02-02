@@ -458,9 +458,12 @@ class TorsionScan(Task):
 
             self.scan_angles.append(torsion_value)
 
-            if sampling:
-                positions = positions_before_sampling
+            #if sampling:
+            #    positions = positions_before_sampling
 
+            #system.ref_coordinates = [i._value for i in self.qm_conformations_list]
+            #print(system.ref_coordinates)
+            #system.write_coordinates_xyz("traj.xyz")
             # Write scan restart
             self.write_restart_pickle(restart_settings, interface, "restart_scan_file", self.__dict__)
 
