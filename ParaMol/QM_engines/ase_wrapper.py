@@ -314,7 +314,7 @@ class ASEWrapper:
             atoms.set_constraint(constraints_list)
 
         # Randomize velocities
-        MaxwellBoltzmannDistribution(atoms, initial_temperature, force_temp=False, rng=np.random)
+        MaxwellBoltzmannDistribution(atoms, initial_temperature, force_temp=True, rng=np.random)
 
         # Get data
         kinetic_intial = atoms.get_kinetic_energy() * 96.48530749925794  # eV to kJ/mol
