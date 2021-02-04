@@ -392,12 +392,6 @@ class TorsionScan(Task):
                         tmp_context = Context(tmp_system, integ, dummy_platform)
                         tmp_context.setPositions(positions)
                         LocalEnergyMinimizer.minimize(tmp_context, tolerance=mm_opt_tolerance, maxIterations=mm_opt_max_iter)
-                        for i in range(100):
-                            integ.setTemperature(10 * (100 - i) * unit.kelvin)
-                            integ.step(5000)
-
-                        LocalEnergyMinimizer.minimize(tmp_context, tolerance=mm_opt_tolerance, maxIterations=mm_opt_max_iter)
-                        positions = tmp_context.getState(getPositions=True, enforcePeriodicBox=True).getPositions(asNumpy=True)
 
                         del tmp_system, tmp_context
                     elif optimize_mm_type.upper() == "FREEZE_ATOMS":
