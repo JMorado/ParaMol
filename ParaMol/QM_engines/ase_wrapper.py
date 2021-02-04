@@ -209,17 +209,6 @@ class ASEWrapper:
 
             opt = self._optimizer(atoms, trajectory=self._opt_traj_prefix+".traj", logfile=self._opt_logfile)
             opt.run(fmax=self._opt_fmax)
-            """
-            from ase.optimize.basin import BasinHopping
-            from ase.optimize.lbfgs import LBFGS
-
-            opt = BasinHopping(atoms=atoms,  # the system to optimize
-                              temperature=300 * ase_unit.kB,  # 'temperature' to overcome barriers
-                              dr=0.5,  # maximal stepwidth
-                              optimizer=LBFGS,  # optimizer to find local minima
-                              fmax=0.1,)  # maximal force for the optimizer
-            opt.run(steps=10)
-            """
 
             if dihedral_freeze is not None:
                 del atoms.constraints
