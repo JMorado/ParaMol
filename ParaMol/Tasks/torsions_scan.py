@@ -321,7 +321,7 @@ class TorsionScan(Task):
             # ----------------------------------------------------------- #
             # Get optimized geometry
             positions, _, _ = system.qm_engine.qm_engine.run_calculation(coords=positions.in_units_of(unit.angstrom)._value,
-                                                                         label=0, calc_type="optimization")
+                                                                         label=0, calc_type="optimization", ase_constraints=ase_constraints)
             positions = positions * unit.nanometers
 
             # Set optimized geometry in RDKit conf
