@@ -187,6 +187,8 @@ class ASEWrapper:
             from ase.io import write, read
             logging.info("Performing QM optimization using ASE optimizer.")
 
+            constraints_list = []
+
             # Apply necessary dihedral constraints
             if dihedral_freeze is not None:
                 dihedrals_to_fix = []
@@ -194,13 +196,16 @@ class ASEWrapper:
                     dihedrals_to_fix.append([atoms.get_dihedral(*dihedral) * np.pi / 180.0, dihedral])
 
                 constraint = FixInternals(bonds=[], angles=[], dihedrals=dihedrals_to_fix)
-                atoms.set_constraint(constraint)
+                constraints_list.append(constraint)
 
             # Apply any ASE constraints
             # More information: https://wiki.fysik.dtu.dk/ase/ase/constraints.html
             if ase_constraints is not None:
                 for constraint in ase_constraints:
-                    atoms.set_constraint(constraint)
+                    constraints_list.append(constraint)
+
+            if len(constraints_list) > 0:
+                atoms.set_constraint(constraints_list)
 
             opt = self._optimizer(atoms, trajectory=self._opt_traj_prefix+".traj", logfile=self._opt_logfile)
             opt.run(fmax=self._opt_fmax)
@@ -295,6 +300,7 @@ class ASEWrapper:
             atoms.center()
 
         constraints_list = []
+
         # Apply necessary dihedral constraints
         if dihedral_freeze is not None:
             dihedrals_to_fix = []

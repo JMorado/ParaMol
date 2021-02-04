@@ -321,7 +321,7 @@ class TorsionScan(Task):
             # ----------------------------------------------------------- #
             # Get optimized geometry
             positions, _, _ = system.qm_engine.qm_engine.run_calculation(coords=positions.in_units_of(unit.angstrom)._value,
-                                                                         label=0, calc_type="optimization")
+                                                                         label=0, calc_type="optimization", ase_constraints=ase_constraints)
             positions = positions * unit.nanometers
 
             # Set optimized geometry in RDKit conf
@@ -337,7 +337,8 @@ class TorsionScan(Task):
             print("Step for torsion angle with value {}.".format(torsion_value))
 
             # Set positions in OpenMM context
-            dummy_context.setPositions(positions_initial)
+            #dummy_context.setPositions(positions_initial)
+            dummy_context.setPositions(positions)
 
             # Set RDKit geometry to the current in the OpenMM context
             positions = dummy_context.getState(getPositions=True).getPositions()
@@ -386,7 +387,7 @@ class TorsionScan(Task):
                         # Freeze torsion
                         # We have to create temporary systems and context so that they do not affect they main ones
                         tmp_system = copy.deepcopy(dummy_system)
-                        tmp_system = self.freeze_torsion(tmp_system, torsion_to_scan, torsion_value, mm_opt_force_constant)
+                        tmp_system = TorsionScan.freeze_torsions(tmp_system, [torsion_to_scan], [torsion_value], mm_opt_force_constant)
                         integ = copy.deepcopy(dummy_integrator)
                         tmp_context = Context(tmp_system, integ, dummy_platform)
                         tmp_context.setPositions(positions)
@@ -461,9 +462,6 @@ class TorsionScan(Task):
             #if sampling:
             #    positions = positions_before_sampling
 
-            #system.ref_coordinates = [i._value for i in self.qm_conformations_list]
-            #print(system.ref_coordinates)
-            #system.write_coordinates_xyz("traj.xyz")
             # Write scan restart
             self.write_restart_pickle(restart_settings, interface, "restart_scan_file", self.__dict__)
 
@@ -643,8 +641,7 @@ class TorsionScan(Task):
                     # Freeze torsion
                     # We have to create temporary systems and context so that they do not affect they main ones
                     tmp_system = copy.deepcopy(dummy_system)
-                    tmp_system = self.freeze_torsion(tmp_system, torsion_to_scan_1, torsion_value_1, mm_opt_force_constant)
-                    tmp_system = self.freeze_torsion(tmp_system, torsion_to_scan_2, torsion_value_2, mm_opt_force_constant)
+                    tmp_system = TorsionScan.freeze_torsions(tmp_system, [torsion_to_scan_1, torsion_to_scan_2], [torsion_value_1, torsion_value_2], mm_opt_force_constant)
                     tmp_context = Context(tmp_system, copy.deepcopy(dummy_integrator), dummy_platform)
                     tmp_context.setPositions(positions)
                     LocalEnergyMinimizer.minimize(tmp_context, tolerance=mm_opt_tolerance, maxIterations=mm_opt_max_iter)
@@ -734,7 +731,7 @@ class TorsionScan(Task):
 
     # TODO: check if this can be removed
     @staticmethod
-    def get_mm_relaxed_conformations(system, torsions_to_freeze, tolerance=0.01, max_iter=0, force_constant=999999.0, threshold=1e-2):
+    def get_mm_relaxed_conformations(system, torsions_to_freeze, tolerance=0.01, max_iter=0, force_constant=9999999.0, threshold=1e-2):
         """
 
         Parameters
@@ -770,12 +767,15 @@ class TorsionScan(Task):
             # Set new position in RDKit conformation
             TorsionScan.set_positions_rdkit_conf(rdkit_conf, conf)
 
-            # Fix torsions at the new dihedral angle value
-            logging.info("Performing MM optimization with torsion(s) {} frozen.".format(torsions_to_freeze))
             tmp_system = copy.deepcopy(system.engine.system)
+            old_torsion_list = []
+
             for torsion in torsions_to_freeze:
                 old_torsion = rdmt.GetDihedralDeg(rdkit_conf, *torsion)
-                tmp_system = TorsionScan.freeze_torsion(tmp_system, torsion, old_torsion, force_constant)
+                old_torsion_list.append(old_torsion)
+                # energy_expression = f'fc*(theta-theta0)*(theta-theta0)'
+
+            TorsionScan.freeze_torsions(tmp_system, torsions_to_freeze, old_torsion_list, force_constant)
 
             # Create temporary context and set the positions in it
             tmp_context = Context(tmp_system, copy.deepcopy(system.engine.integrator), Platform.getPlatformByName(system.engine.platform_name))
@@ -788,11 +788,14 @@ class TorsionScan(Task):
 
             # Set new position in RDKit conformation
             TorsionScan.set_positions_rdkit_conf(rdkit_conf, positions)
+            new_torsion_list = []
             for torsion in torsions_to_freeze:
                 new_torsion = rdmt.GetDihedralDeg(rdkit_conf, *torsion)
+                new_torsion_list.append(new_torsion)
 
-            assert (abs(old_torsion - new_torsion) < threshold) or (abs(abs(old_torsion - new_torsion) - 360) < threshold), \
-                "Not conserving torsion angle; old={} new={}".format(old_torsion,new_torsion)
+            for new_torsion, old_torsion in zip(new_torsion_list, old_torsion_list):
+                assert (abs(old_torsion - new_torsion) < threshold) or (abs(abs(old_torsion - new_torsion) - 360) < threshold), \
+                    "Not conserving torsion angle; old={} new={}".format(old_torsion,new_torsion)
 
             mm_relaxed_conformations.append(positions)
 
@@ -863,7 +866,7 @@ class TorsionScan(Task):
 
 
     @staticmethod
-    def freeze_torsion(system, torsion_to_freeze, torsion_angle, k):
+    def freeze_torsions(system, torsions_to_freeze, torsions_angles, k):
         """
         Method that freezes the torsion_to_freeze torsion of an OpenMM system by adding a restraint to it.
 
@@ -871,10 +874,10 @@ class TorsionScan(Task):
         ----------
         system : simtk.openmm.System
             Instance of a OpenMM System.
-        torsion_to_freeze : list of int
-            List containing indices of the atoms to be frozen
-        torsion_angle : float
-            Value of the desired torsion angle in degrees.
+        torsions_to_freeze : list of lists of int
+            List of lists containing indices of the atoms to be frozen
+        torsions_angles : list of float
+            List of values of the desired torsion angle in degrees.
         k : float
             Value of the  force constant to be applied in kilojoules/mole.
 
@@ -892,12 +895,17 @@ class TorsionScan(Task):
         system : :obj:`ParaMol.System.system.ParaMolSystem`
             Updated instance of OpenMM System with an extra CustomTorsionForce that freezes the desired torsion.
         """
+
         energy_expression = f'-fc*cos(theta-theta0)'
         fc = unit.Quantity(k, unit.kilojoule_per_mole)
         restraint = CustomTorsionForce(energy_expression)
-        restraint.addGlobalParameter('theta0', torsion_angle * np.pi / 180.0)
         restraint.addGlobalParameter('fc', fc)
-        restraint.addTorsion(*torsion_to_freeze)
+        restraint.addPerTorsionParameter('theta0')
+
+        for torsion, angle in zip(torsions_to_freeze, torsions_angles):
+            torsion_id = restraint.addTorsion(*torsion)
+            restraint.setTorsionParameters(torsion_id, *torsion, [angle * np.pi / 180.0])
+
         system.addForce(restraint)
 
         return system

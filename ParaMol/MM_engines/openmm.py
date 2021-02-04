@@ -111,7 +111,7 @@ class OpenMMEngine:
     def __init__(self, init_openmm=False, topology_format=None, top_file=None, crd_format=None, crd_file=None, charmm_param_file=None, xml_file=None,
                  platform_name='Reference', system=None, integrator=None, platform=None, context=None, topology=None,
                  integrator_params={'temperature': 300.0 * unit.kelvin, 'stepSize': 0.001 * unit.picoseconds, 'frictionCoeff': 2.0 / unit.picoseconds},
-                 create_system_params= {'nonbondedMethod': app.NoCutoff, 'nonbondedCutoff': 1.2 * unit.nanometer, 'constraints': None, 'rigidWater': True}):
+                 create_system_params={'nonbondedMethod': app.NoCutoff, 'nonbondedCutoff': 1.2 * unit.nanometer, 'constraints': None, 'rigidWater': True}):
 
         self.topology_format = topology_format
         self.crd_format = crd_format

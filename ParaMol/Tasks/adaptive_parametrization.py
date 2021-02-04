@@ -225,7 +225,7 @@ class AdaptiveParametrization(Task):
             self.write_restart_pickle(settings.restart, interface, "restart_adaptive_parametrization_file", self.__dict__)
 
             if self.rmsd < rmsd_tol:
-                print("Self-consistent parametrization achieved convergence in {} iterations using a tolerance of {}.".format(self.iteration+1,rmsd_tol))
+                print("Self-consistent parametrization achieved convergence in {} iterations using a tolerance of {}.".format(self.iteration, rmsd_tol))
 
                 return systems, parameter_space, objective_function, optimizer
 

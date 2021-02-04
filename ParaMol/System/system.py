@@ -483,13 +483,25 @@ class ParaMolSystem:
 
         if self.n_structures == 0 or self.ref_coordinates is None:
             self.ref_coordinates = []
-            self.ref_forces = []
-            self.ref_energies = []
         elif isinstance(self.ref_coordinates, np.ndarray):
             # Numpy array; convert to list
             self.ref_coordinates = self.ref_coordinates.tolist()
-            self.ref_energies = self.ref_energies.tolist()
+        else:
+            pass
+
+        if self.ref_forces is None:
+            self.ref_forces = []
+        elif isinstance(self.ref_forces, np.ndarray):
+            # Numpy array; convert to list
             self.ref_forces = self.ref_forces.tolist()
+        else:
+            pass
+
+        if self.ref_energies is None:
+            self.ref_energies = []
+        elif isinstance(self.ref_energies, np.ndarray):
+            # Numpy array; convert to list
+            self.ref_energies = self.ref_energies.tolist()
         else:
             pass
 
