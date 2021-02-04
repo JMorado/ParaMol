@@ -194,8 +194,6 @@ class ASEWrapper:
                 dihedrals_to_fix = []
                 for dihedral in dihedral_freeze:
                     dihedrals_to_fix.append([atoms.get_dihedral(*dihedral) * np.pi / 180.0, dihedral])
-                dihedrals_to_fix.append([-150.0 * np.pi / 180.0, [9, 6, 2, 5]])
-                print(dihedrals_to_fix)
 
                 constraint = FixInternals(bonds=[], angles=[], dihedrals=dihedrals_to_fix)
                 constraints_list.append(constraint)
