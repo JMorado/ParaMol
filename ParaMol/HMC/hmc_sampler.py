@@ -555,12 +555,12 @@ class HMCSampler(Task):
 
         system.n_structures = len(system.ref_coordinates)
 
-        new_param = copy.deepcopy(parameter_space.optimizable_parameters_values_scaled)
+        self._new_param = copy.deepcopy(parameter_space.optimizable_parameters_values_scaled)
 
         self._param_n_structures = 0
 
         if self._old_param is not None:
-            rmsd = self._get_parameters_rmsd(self._old_param, new_param)
+            rmsd = self._get_parameters_rmsd(self._old_param, self._new_param)
             print("\n \n \n RMSD is {} \n \n \n".format(rmsd))
             if rmsd < 1e-4:
                 print("RMSD. Will not parametrize anymore...")
