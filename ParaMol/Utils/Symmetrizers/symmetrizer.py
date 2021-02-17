@@ -58,7 +58,6 @@ class Symmetrizer:
         # - trigonal_angle_types;
         # - urey_bradley_types;
         # - rb_torsion_types;
-
         self._bond_types = {}
         for i in range(len(self._top_file.bond_types)):
             bond_type = self._top_file.bond_types[i]
@@ -71,18 +70,31 @@ class Symmetrizer:
             self._angle_types["A{}".format(i)] = {"idx": angle_type.idx,
                                                   "angle_eq": angle_type.theteq,
                                                   "angle_k": angle_type.k}
-
         self._torsion_types = {}
         for i in range(len(self._top_file.dihedral_types)):
             dihedral_type = self._top_file.dihedral_types[i]
-            self._torsion_types["T{}".format(i)] = {"idx": dihedral_type.idx,
+            index = dihedral_type.idx
+
+            try:
+                dihedral_type = dihedral_type[0]
+            except TypeError:
+                pass
+
+            self._torsion_types["T{}".format(i)] = {"idx": index,
                                                     "torsion_periodicity": dihedral_type.per,
                                                     "torsion_phase": dihedral_type.phase,
                                                     "torsion_k": dihedral_type.phi_k}
         self._sc_types = {}
         for i in range(len(self._top_file.dihedral_types)):
             dihedral_type = self._top_file.dihedral_types[i]
-            self._sc_types["SC{}".format(i)] = {"idx": dihedral_type.idx,
+
+            index = dihedral_type.idx
+
+            try:
+                dihedral_type = dihedral_type[0]
+            except TypeError:
+                pass
+            self._sc_types["SC{}".format(i)] = {"idx": index,
                                                 "scee": dihedral_type.scee,
                                                 "scnb": dihedral_type.scnb}
         """
@@ -103,6 +115,7 @@ class Symmetrizer:
                                                     "sigma": lj_type.LJ_radius[i],
                                                     'id': lj_type[i]}
         """
+
         if force_field_instance is not None:
             self.get_charge_symmetries(force_field_instance)
 
@@ -194,9 +207,14 @@ class Symmetrizer:
                 # Iterate over all top torsions
                 for torsion_idx in range(len(top_torsions)):
                     torsion = top_torsions[torsion_idx]
+                    try:
+                        torsion_type = torsion.type[0]
+                    except TypeError:
+                        torsion_type = torsion.type
+
                     if torsion.atom1.idx == force_field_term.atoms[0] and torsion.atom2.idx == force_field_term.atoms[
                         1] and torsion.atom3.idx == force_field_term.atoms[2] and torsion.atom4.idx == \
-                            force_field_term.atoms[3] and int(torsion.type.per) == int(force_field_term.parameters['torsion_periodicity'].value):
+                            force_field_term.atoms[3] and int(torsion_type.per) == int(force_field_term.parameters['torsion_periodicity'].value):
                         force_field_term.parameters['torsion_phase'].symmetry_group = "T{}".format(torsion.type.idx)
                         force_field_term.parameters['torsion_periodicity'].symmetry_group = "T{}".format(torsion.type.idx)
                         force_field_term.parameters['torsion_k'].symmetry_group = "T{}".format(torsion.type.idx)
@@ -212,10 +230,16 @@ class Symmetrizer:
                 # Iterate over all top torsions
                 periodicities = []
                 types = []
+
                 for torsion in self._top_file.dihedrals:
                     if torsion.atom1.idx == force_field_term.atoms[0] and torsion.atom4.idx == force_field_term.atoms[1]:
                         if torsion.type.idx not in types:
-                            periodicities.append(torsion.type.per)
+                            try:
+                                torsion_type = torsion.type[0]
+                            except TypeError:
+                                torsion_type = torsion.type
+
+                            periodicities.append(torsion_type.per)
                             types.append(torsion.type.idx)
 
                 min_per_idx = periodicities.index(min(periodicities))
@@ -277,6 +301,12 @@ class Symmetrizer:
             elif parameter.symmetry_group[0] == "T":
                 idx = self._torsion_types[parameter.symmetry_group]["idx"]
                 dihedral_type = self._top_file.dihedral_types[idx]
+
+                try:
+                    dihedral_type = dihedral_type[0]
+                except TypeError:
+                    pass
+
                 if parameter.param_key == "torsion_k":
                     dihedral_type.phi_k = parameter.value / kcal_mol_to_kj_mol
                 elif parameter.param_key == "torsion_phase":
@@ -285,6 +315,12 @@ class Symmetrizer:
             elif parameter.symmetry_group[:2] == "SC":
                 idx = self._sc_types[parameter.symmetry_group]["idx"]
                 dihedral_type = self._top_file.dihedral_types[idx]
+
+                try:
+                    dihedral_type = dihedral_type[0]
+                except TypeError:
+                    pass
+
                 if parameter.param_key == "scnb":
                     dihedral_type.scnb = 1.0 / parameter.value
                 elif parameter.param_key == "scee":

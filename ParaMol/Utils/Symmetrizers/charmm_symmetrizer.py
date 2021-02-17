@@ -5,7 +5,6 @@ Description
 This module defines the :obj:`ParaMol.Utils.Symmetrizers.charmm_symmetrizer.CharmmSymmetrizer` used to handle CHARMM files..
 """
 import parmed as pmd
-import numpy as np
 
 # ParaMol modules
 from .symmetrizer import *
@@ -22,18 +21,31 @@ class CharmmSymmetrizer(Symmetrizer):
     xyz : str or array, optional
         If provided, the coordinates and unit cell dimensions from the provided CHARMM .CRD file will be loaded into the molecule, or the coordinates will be loaded from the coordinate array
     """
-    def __init__(self, top_file, xyz=None):
-        self._charmm_top = pmd.charmm.CharmmParameterSet(top_file)
-        super(CharmmSymmetrizer, self).__init__(self._charmm_top)
+    def __init__(self, prm_file, psf_file, xyz=None):
+        self._charmm_prm = pmd.charmm.CharmmParameterSet(prm_file)
+        self._charmm_prm.condense(do_dihedrals=True)
+        self._charmm_psf = pmd.charmm.psf.CharmmPsfFile(psf_file)
+        self._charmm_psf.load_parameters(self._charmm_prm, copy_parameters=False)
+        super(CharmmSymmetrizer, self).__init__(self._charmm_psf)
 
     def __str__(self):
         return "CharmmSymmetrizer module. CHARMM file in use is {}".format(self._charmm_top)
 
-    def get_symmetries(self, force_field_instance=None):
-        pass
+    def save_parameter_set(self, output_file):
+        """
+        Method that saves the CHARMM parameter file with the current force field parameters of the self._charmm_prm instance
 
-    def symmetrize_force_field(self, force_field_instance):
-        pass
+        Notes
+        -----
+        In order to update the self._charmm_prm instance with the optimal parameters, the method update_term_types_parameters should be run before this one.
 
-    def save(self, output_file, format=None):
-        pass
+        Parameters
+        ----------
+        output_file : str
+            Name of the output file
+
+        Returns
+        -------
+        None
+        """
+        return self._charmm_prm.write(str=output_file)
