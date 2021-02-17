@@ -29,7 +29,7 @@ class AmberSymmetrizer(Symmetrizer):
     def __str__(self):
         return "AmberSymmetrizer module. AMBER .prmtop file in use is {}".format(self._amber_top)
 
-    def save_frcmod(self, output_seed):
+    def save_frcmod(self, output_file):
         """
         Method that saves the .frcmod AMBER file with the current force field parameters of the self._amber_prmtop instance.
 
@@ -39,15 +39,13 @@ class AmberSymmetrizer(Symmetrizer):
 
         Parameters
         ----------
-        output_seed : str
-            Name of the output file (without the .prmtop suffix)
+        output_file : str
+            Name of the output file
 
         Returns
         -------
         None
         """
-        frcmod = pmd.tools.writeFrcmod(self._amber_top, output_seed + ".frcmod")
+        frcmod = pmd.tools.writeFrcmod(self._amber_top, output_file)
 
         return frcmod.execute()
-
-
