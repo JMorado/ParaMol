@@ -158,42 +158,42 @@ class Symmetrizer:
         # Iterate over terms in harmonic bond force
         for sub_force in force_field_instance.force_field["HarmonicBondForce"]:
             for force_field_term in sub_force:
-                amber_bonds = [bond for bond in self._top_file.bonds]
+                top_bonds = [bond for bond in self._top_file.bonds]
                 # Iterate over all AMBER bonds
-                for bond_idx in range(len(amber_bonds)):
-                    bond = amber_bonds[bond_idx]
+                for bond_idx in range(len(top_bonds)):
+                    bond = top_bonds[bond_idx]
                     if bond.atom1.idx == force_field_term.atoms[0] and bond.atom2.idx == force_field_term.atoms[1]:
                         force_field_term.parameters['bond_eq'].symmetry_group = "B{}".format(bond.type.idx)
                         force_field_term.parameters['bond_k'].symmetry_group = "B{}".format(bond.type.idx)
                         force_field_term.symmetry_group = "B{}".format(bond.type.idx)
 
                         # Pop this bond out and break the loop
-                        amber_bonds.pop(bond_idx)
+                        top_bonds.pop(bond_idx)
                         break
 
         # Iterate over terms in harmonic angle force
         for sub_force in force_field_instance.force_field["HarmonicAngleForce"]:
             for force_field_term in sub_force:
-                amber_angles = [angle for angle in self._top_file.angles]
-                # Iterate over all amber angles
-                for angle_idx in range(len(amber_angles)):
-                    angle = amber_angles[angle_idx]
+                top_angles = [angle for angle in self._top_file.angles]
+                # Iterate over all top angles
+                for angle_idx in range(len(top_angles)):
+                    angle = top_angles[angle_idx]
                     if angle.atom1.idx == force_field_term.atoms[0] and angle.atom2.idx == force_field_term.atoms[
                         1] and angle.atom3.idx == force_field_term.atoms[2]:
                         force_field_term.parameters['angle_eq'].symmetry_group = "A{}".format(angle.type.idx)
                         force_field_term.parameters['angle_k'].symmetry_group = "A{}".format(angle.type.idx)
                         force_field_term.symmetry_group = "A{}".format(angle.type.idx)
                         # Pop this angle out and break the loop
-                        amber_angles.pop(angle_idx)
+                        top_angles.pop(angle_idx)
                         break
 
         # Iterate over terms in torsions
         for sub_force in force_field_instance.force_field["PeriodicTorsionForce"]:
             for force_field_term in sub_force:
-                amber_torsions = [torsion for torsion in self._top_file.dihedrals]
-                # Iterate over all amber torsions
-                for torsion_idx in range(len(amber_torsions)):
-                    torsion = amber_torsions[torsion_idx]
+                top_torsions = [torsion for torsion in self._top_file.dihedrals]
+                # Iterate over all top torsions
+                for torsion_idx in range(len(top_torsions)):
+                    torsion = top_torsions[torsion_idx]
                     if torsion.atom1.idx == force_field_term.atoms[0] and torsion.atom2.idx == force_field_term.atoms[
                         1] and torsion.atom3.idx == force_field_term.atoms[2] and torsion.atom4.idx == \
                             force_field_term.atoms[3] and int(torsion.type.per) == int(force_field_term.parameters['torsion_periodicity'].value):
@@ -203,13 +203,13 @@ class Symmetrizer:
                         force_field_term.symmetry_group = "T{}".format(torsion.type.idx)
 
                         # Pop this torsion out and break the loop
-                        amber_torsions.pop(torsion_idx)
+                        top_torsions.pop(torsion_idx)
                         break
 
         # Iterate over scaling factors; this also
         for sub_force in force_field_instance.force_field["Scaling14"]:
             for force_field_term in sub_force:
-                # Iterate over all amber torsions
+                # Iterate over all top torsions
                 periodicities = []
                 types = []
                 for torsion in self._top_file.dihedrals:
@@ -240,8 +240,8 @@ class Symmetrizer:
 
         Returns
         -------
-        :obj:`parmed.amber._amberparm.AmberParm`
-            Instance of Parmed AMBER topology object.
+        self._top_file
+            Instance of Parmed topology object.
         """
         # Conversions required:
         # Bond equilibrium value * nanometers_to_angstrom
@@ -296,7 +296,7 @@ class Symmetrizer:
                     if parameter.symmetry_group == "X":
                         self._top_file.atoms[atom_idx].charge = parameter.value
                     else:
-                        assert self._charge_types is not None, "Charge symmetries were not set in AmberSymmetrizer. Use the amber_symmetrizer.get_charge_symmetries method to set them."
+                        assert self._charge_types is not None, "Charge symmetries were not set in Symmetrizer. Use the symmetrizer.get_charge_symmetries method to set them."
                         for atom_sub_idx in self._charge_types[parameter.symmetry_group]["atoms_idx"]:
                             self._top_file.atoms[atom_sub_idx].charge = parameter.value
 
@@ -304,7 +304,7 @@ class Symmetrizer:
                 else:
                     return UserWarning("Trying to update parameter key {} that is not charge. Currently not not implemented.".format(parameter.param_key))
 
-        # Re-do values of amber symmetries
+        # Re-do values of symmetries
         self.get_symmetries()
 
         return self._top_file
