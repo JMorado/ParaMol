@@ -180,8 +180,8 @@ class TorsionScan(Task):
                     # Perform 2D Scan
                     scan_angles, qm_energies_list, qm_forces_list, qm_conformations_list, mm_energies_list, mm_conformations_list =  self.scan_2d(
                         interface, settings.restart, system, conf, torsions_to_scan[0], torsions_to_scan[1], torsions_to_freeze, scan_settings[0],
-                        scan_settings[1], optimize_qm, optimize_qm_before_scan, optimize_mm, optimize_mm_before_scan, optimize_mm_type, ase_constraints, dihedral_conservation_threshold,
-                        mm_opt_force_constant, mm_opt_tolerance, mm_opt_max_iter, restart)
+                        scan_settings[1], optimize_qm, optimize_qm_before_scan, optimize_mm, optimize_mm_before_scan, optimize_mm_type, ase_constraints, rotate_from_initial,
+                        dihedral_conservation_threshold, mm_opt_force_constant, mm_opt_tolerance, mm_opt_max_iter, restart)
 
                     # File name buffer
                     file_name = "scan_{}d_torsion_{}_{}_{}_{}_{}_{}_{}_{}.dat".format(torsional_scan_dim, *torsions_to_scan[0], *torsions_to_scan[1])
