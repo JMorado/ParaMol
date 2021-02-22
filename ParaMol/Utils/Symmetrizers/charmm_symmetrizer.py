@@ -25,6 +25,7 @@ class CharmmSymmetrizer(Symmetrizer):
         self._charmm_prm = pmd.charmm.CharmmParameterSet(prm_file)
         self._charmm_prm.condense(do_dihedrals=True)
         self._charmm_psf = pmd.charmm.psf.CharmmPsfFile(psf_file)
+        # Copy parameters has to be false so that parameters are shared
         self._charmm_psf.load_parameters(self._charmm_prm, copy_parameters=False)
         super(CharmmSymmetrizer, self).__init__(self._charmm_psf)
 

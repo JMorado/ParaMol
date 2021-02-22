@@ -148,6 +148,7 @@ class Settings:
                                   "calc_dir_prefix": "ase_",
                                   "work_dir_prefix": "ASEWorkDir_",
                                   "view_atoms": False,
+                                  "shake_threshold": 1e-7,
                                   "md_dt": 1.0 * ase_unit.fs,
                                   "md_steps": 100,
                                   "md_initial_temperature": 300 * ase_unit.kB,
