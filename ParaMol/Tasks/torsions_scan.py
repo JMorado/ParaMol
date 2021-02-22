@@ -55,7 +55,7 @@ class TorsionScan(Task):
     # ------------------------------------------------------------ #
     def run_task(self, settings, systems, torsions_to_scan, scan_settings, interface=None, torsions_to_freeze=None,
                  ase_constraints=None, optimize_qm=True, optimize_qm_before_scan=False, optimize_mm=False, optimize_mm_before_scan=False,
-                 optimize_mm_type="freeze_atoms", sampling=False, n_structures_to_sample=1, dihedral_conservation_threshold=1e-2,
+                 optimize_mm_type="freeze_atoms", sampling=False, rotate_from_initial=False, n_structures_to_sample=1, dihedral_conservation_threshold=1e-2,
                  mm_opt_force_constant=99999.0, mm_opt_tolerance=1.0, mm_opt_max_iter=0, rdkit_conf=None, restart=False):
         """
         Method that performs 1D or 2D torsional scans. Only a scan at a time.
@@ -101,6 +101,8 @@ class TorsionScan(Task):
             Constraint to be used when performing MM optimization. Available options are 'freeze_atoms' or 'freeze_dihedral'. 'freeze_atoms' is recommended.
         sampling : bool
             Indicates whether to perform sampling at each dihedral angle value using an ASE integrator (default is `False`).
+        rotate_from_initial : bool
+            Flag whether to perform rotation using initial structure or the last structure.
         n_structures_to_sample : int
             If sampling is `True`, sets the number of structures to sample for each dihedral angle value (default is 1).
         dihedral_conservation_threshold : float
@@ -169,7 +171,7 @@ class TorsionScan(Task):
                     # Perform 1D Scan
                     scan_angles, qm_energies_list, qm_forces_list, qm_conformations_list, mm_energies_list, mm_conformations_list = self.scan_1d(
                         interface, settings.restart, system, conf, torsions_to_scan[0], torsions_to_freeze, scan_settings[0], optimize_qm, optimize_qm_before_scan,
-                        optimize_mm, optimize_mm_before_scan, optimize_mm_type, ase_constraints, sampling, n_structures_to_sample, dihedral_conservation_threshold,
+                        optimize_mm, optimize_mm_before_scan, optimize_mm_type, ase_constraints, sampling, rotate_from_initial, n_structures_to_sample, dihedral_conservation_threshold,
                         mm_opt_force_constant, mm_opt_tolerance, mm_opt_max_iter, restart)
 
                     # File name buffer
@@ -202,7 +204,7 @@ class TorsionScan(Task):
         return scan_angles, qm_energies_list, qm_forces_list, qm_conformations_list, mm_energies_list, mm_conformations_list
 
     def scan_1d(self, interface, restart_settings, system, rdkit_conf, torsion_to_scan, torsions_to_freeze, scan_settings, optimize_qm, optimize_qm_before_scan, optimize_mm,
-                optimize_mm_before_scan, optimize_mm_type, ase_constraints, sampling, n_structures_to_sample, threshold, mm_opt_force_constant, mm_opt_tolerance, mm_opt_max_iter, restart,):
+                optimize_mm_before_scan, optimize_mm_type, ase_constraints, sampling, rotate_from_initial, n_structures_to_sample, threshold, mm_opt_force_constant, mm_opt_tolerance, mm_opt_max_iter, restart,):
         """
         Method that performs 1-dimensional torsional scans.
 
@@ -235,6 +237,8 @@ class TorsionScan(Task):
             Constraint to be used when performing MM optimization. Available options are 'freeze_atoms' or 'freeze_dihedral'.
         ase_constraints : list of ASE constraints.
             List of ASE constraints to be applied during the scans.
+        rotate_from_initial : bool
+            Flag whether to perform rotation using initial structure or the last structure.
         sampling : bool
             Indicates whether to perform sampling at each dihedral angle value using an ASE integrator.
         n_structures_to_sample : int
@@ -274,7 +278,6 @@ class TorsionScan(Task):
 
         # Get RDKit positions and define the initial positions variable
         positions = unit.Quantity(rdkit_conf.GetPositions(), unit.angstrom)
-        positions_initial = copy.deepcopy(positions)
 
         # Create OpenMM Context
         dummy_context = Context(dummy_system, dummy_integrator, dummy_platform)
@@ -289,9 +292,9 @@ class TorsionScan(Task):
             self.__dict__ = self.read_restart_pickle(restart_settings, interface, "restart_scan_file")
             # Set positions
             if sampling or optimize_qm:
-                positions = self.qm_conformations_list[-1] * unit.nanometers
+                positions = self.qm_conformations_list[-1] #* unit.nanometers
             elif optimize_mm:
-                positions = self.mmm_conformations_list[-1] * unit.nanometers
+                positions = self.mm_conformations_list[-1] #* unit.nanometers
 
             dummy_context.setPositions(positions)
             # Get new list of torsion scan values
@@ -337,8 +340,12 @@ class TorsionScan(Task):
             print("Step for torsion angle with value {}.".format(torsion_value))
 
             # Set positions in OpenMM context
-            #dummy_context.setPositions(positions_initial)
-            dummy_context.setPositions(positions)
+            if rotate_from_initial:
+                # Set context to initial positions
+                dummy_context.setPositions(positions_initial)
+            else:
+                # Set context to last positions
+                dummy_context.setPositions(positions)
 
             # Set RDKit geometry to the current in the OpenMM context
             positions = dummy_context.getState(getPositions=True).getPositions()
@@ -420,7 +427,7 @@ class TorsionScan(Task):
                         "Not conserving torsion angle in MM optimization; old={} new={}".format(old_torsion, new_torsion)
 
                     # Append to list
-                    self.mm_conformations_list.append(positions)
+                    self.mm_conformations_list.append(positions.in_units_of(unit.nanometers)._value)
                     self.mm_energies_list.append(mm_energy._value)
 
                 # ------------------------------------------------------------- #
@@ -449,7 +456,7 @@ class TorsionScan(Task):
                     # Append to list
                     self.qm_energies_list.append(qm_energy)
                     self.qm_forces_list.append(qm_force)
-                    self.qm_conformations_list.append(positions)
+                    self.qm_conformations_list.append(positions.in_units_of(unit.nanometers)._value)
 
             self.scan_angles.append(torsion_value)
 
@@ -470,7 +477,8 @@ class TorsionScan(Task):
         return self.scan_angles, self.qm_energies_list, self.qm_forces_list, self.qm_conformations_list, self.mm_energies_list, self.mm_conformations_list
 
     def scan_2d(self, interface, restart_settings, system, rdkit_conf, torsion_to_scan_1, torsion_to_scan_2, torsions_to_freeze, scan_settings_1, scan_settings_2, optimize_qm,
-                optimize_qm_before_scan, optimize_mm, optimize_mm_before_scan, optimize_mm_type, ase_constraints, threshold, mm_opt_force_constant, mm_opt_tolerance, mm_opt_max_iter, restart,):
+                optimize_qm_before_scan, optimize_mm, optimize_mm_before_scan, optimize_mm_type, ase_constraints, rotate_from_initial,
+                threshold, mm_opt_force_constant, mm_opt_tolerance, mm_opt_max_iter, restart,):
         """
         Method that performs 2-dimensional torsional scans.
 
@@ -509,6 +517,8 @@ class TorsionScan(Task):
             Constraint to be used when performing MM optimization. Available options are 'freeze_atoms' or 'freeze_dihedral'.
         ase_constraints : list of ASE constraints.
             List of ASE constraints to be applied during the scans.
+        rotate_from_initial : bool
+            Flag whether to perform rotation using initial structure or the last structure.
         threshold : float
             Conservation angle threshold.
         mm_opt_force_constant : float
@@ -543,7 +553,7 @@ class TorsionScan(Task):
         torsion_scan_values_2 = np.arange(min_angle_2, max_angle_2, step_2)
 
         # Merge both ranges into a list
-        torsion_scan_values = [[i,j] for i in torsion_scan_values_1 for j in torsion_scan_values_2]
+        torsion_scan_values = [[i, j] for i in torsion_scan_values_1 for j in torsion_scan_values_2]
 
         # Create temporary OpenMM System, Context and Platform
         dummy_system = copy.deepcopy(system.engine.system)
@@ -552,7 +562,6 @@ class TorsionScan(Task):
 
         # Get RDKit positions and define the initial positions variable
         positions = unit.Quantity(rdkit_conf.GetPositions(), unit.angstrom)
-        positions_initial = copy.deepcopy(positions)
 
         # Create OpenMM Context
         dummy_context = Context(dummy_system, dummy_integrator, dummy_platform)
@@ -567,7 +576,11 @@ class TorsionScan(Task):
         if restart:
             self.__dict__ = self.read_restart_pickle(restart_settings, interface, "restart_scan_file")
             # Set positions
-            positions = self.qm_conformations_list[-1] * unit.nanometers
+            if optimize_qm:
+                positions = self.qm_conformations_list[-1] * unit.nanometers
+            elif optimize_mm:
+                positions = self.mm_conformations_list[-1] * unit.nanometers
+
             dummy_context.setPositions(positions)
             # Get new list of torsion scan values
             torsion_scan_values = [item for item in torsion_scan_values if item not in self.scan_angles]
@@ -600,12 +613,19 @@ class TorsionScan(Task):
         # ----------------------------------------------------------- #
         #                       Perform 2D Scan                       #
         # ----------------------------------------------------------- #
+        positions_initial = copy.deepcopy(positions)
+
         for torsion_value_1, torsion_value_2 in torsion_scan_values:
             print("Step for torsion angle 1 with value {}.".format(torsion_value_1))
             print("step for torsion angle 2 with value {}.".format(torsion_value_2))
 
             # Set positions in OpenMM context
-            dummy_context.setPositions(positions)
+            if rotate_from_initial:
+                # Set context to initial positions
+                dummy_context.setPositions(positions_initial)
+            else:
+                # Set context to last positions
+                dummy_context.setPositions(positions)
 
             # Set RDKit geometry to the current in the OpenMM context
             positions = dummy_context.getState(getPositions=True).getPositions()
@@ -670,7 +690,7 @@ class TorsionScan(Task):
                     "Not conserving torsion angle 2 after MM optimization; old={} new={}".format(old_torsion_2, new_torsion_2)
 
                 # Append to list
-                self.mm_conformations_list.append(positions)
+                self.mm_conformations_list.append(positions.in_units_of(unit.nanometers)._value)
                 self.mm_energies_list.append(mm_energy._value)
 
             # ------------------------------------------------------------- #
@@ -701,7 +721,7 @@ class TorsionScan(Task):
                 # Append to list
                 self.qm_energies_list.append(qm_energy)
                 self.qm_forces_list.append(qm_force)
-                self.qm_conformations_list.append(positions)
+                self.qm_conformations_list.append(positions.in_units_of(unit.nanometers)._value)
 
             self.scan_angles.append([torsion_value_1, torsion_value_2])
 
@@ -709,6 +729,9 @@ class TorsionScan(Task):
             self.write_restart_pickle(restart_settings, interface, "restart_scan_file", self.__dict__)
 
         print("!=================================================================================!\n")
+
+        # Set positions of context to last position
+        dummy_context.setPositions(positions * unit.nanometers)
 
         # Set RDKit geometry to the current in the OpenMM context
         self.set_positions_rdkit_conf(rdkit_conf, positions_initial.in_units_of(unit.angstrom)._value)
@@ -722,8 +745,6 @@ class TorsionScan(Task):
     #                        STATIC METHODS                        #
     #                                                              #
     # ------------------------------------------------------------ #
-
-    # TODO: check if this can be removed
     @staticmethod
     def get_mm_relaxed_conformations(system, torsions_to_freeze, tolerance=0.01, max_iter=0, force_constant=9999999.0, threshold=1e-2):
         """
