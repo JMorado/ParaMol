@@ -63,7 +63,7 @@ class ASEWrapper:
 
     def __init__(self, system_name, interface, calculator, n_atoms, atom_list, n_calculations, cell, calc_dir_prefix="ase_",
                  work_dir_prefix="ASEWorkDir_", view_atoms=False, optimizer=BFGS,
-                 opt_fmax=1e-2, opt_log_file="-", opt_traj_prefix="traj_",
+                 opt_fmax=1e-2, opt_log_file="-", opt_traj_prefix="traj_", shake_threshold=1e-7,
                  md_steps=100, md_dt=1.0*ase_unit.fs, md_initial_temperature=300.0*ase_unit.kB,
                  md_integrator=VelocityVerlet, md_integrator_args={}):
 
@@ -82,6 +82,9 @@ class ASEWrapper:
         self._opt_fmax = opt_fmax
         self._opt_logfile = opt_log_file
         self._opt_traj_prefix = opt_traj_prefix
+
+        # ASE constraints variables
+        self._shake_threshold = shake_threshold
 
         # ASE MD variables
         self._md_steps = md_steps
@@ -195,7 +198,7 @@ class ASEWrapper:
                 for dihedral in dihedral_freeze:
                     dihedrals_to_fix.append([atoms.get_dihedral(*dihedral) * np.pi / 180.0, dihedral])
 
-                constraint = FixInternals(bonds=[], angles=[], dihedrals=dihedrals_to_fix)
+                constraint = FixInternals(bonds=[], angles=[], dihedrals=dihedrals_to_fix, epsilon=self._shake_threshold)
                 constraints_list.append(constraint)
 
             # Apply any ASE constraints
@@ -307,7 +310,7 @@ class ASEWrapper:
             for dihedral in dihedral_freeze:
                 dihedrals_to_fix.append([atoms.get_dihedral(*dihedral) * np.pi / 180.0, dihedral])
 
-            constraint = FixInternals(bonds=[], angles=[], dihedrals=dihedrals_to_fix, epsilon=1e-7)
+            constraint = FixInternals(bonds=[], angles=[], dihedrals=dihedrals_to_fix, epsilon=self._shake_threshold)
             constraints_list.append(constraint)
 
         # Apply any ASE constraints
