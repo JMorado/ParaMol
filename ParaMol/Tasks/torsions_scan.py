@@ -292,9 +292,9 @@ class TorsionScan(Task):
             self.__dict__ = self.read_restart_pickle(restart_settings, interface, "restart_scan_file")
             # Set positions
             if sampling or optimize_qm:
-                positions = self.qm_conformations_list[-1] #* unit.nanometers
+                positions = self.qm_conformations_list[-1] * unit.nanometers
             elif optimize_mm:
-                positions = self.mm_conformations_list[-1] #* unit.nanometers
+                positions = self.mm_conformations_list[-1] * unit.nanometers
 
             dummy_context.setPositions(positions)
             # Get new list of torsion scan values
