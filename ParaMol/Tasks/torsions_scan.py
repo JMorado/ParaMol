@@ -718,6 +718,9 @@ class TorsionScan(Task):
                         abs(abs(old_torsion_2 - new_torsion_2) - 360) < threshold), \
                     "Not conserving torsion angle 2 after QM optimization; old={} new={}".format(old_torsion_2, new_torsion_2)
 
+                # Attribute units to the positions array (useful for next iteration)
+                positions = positions * unit.nanometers
+
                 # Append to list
                 self.qm_energies_list.append(qm_energy)
                 self.qm_forces_list.append(qm_force)
