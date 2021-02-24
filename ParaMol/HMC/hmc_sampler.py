@@ -306,7 +306,7 @@ class HMCSampler(Task):
                     # No structures have been accepted yet.
                     pass
 
-                if parametrization:
+                if self._parametrize:
                     # TODO: include code related to partial momentum refreshment
                     if sampling_freq_qm == self._param_sampling_freq_qm_id and len(system.ref_coordinates) > 0:
                         self._param_coordinates.append(system.ref_coordinates[-1])
@@ -326,7 +326,7 @@ class HMCSampler(Task):
                 system.write_data(os.path.join(settings.restart["restart_dir"], "{}_hmc_{}.nc".format(system.name, self._label)))
                 system.write_coordinates_xyz("{}_hmc_{}.xyz".format(system.name, self._label))
 
-            if parametrization and (self._param_n_structures % parametrization_freq == 0 and self._param_n_structures > 0):
+            if self._parametrize and (self._param_n_structures % parametrization_freq == 0 and self._param_n_structures > 0):
                 system, parameter_space, objective_function, optimizer = self._run_parametrization(settings, system, parameter_space, objective_function, optimizer, calculate_forces)
 
             if self._n % verbose_freq == 0:
