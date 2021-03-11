@@ -133,7 +133,7 @@ class HMCSampler(Task):
             if system_mm_solute.interface is None:
                 system_mm_solute.interface = ParaMolInterface()
 
-            if system is None:
+            if system.interface is None:
                 system.interface = ParaMolInterface()
 
             system_mm_solute.create_qm_engines(settings.qm_engine["qm_engine"], settings.qm_engine[settings.qm_engine["qm_engine"].lower()])
