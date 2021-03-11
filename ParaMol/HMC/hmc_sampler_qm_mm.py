@@ -289,14 +289,14 @@ class HMCSampler(Task):
                 mm_solute_final = unit.Quantity(system_mm_solute.engine.get_potential_energy(coords[:mask_atoms]), unit.kilojoules_per_mole)
 
 
-                potential_final_qm = potential_final_mm - mm_solute_final + potential_final_qm
-                potential_initial_qm = potential_initial_mm - mm_solute_initial + potential_initial_qm
+                potential_final_qm_mm = potential_final_mm - mm_solute_final + potential_final_qm
+                potential_initial_qm_mm = potential_initial_mm - mm_solute_initial + potential_initial_qm
 
                 #potential_initial_mm = mm_solute_initial
                 #potential_final_mm = mm_solute_final
 
                 # Nested Markov chain acceptance criterion
-                qm_accepted = self._hmc_acceptance_criterion_qm(potential_final_qm, potential_initial_qm, potential_final_mm, potential_initial_mm, temperature_pot_qm, temperature_pot_mm)
+                qm_accepted = self._hmc_acceptance_criterion_qm(potential_final_qm_mm, potential_initial_qm_mm, potential_final_mm, potential_initial_mm, temperature_pot_qm, temperature_pot_mm)
 
                 if qm_accepted:
                     self._last_accepted_mm_energy = potential_final_mm
