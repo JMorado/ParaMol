@@ -133,6 +133,9 @@ class HMCSampler(Task):
             if system_mm_solute.interface is None:
                 system_mm_solute.interface = ParaMolInterface()
 
+            if system is None:
+                system.interface = ParaMolInterface()
+
             system_mm_solute.create_qm_engines(settings.qm_engine["qm_engine"], settings.qm_engine[settings.qm_engine["qm_engine"].lower()])
 
             if ase_calculator_low_level is not None:
@@ -285,8 +288,12 @@ class HMCSampler(Task):
 
                 mm_solute_final = unit.Quantity(system_mm_solute.engine.get_potential_energy(coords[:mask_atoms]), unit.kilojoules_per_mole)
 
-                potential_initial_mm = mm_solute_initial
-                potential_final_mm = mm_solute_final
+
+                potential_final_qm = potential_final_mm - mm_solute_final + potential_final_qm
+                potential_initial_qm = potential_initial_mm - mm_solute_initial + potential_initial_qm
+
+                #potential_initial_mm = mm_solute_initial
+                #potential_final_mm = mm_solute_final
 
                 # Nested Markov chain acceptance criterion
                 qm_accepted = self._hmc_acceptance_criterion_qm(potential_final_qm, potential_initial_qm, potential_final_mm, potential_initial_mm, temperature_pot_qm, temperature_pot_mm)
