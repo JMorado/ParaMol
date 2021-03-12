@@ -344,8 +344,8 @@ class HMCSampler(Task):
                 self.write_restart_pickle(settings.restart, system.interface, "restart_hmc_file_{}".format(self._label), self.__dict__)
                 system.write_data(os.path.join(settings.restart["restart_dir"], "{}_hmc_{}.nc".format(system.name, self._label)))
 
-                system_mm_solute.ref_coordinates = np.asarray(system.ref_coordinates)[:,:mask_atoms,:]
-                system.write_coordinates_xyz("{}_hmc_{}.xyz".format(system_mm_solute.name, self._label))
+                system_mm_solute.ref_coordinates = np.asarray(system.ref_coordinates)[:, :mask_atoms, :]
+                system_mm_solute.write_coordinates_xyz("{}_hmc_{}.xyz".format(system_mm_solute.name, self._label))
 
             if self._parametrize and (self._param_n_structures % parametrization_freq == 0 and self._param_n_structures > 0):
                 system, parameter_space, objective_function, optimizer = self._run_parametrization(settings, system, parameter_space, objective_function, optimizer, calculate_forces)
