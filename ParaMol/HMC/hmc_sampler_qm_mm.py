@@ -112,7 +112,7 @@ class HMCSampler(Task):
 
         Returns
         -------
-        systems : list
+        systems : listg
             List with the updated instances of ParaMol System.
         """
         assert len(systems) == 1, "HMC task currently only supports one system at once."
@@ -121,7 +121,7 @@ class HMCSampler(Task):
         for system in systems:
             system.convert_system_ref_arrays_to_list()
 
-            # Reset any previously created OpenMM Context
+            # Reset any previously created OpenMM Context\
             system.engine.context = None
 
             # HMC has to use a sympletic integrator such VelocityVerletIntegrator
@@ -343,7 +343,9 @@ class HMCSampler(Task):
             if self._n % checkpoint_freq == 0:
                 self.write_restart_pickle(settings.restart, system.interface, "restart_hmc_file_{}".format(self._label), self.__dict__)
                 system.write_data(os.path.join(settings.restart["restart_dir"], "{}_hmc_{}.nc".format(system.name, self._label)))
-                system.write_coordinates_xyz("{}_hmc_{}.xyz".format(system.name, self._label))
+
+                system_mm_solute.ref_coordinates = np.asarray(system.ref_coordinates)[:,:mask_atoms,:]
+                system.write_coordinates_xyz("{}_hmc_{}.xyz".format(system_mm_solute.name, self._label))
 
             if self._parametrize and (self._param_n_structures % parametrization_freq == 0 and self._param_n_structures > 0):
                 system, parameter_space, objective_function, optimizer = self._run_parametrization(settings, system, parameter_space, objective_function, optimizer, calculate_forces)
