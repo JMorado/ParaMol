@@ -11,8 +11,8 @@ ParaMol.Utils subpackage
     :titlesonly:
 
     ParaMol.Utils.settings
-    ParaMol.Utils.amber_symmetrizer
     ParaMol.Utils.interface
     ParaMol.Utils.gaussian_esp
     ParaMol.Utils.conformational_sampling
+    ParaMol.Utils.Symmetrizers
 
