@@ -14,5 +14,3 @@ Utils.Symmetrizers subsubpackage
     ParaMol.Utils.Symmetrizers.amber_symmetrizer
     ParaMol.Utils.Symmetrizers.gromacs_symmetrizer
     ParaMol.Utils.Symmetrizers.charmm_symmetrizer
-
-.
