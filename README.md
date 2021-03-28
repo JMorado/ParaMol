@@ -59,5 +59,4 @@ If you have any question or issue to report please contact j.morado@soton.ac.uk.
 
 # References
 
-Soon to be included.
-  
+Morado, J.; Mortenson, P. N.; Verdonk, M. L.; Ward, R. A.; Essex, J. W.; Skylaris, C.-K. ParaMol: A Package for Automatic Parameterization of Molecular Mechanics Force Fields. J. Chem. Inf. Model. 2021, acs.jcim.0c01444. https://doi.org/10.1021/acs.jcim.0c01444.  
