@@ -125,6 +125,8 @@ class RESPFitting(Task):
                 system.resp_engine.calculate_inverse_distances(system)
                 # Set symmetry constraints
                 system.resp_engine.set_symmetry_constraints(system, True)
+                # Set atoms not being optimized
+                system.resp_engine.set_not_optimize_atoms(system)
                 # Perform RESP charge fitting
                 charges = system.resp_engine.fit_resp_charges_explicitly(system, rmsd_tol, max_iter)
                 # Update system
