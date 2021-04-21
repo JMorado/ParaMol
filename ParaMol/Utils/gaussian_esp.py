@@ -26,6 +26,10 @@ class GaussianESP:
         """
         Method that reads the output of a gaussian ESP calculation.
 
+        Notes
+        -----
+        Energy stored will be the last occurrence of "SCF Done:" in the gaussian log file.
+
         Parameters
         ----------
         log_file : str
@@ -33,9 +37,10 @@ class GaussianESP:
 
         Returns
         -------
-        conformation, grid, esp
+        conformation, grid, esp, energy
         """
         angstrom_to_au = 1.8897259886
+        hartree_to_kj_mol = 2625.5002
         conformation = []
         grid = []
         esp = []
@@ -64,9 +69,13 @@ class GaussianESP:
                 esp_value = float(line_split[2])
                 esp.append(esp_value)
 
+            elif "SCF Done:" in line:
+                line_split = line.split()
+                energy = float(line_split[4]) * hartree_to_kj_mol
+
         gaussian_file.close()
 
-        return conformation, grid, esp
+        return conformation, grid, esp, energy
 
     def read_log_files(self, files_names):
         """
@@ -85,23 +94,27 @@ class GaussianESP:
             Array with grid points.
         esps : np.array, shape=(n_esp_points,3)
             Array with electrostatic potential values.
+        energies : np.array, shape=(n_conformations)
+            Array with energies
         """
         # Read ALL gaussian log files
         self.conformations = []
         self.grids = []
         self.esps = []
+        self.energies = []
 
         if type(files_names) is str:
             files_names = [files_names]
 
         for gaussian_file in files_names:
-            conformation, grid, esp = self.gaussian_read_log(gaussian_file)
+            conformation, grid, esp, energy = self.gaussian_read_log(gaussian_file)
             assert len(grid) == len(esp), "Number of grid points and ESP values does not coincide."
             self.conformations.append(np.asarray(conformation))
             self.grids.append(np.asarray(grid))
             self.esps.append(np.asarray(esp))
+            self.energies.append(energy)
 
-        return self.conformations, self.grids, self.esps
+        return self.conformations, self.grids, self.esps, self.energies
 
     def write_esp_paramol_format(self):
         """
