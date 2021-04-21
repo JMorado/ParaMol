@@ -61,8 +61,11 @@ class RESP:
     def __init__(self, total_charge, include_regularization, method, scaling_factor, hyperbolic_beta, weighting_method, weighting_temperature, **kwargs):
         # Variables related to total charge and symmetry constraints
         self._n_constraints = 1 # There is always at least one constraint (total charge one). This value is increased if there are more symmetry constraints.
+        self._n_not_optimized = 0
+
         self._total_charge = total_charge
         self._symmetry_constraints = None
+        self._not_optimized = None
 
         self.charges = None
         self.initial_charges = None
@@ -201,8 +204,16 @@ class RESP:
         assert self._weighting_method.upper() in ["UNIFORM", "MANUAL", "BOLTZMANN"], "RESP only accepts the following weighting methods:'UNIFORM', 'MANUAL' or 'BOLTZMANN'"
 
         if self._regularization_type.upper() == "HYPERBOLIC":
-            print("Since HYPERBOLIC regularization was chosen, initial charges will be set to zero.")
-            self.initial_charges = np.zeros(len(self.initial_charges))
+            print("Since HYPERBOLIC regularization was chosen, initial charges that will be optimized will be set to zero.")
+            initial_charges_tmp = []
+
+            for atom_id in range(len(self.initial_charges)):
+                if atom_id in self._not_optimized:
+                    initial_charges_tmp.append(self._not_optimized[atom_id])
+                else:
+                    initial_charges_tmp.append(0.)
+
+            self.initial_charges = np.asarray(initial_charges_tmp)
 
         n_iter = 1
 
@@ -214,6 +225,8 @@ class RESP:
         self._calculate_a(system, initialize=True)
         # Compute B matrix
         self._calculate_b(system, initialize=True)
+
+
         # Solve system of equations in matrix form (it is necessary to invert a matrix; may be costly for large mols)
         # q=A^{-1}B
         #self.charges = np.matmul(self._B, inv(self._A))
@@ -325,6 +338,41 @@ class RESP:
 
         return self._symmetry_constraints
 
+    def set_not_optimize_atoms(self, system):
+        """
+        Method that makes atoms not to be optimized.
+
+        Notes
+        -----
+        This is only necessary for the explicit solution case.
+
+        Parameters
+        ----------
+        system : :obj:`ParaMol.System.system.ParaMolSystem`
+            ParaMol System.
+
+        Returns
+        -------
+        charges : list of list of int
+            List of lists, wherein the inner lists contain symmetric-equivalent pairs of atoms.
+        """
+        self._not_optimized = {}
+
+        i = 0
+        for sub_force_idx_i in range(len(system.force_field.force_field['NonbondedForce'])):
+            # For a given force occurrence, iterate over all force field terms
+            for m in range(len(system.force_field.force_field['NonbondedForce'][sub_force_idx_i])):
+
+                parameter = system.force_field.force_field['NonbondedForce'][sub_force_idx_i][m].parameters['charge']
+
+                if not parameter.optimize:
+                    self._not_optimized[i] = parameter.value
+                    self._n_not_optimized += 1
+
+                i += 1
+
+        return self._not_optimized
+
     # ------------------------------------------------------------ #
     #                                                              #
     #                         PRIVATE METHODS                      #
@@ -354,8 +402,8 @@ class RESP:
             # It is only necessary to compute non-diagonal elements when A is initialized.
             # This is due to the fact that these terms do not change during the SC procedure (they do not depend on q_j)
             self._A_aux = np.zeros((system.n_structures,
-                                    system.n_atoms + self._n_constraints,
-                                    system.n_atoms + self._n_constraints))
+                                    system.n_atoms + self._n_constraints + self._n_not_optimized,
+                                    system.n_atoms + self._n_constraints + self._n_not_optimized))
 
             # (Nconf,Natoms+Nconstraints,Natoms+Nconstraints)
 
@@ -382,6 +430,12 @@ class RESP:
                 self._A_aux[:, system.n_atoms + i + 1, self._symmetry_constraints[i][1]] = -1.0
                 self._A_aux[:, self._symmetry_constraints[i][0], system.n_atoms + i + 1] = 1.0
                 self._A_aux[:, self._symmetry_constraints[i][1], system.n_atoms + i + 1] = -1.0
+
+            # Add row/column information relative to the atoms not being optimized
+            for i, (atom_index, charge_restraint) in enumerate(self._not_optimized.items()):
+                self._A_aux[:, system.n_atoms + self._n_constraints + i , atom_index] = 1.0
+                self._A_aux[:, atom_index, system.n_atoms + self._n_constraints + i ] = 1.0
+
 
             print("Calculated initial A matrix.")
 
@@ -430,7 +484,7 @@ class RESP:
         """
 
         if initialize:
-            self._B_aux = np.zeros((system.n_structures, system.n_atoms + self._n_constraints))
+            self._B_aux = np.zeros((system.n_structures, system.n_atoms + self._n_constraints + self._n_not_optimized))
 
             # Iterate over all conformations
             for m in range(system.n_structures):
@@ -441,8 +495,13 @@ class RESP:
                         # B_{j} = \sum_{i} \frac{V_i}{r_{ij}}
                         self._B_aux[m, j] = self._B_aux[m, j] + system.ref_esp[m][i] * self.inv_rij[m][j, i]
 
-            # Set last element of the row equal to the total charge
+            # Set last element equal to the total charge
             self._B_aux[:, system.n_atoms] = self._total_charge
+
+            # Add row/column information relative to the atoms not being optimized
+            # Add row/column information relative to the atoms not being optimized
+            for i, (atom_index, charge_restraint) in enumerate(self._not_optimized.items()):
+                self._B_aux[:, system.n_atoms + self._n_constraints + i] = charge_restraint
 
             print("Calculated initial B matrix.")
 
