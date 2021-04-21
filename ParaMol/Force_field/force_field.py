@@ -119,7 +119,6 @@ class ForceField:
         if symmetry_constrained:
             # Update the parameter list taking into account the symmetry constraints
             symm_groups = {}
-
             # Iterate over all optimizable parameters; update all the parameters that belong do the default
             # symmetry group and save the new paramter values of the others
             for i in range(len(self.optimizable_parameters)):
