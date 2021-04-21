@@ -343,7 +343,7 @@ class TorsionsParametrization(Task):
         rotatable_bond_mol = Chem.MolFromSmarts("[!$(*#*)&!D1]-&!@[!$(*#*)&!D1]" + smart_to_add)
         rotatable_bonds = rdkit_mol.GetSubstructMatches(rotatable_bond_mol)
         assert len(rotatable_bonds) == rdmd.CalcNumRotatableBonds(
-            rdkit_mol), "Incosistency in the number of rotatable bonds."
+            rdkit_mol), "Inconsistency in the number of rotatable bonds."
 
         return rotatable_bonds
 

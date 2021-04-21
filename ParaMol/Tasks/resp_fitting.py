@@ -137,9 +137,50 @@ class RESPFitting(Task):
         print("!=================================================================================!")
         return systems, parameter_space, objective_function, optimizer
 
-    # ------------------------------------------------------------ #
-    #                                                              #
-    #                         PRIVATE METHODS                      #
-    #                                                              #
-    # ------------------------------------------------------------ #
+    @staticmethod
+    def get_degenerate_hydrogen_indexes(rdkit_mol):
+        """
+        Method that determines the indices of the hydrogen atoms belonging to methyl or methylene groups.
 
+        Parameters
+        ----------
+        rdkit_mol:
+            RDKit Molecule
+
+        Returns
+        -------
+        hydrogen_indexes: list of int
+            Tuple of tuples containing the indexes of the atoms forming rotatable (soft) bonds.
+        """
+        from rdkit import Chem
+        smarts_hydrogens = "[*H2,*H3,*H4,*H5,*H6,*H7]"
+
+        # bonds
+        degenerate_hydrogen_bond_mol = Chem.MolFromSmarts("*-"+smarts_hydrogens)
+        degenerate_hydrogen_bond_indexes = rdkit_mol.GetSubstructMatches(degenerate_hydrogen_bond_mol)
+
+        # heavy atoms
+        degenerate_hydrogen_mol = Chem.MolFromSmarts(smarts_hydrogens)
+        degenerate_hydrogen_indexes = rdkit_mol.GetSubstructMatches(degenerate_hydrogen_mol)
+
+        atoms = rdkit_mol.GetAtoms()
+
+        hydrogen_symmetries = []
+        # Iterate over all
+        for heavy_atom in degenerate_hydrogen_indexes:
+            tmp_hydrogen_symmetries = []
+            heavy_atom_idx = heavy_atom[0]
+            # Iterate over all bonds of carbon atoms that have more than one hydrogen
+            for bond in degenerate_hydrogen_bond_indexes:
+                if heavy_atom_idx in bond:
+                    bond = list(bond)
+                    bond.remove(heavy_atom_idx)
+                    tmp_id = bond[0]
+
+                    # Compare atomic number to check if this is a hydrogen atom
+                    if atoms[tmp_id].GetAtomicNum() == 1:
+                        tmp_hydrogen_symmetries.append(tmp_id)
+
+            hydrogen_symmetries.append(tmp_hydrogen_symmetries)
+
+        return hydrogen_symmetries

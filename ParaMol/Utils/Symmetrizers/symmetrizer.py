@@ -118,6 +118,7 @@ class Symmetrizer:
 
         if force_field_instance is not None:
             self.get_charge_symmetries(force_field_instance)
+            print("Charge symmetries were set as force_field_instance was passed.")
 
         return self._bond_types, self._angle_types, self._torsion_types, self._sc_types, self._lj_types, self._charge_types
 
@@ -261,6 +262,8 @@ class Symmetrizer:
         ----------
         optimizable_parameters : list of :obj:`ParaMol.Force_field.force_field_term_parameter.Parameter`
             List that contains instances of :obj:`ParaMol.Force_field.force_field_term_parameter.Parameter` that are optimizable.
+        force_field_instance : :obj:`ParaMol.Force_field.force_field.ForceField`
+            Instance of the ParaMol ForceField. Only necessary if necessary to update charge symmetries.
 
         Returns
         -------
