@@ -129,8 +129,13 @@ class RESPFitting(Task):
                 system.resp_engine.set_not_optimize_atoms(system)
                 # Perform RESP charge fitting
                 charges = system.resp_engine.fit_resp_charges_explicitly(system, rmsd_tol, max_iter)
+                # Remove charges not being optimized; dictionaries keep insertion order so this should work fine
+                charges_to_update = []
+                for i in range(len(charges)):
+                    if i not in system.resp_engine._not_optimized.keys():
+                        charges_to_update.append(charges[i])
                 # Update system
-                parameter_space.update_systems(systems, charges, symmetry_constrained=False)
+                parameter_space.update_systems(systems, charges_to_update, symmetry_constrained=False)
         else:
             raise NotImplementedError("RESP solver {} is not implemented.".format(solver))
 
