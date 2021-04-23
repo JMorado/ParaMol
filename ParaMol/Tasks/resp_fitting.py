@@ -183,7 +183,6 @@ class RESPFitting(Task):
                     bond = list(bond)
                     bond.remove(heavy_atom_idx)
                     tmp_id = bond[0]
-
                     # Compare atomic number to check if this is a hydrogen atom
                     if atoms[tmp_id].GetAtomicNum() == 1:
                         tmp_hydrogen_symmetries.append(tmp_id)

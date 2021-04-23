@@ -322,6 +322,19 @@ class TorsionsParametrization(Task):
         """
         Method that determines the indices of the atoms which form rotatable (soft) bonds.
 
+        Notes
+        -----
+        Rotatable bond
+        [!$(*#*)&!D1]-!@[!$(*#*)&!D1]
+        An atom which is not triply bonded and not one-connected i.e.terminal connected by a single non-ring bond to and equivalent atom.
+        Note that logical operators can be applied to bonds ("-&!@").
+        Here, the overall SMARTS consists of two atoms and one bond.
+        The bond is "site and not ring".
+        *#* any atom triple bonded to any atom.
+        By enclosing this SMARTS in parentheses and preceding with $, this enables us to use $(*#*) to write a recursive SMARTS using that string as an atom primitive.
+        The purpose is to avoid bonds such as c1ccccc1-C#C which wo be considered rotatable without this specification.
+        Source: https://www.daylight.com/dayhtml_tutorials/languages/smarts/smarts_examples.html
+
         Parameters
         ----------
         rdkit_mol:
@@ -339,7 +352,6 @@ class TorsionsParametrization(Task):
             smart_to_add = ""
         else:
             smart_to_add = ""
-
         rotatable_bond_mol = Chem.MolFromSmarts("[!$(*#*)&!D1]-&!@[!$(*#*)&!D1]" + smart_to_add)
         rotatable_bonds = rdkit_mol.GetSubstructMatches(rotatable_bond_mol)
         assert len(rotatable_bonds) == rdmd.CalcNumRotatableBonds(
