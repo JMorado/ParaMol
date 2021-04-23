@@ -5,7 +5,7 @@ ParaMol - a package for automatic parametrization of molecular mechanics force-f
 Code by João Morado.
 """
 
-__version__ = "1.1.0"
+__version__ = "1.1.1"
 
 __all__ = ["System",
            "Parameter_space",

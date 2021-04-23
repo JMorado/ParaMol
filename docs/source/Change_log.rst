@@ -1,6 +1,10 @@
 Change Log
 ==========
 
+Version 1.1.1
+-------------
+- Several improvements to explicit RESP solution.
+
 Version 1.1.0
 -------------
 - Implementation of LLS to derive bonded parameters. Bonds, angles and torsions can now be determined directly through LLS fitting to QM energies. Currently, the only type of regularization that can be used with LLS fitting is the L2 regularization.
