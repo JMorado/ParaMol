@@ -285,6 +285,10 @@ class HMCSampler(Task):
                 if qm_accepted:
                     self._last_accepted_mm_energy = potential_final_mm
 
+                    # Update position of context if using ASE engine
+                    if mm_ase_engine is not None:
+                        system.engine.set_positions(coords)
+
                     # Append energies, forces and conformations
                     system.ref_energies.append(potential_final_qm._value)
                     system.ref_coordinates.append(system.engine.get_positions()._value)
