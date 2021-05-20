@@ -226,7 +226,6 @@ class HMCSampler(Task):
 
                 mm_solute_initial = unit.Quantity(system_mm_solute.engine.get_potential_energy(system.ref_coordinates[-1][:mask_atoms]), unit.kilojoules_per_mole)
 
-
                 if mm_ase_engine is not None:
                     coord_to_run = np.asarray(system.ref_coordinates[-1]) * 10
             else:
@@ -303,6 +302,10 @@ class HMCSampler(Task):
 
                 if qm_accepted:
                     self._last_accepted_mm_energy = potential_final_mm
+
+                    # Update position of context if using ASE engine
+                    if mm_ase_engine is not None:
+                        system.engine.set_positions(coords)
 
                     # Append energies, forces and conformations
                     system.ref_energies.append(potential_final_qm._value)
