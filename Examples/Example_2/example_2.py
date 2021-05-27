@@ -30,7 +30,7 @@ paramol_settings.properties["include_esp"] = True
 #                 Read ESP Data into ParaMol                #
 # --------------------------------------------------------- #
 gaussian_esp = GaussianESP()
-aniline.ref_coordinates, aniline.ref_esp_grid, aniline.ref_esp = gaussian_esp.read_log_files(["path_to_guassian_log_file"])
+aniline.ref_coordinates, aniline.ref_esp_grid, aniline.ref_esp, aniline.ref_energies = gaussian_esp.read_log_files(["path_to_guassian_log_file"])
 
 # --------------------------------------------------------- #
 #                Symmetrize ParaMol ForceField              #
