@@ -75,7 +75,7 @@ class TestRESPTask:
         #                 Read ESP Data into ParaMol                #
         # --------------------------------------------------------- #
         gaussian_esp = GaussianESP()
-        aniline.ref_coordinates, aniline.ref_esp_grid, aniline.ref_esp = gaussian_esp.read_log_files(["ParaMol/Tests/Tasks/aniline_opt.log"])
+        aniline.ref_coordinates, aniline.ref_esp_grid, aniline.ref_esp, aniline.ref_energies = gaussian_esp.read_log_files(["ParaMol/Tests/Tasks/aniline_opt.log"])
 
         assert aniline.ref_esp_grid[0].shape == (39946, 3)
         assert len(aniline.ref_esp[0]) == 39946
