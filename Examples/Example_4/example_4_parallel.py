@@ -14,7 +14,7 @@ openmm_system = OpenMMEngine(init_openmm=True, topology_format='AMBER', top_file
 
 # Create ParaMol System
 # Note that number of cpus was set to 4
-aspirin = ParaMolSystem(name="aspirin", engine=openmm_system, n_atoms=21, n_cpus=4)
+aspirin = ParaMolSystem(name="aspirin", engine=openmm_system, n_atoms=21, n_cpus=48)
 
 # Create ParaMol's force field representation and ask to parametrize bonds, angles and torsions
 aspirin.force_field.create_force_field(opt_bonds=True, opt_angles=True, opt_torsions=True)
