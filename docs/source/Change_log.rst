@@ -1,6 +1,12 @@
 Change Log
 ==========
 
+Version 1.1.2
+-------------
+- Improvements to RESP. Now ParaMol automatically reads the energies from Gaussian .log files
+- Small adjustments to examples.
+- Reverted scaling of regularization on LLS fitting to the original version. Results from non-linear optimizers and LLS fitting may not coincide as for a similar parameterization situation the number of parameters differs due to the requirement of using 'auxiliary' terms in LLS fitting. General solution will be included in future versions.
+
 Version 1.1.1
 -------------
 - Several improvements to explicit RESP solution.
