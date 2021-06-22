@@ -152,6 +152,7 @@ class LinearLeastSquare:
         Notes
         -----
         Only one ParaMol system is supported at once.
+        Experimental function.
 
         Parameters
         ----------
@@ -169,7 +170,6 @@ class LinearLeastSquare:
 
 
         n_iter = 1
-        #
         rmsd = 999
         rmsd_tol = 1e-20
         max_iter = 100000
@@ -260,8 +260,10 @@ class LinearLeastSquare:
         """
         # Create alpha=scaling_factor / scaling_constants
         alpha = self._scaling_factor / self._scaling_constants
+
+        # TODO: think of how to make this division general
         # Divide by two to make this approach equivalent to the remainder of ParaMol
-        alpha = 0.5 * alpha
+        # alpha = 0.5 * alpha
 
         # Calculate prior widths
         self._calculate_prior_widths()
