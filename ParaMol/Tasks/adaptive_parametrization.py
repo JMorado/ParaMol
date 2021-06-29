@@ -163,7 +163,7 @@ class AdaptiveParametrization(Task):
 
                         # Get positions and compute QM energy and forces
                         coord = system.engine.context.getState(getPositions=True).getPositions()
-                        energy, forces = system.qm_engine.qm_engine.run_calculation(coords=coord.in_units_of(unit.angstrom)._value, label=0)
+                        energy, forces = system.qm_engine.qm_engine.run_calculation(coords=coord.in_units_of(unit.angstrom)._value, label=0, calculate_force=settings.objective_function["include_force"])
 
                         # Append energies, forces and conformations
                         system.ref_energies.append(energy)
