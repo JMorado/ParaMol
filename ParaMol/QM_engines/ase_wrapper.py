@@ -171,11 +171,10 @@ class ASEWrapper:
         if calc_type.lower() == "single_point":
             # Run calculation and extract potential energy and forces
             # Set calculator in Atoms object
-
-            energy = atoms.get_potential_energy() * 96.48530749925794  # eV to kJ/mol
-
             if calculate_force:
                 forces = atoms.get_forces() * 96.48530749925794 * 10.0  # eV/A to kJ/mol/nm
+
+            energy = atoms.get_potential_energy() * 96.48530749925794  # eV to kJ/mol
 
             # View molecule after sp calculation
             if self._view_atoms:
@@ -220,12 +219,12 @@ class ASEWrapper:
             if self._view_atoms:
                 view(atoms)
 
+            if calculate_force:
+                forces = atoms.get_forces() * 96.48530749925794 * 10.0 # eV/A to kJ/mol/nm
+
             # Get data
             coords = atoms.get_positions() * 0.1 # Angstrom to nm
             energy = atoms.get_potential_energy() * 96.48530749925794  # eV to kJ/mol
-
-            if calculate_force:
-                forces = atoms.get_forces() * 96.48530749925794 * 10.0 # eV/A to kJ/mol/nm
 
             # Go back to main folder
             self._interface.chdir_base()
@@ -326,18 +325,18 @@ class ASEWrapper:
         MaxwellBoltzmannDistribution(atoms, initial_temperature, force_temp=True, rng=np.random)
 
         # Get data
+        forces_initial = atoms.get_forces() * 96.48530749925794 * 10.0  # eV/A to kJ/mol/nm
         kinetic_intial = atoms.get_kinetic_energy() * 96.48530749925794  # eV to kJ/mol
         potential_inital = atoms.get_potential_energy() * 96.48530749925794  # eV to kJ/mol
-        forces_initial = atoms.get_forces() * 96.48530749925794 * 10.0  # eV/A to kJ/mol/nm
 
         dyn = integrator(atoms, dt, *integrator_args, trajectory=self._opt_traj_prefix+".traj", logfile=self._opt_logfile, )
         dyn.run(steps)
 
         # Get data
+        forces_final = atoms.get_forces() * 96.48530749925794 * 10.0  # eV/A to kJ/mol/nm
         coords = atoms.get_positions() * 0.1  # Angstrom to nm
         kinetic_final = atoms.get_kinetic_energy() * 96.48530749925794  # eV to kJ/mol
         potential_final = atoms.get_potential_energy() * 96.48530749925794  # eV to kJ/mol
-        forces_final = atoms.get_forces() * 96.48530749925794 * 10.0  # eV/A to kJ/mol/nm
 
         # View molecule after sp calculation
 

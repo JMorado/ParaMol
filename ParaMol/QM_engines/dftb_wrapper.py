@@ -85,7 +85,7 @@ class DFTBWrapper:
     #                       PUBLIC  METHODS                        #
     #                                                              #
     # ------------------------------------------------------------ #
-    def run_calculation(self, coords, label):
+    def run_calculation(self, coords, label, *args, **kwargs):
         """
         Method that perform a single-point calculation with forces.
 

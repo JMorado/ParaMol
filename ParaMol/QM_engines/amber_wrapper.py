@@ -82,7 +82,7 @@ class AmberWrapper:
     #                         PUBLIC METHODS                       #
     #                                                              #
     # ------------------------------------------------------------ #
-    def run_calculation(self, coords, label):
+    def run_calculation(self, coords, label, *args, **kwargs):
         """
         Method that runs a calculation using AMBER's quantum chemisty package sqm.
 
