@@ -1,6 +1,11 @@
 Change Log
 ==========
 
+Version 1.1.3
+-------------
+- Optimized calculation of forces when using ASE.
+- Adaptive parameterization calculates forces only if they are required as a property of the objective fucntion.
+
 Version 1.1.2
 -------------
 - Improvements to RESP. Now ParaMol automatically reads the energies from Gaussian .log files
