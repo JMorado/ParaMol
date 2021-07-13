@@ -17,11 +17,6 @@ The easiest way to install ParaMol it.
 The last stable version can be installed via conda:
 
     conda install paramol -c jmorado -c ambermd -c conda-forge -c omnia -c rdkit -c anaconda
-    
-The current development version can be installed via conda:
-
-    conda install paramol-dev -c jmorado -c ambermd -c conda-forge -c omnia -c rdkit -c anaconda
-
 
 # Available Tasks
 - Parametrization.
