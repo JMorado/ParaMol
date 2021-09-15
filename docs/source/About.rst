@@ -8,7 +8,7 @@ Overview
 
 ParaMol is a Python library that aims to ease the process of force field parametrization of molecules.
 
-Current Version: 1.1.3
+Current Version: 1.1.4
 
 About
 #######

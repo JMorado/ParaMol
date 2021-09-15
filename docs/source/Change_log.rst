@@ -1,6 +1,13 @@
 Change Log
 ==========
 
+Version 1.1.4
+-------------
+- Implemented nested Markov Chain Monte Carlo algorithm (nMC-MC).
+- Self-parametrizing nMC-MC method is now available.
+- Added documentation, examples and other info about the nMC-MC method.
+- Fixes to torsion_parametrization task.
+
 Version 1.1.3
 -------------
 - Optimized calculation of forces when using ASE.
