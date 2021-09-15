@@ -159,14 +159,15 @@ class HMCSampler(Task):
         self._label = label
 
         parameter_space, objective_function, optimizer = (None, None, None)
-        # TODO: Once this is included in the main ParaMol version, add this line to the default dictionary
-        settings.restart["restart_hmc_file_{}".format(self._label)] = "restart_hmc_{}.pickle".format(self._label)
+
+        # Restart file
+        settings.restart["restart_hmc_file_{}".format(systems[0].name)] = "restart_hmc_{}.pickle".format(system.name)
 
         if restart:
             logging.info("Starting HMC sampler parametrization from a previous restart.")
 
             # Read HMCSampler pickle
-            self.__dict__ = self.read_restart_pickle(settings.restart, system.interface, "restart_hmc_file_{}".format(self._label))
+            self.__dict__ = self.read_restart_pickle(settings.restart, system.interface, "restart_hmc_file_{}".format(system.name))
 
             # Read data into system
             system.read_data(os.path.join(settings.restart["restart_dir"], "{}_hmc_{}.nc".format(system.name, self._label)))
@@ -184,6 +185,10 @@ class HMCSampler(Task):
                     potential_final_mm = mm_ase_engine.run_calculation(coords=coord_to_run, label=int(self._label))
 
                 self._last_accepted_mm_energy = potential_final_mm
+
+            # Print output and start from correct iteration
+            self._print_output(system.name)
+            self._n += 1
         else:
             self._n = 1
             self._n_total_qm = 0
@@ -326,7 +331,7 @@ class HMCSampler(Task):
 
             # Write restart files
             if self._n % checkpoint_freq == 0:
-                self.write_restart_pickle(settings.restart, system.interface, "restart_hmc_file_{}".format(self._label), self.__dict__)
+                self.write_restart_pickle(settings.restart, system.interface, "restart_hmc_file_{}".format(system.name), self.__dict__)
                 system.write_data(os.path.join(settings.restart["restart_dir"], "{}_hmc_{}.nc".format(system.name, self._label)))
                 system.write_coordinates_xyz("{}_hmc_{}.xyz".format(system.name, self._label))
 
