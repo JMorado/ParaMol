@@ -19,6 +19,7 @@ Library Documentation
    ParaMol_Package/ParaMol.QM_engines
    ParaMol_Package/ParaMol.MM_engines
    ParaMol_Package/ParaMol.Utils
+   ParaMol_Package/ParaMol.HMC
 
 
 
