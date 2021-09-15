@@ -1,6 +1,3 @@
-import sys
-sys.path.insert(0, "/home/treason/PycharmProjects/ParaMol_git_master")
-
 import simtk.unit as unit
 
 # ParaMol imports

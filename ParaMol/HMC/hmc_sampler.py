@@ -90,23 +90,23 @@ class HMCSampler(Task):
         optimize_mm : bool
             Flag that controls whether an MM optimization is performed before the HMC run. Only used if ase_calculator_low_level is None.
         ase_calculator_low_level : ase.calculator.*.*
-            ASE calculator used for the low level chain.
+            ASE calculator used for the low level chain. Useful if one wants to sample from ML potential to QM level, or from one QM level to another.
         calculate_forces : bool
-            Flag that signals whether or not to calculate forces when a structure is accepted. Only relevant for parametrization purposes (does not affect the HMC in itself).
+            Flag that signals whether or not to calculate forces when a structure is accepted. Only relevant for parametrization purposes (does not affect the nMC-MC algorithm in itself).
         checkpoint_freq : int
             Frequency at which checkpoint restart files are written.
         parametrization : bool
             Flag that controls whether parametrization is to be performed.
         sampling_mm : bool
-            Flag that controls whether or not to sample rejected MM structures.
+            Flag that controls whether or not to sample rejected MM structures for parametrization purposes.
         sampling_freq_mm : int
-            Frequency at which MM structures rejected in the QM ensemble are sampled.
+            Frequency at which MM structures rejected in the QM ensemble are sampled for parametrization purposes (currently not implemented).
         sampling_freq_qm : int
-            Frequency at which structures accepted in sample
+            Frequency at which QM structures accepted into QM ensemble are sampled for parametrization purposes.
         parametrization_freq : int
-            Number of structures that has to be collected before performing parametrization.
+            Number of structures that have to be collected before performing a parametrization step.
         restart : bool
-            Flag that controls whether or not to perform a restart.
+            Flag that controls whether or not to start from a restart file.
         seed : int
             Numpy random seed.
 
@@ -424,14 +424,15 @@ class HMCSampler(Task):
         self._label = label
 
         parameter_space, objective_function, optimizer = (None, None, None)
-        # TODO: Once this is included in the main ParaMol version, add this line to the default dictionary
-        settings.restart["restart_hmc_file_{}".format(self._label)] = "restart_hmc_{}.pickle".format(self._label)
+
+        ## TODO: Once this is included in the main ParaMol version, add this line to the default dictionary
+        #settings.restart["restart_hmc_file_{}".format(self._label)] = "restart_hmc_{}.pickle".format(self._label)
 
         if restart:
             logging.info("Starting HMC sampler parametrization from a previous restart.")
 
             # Read HMCSampler pickle
-            self.__dict__ = self.read_restart_pickle(settings.restart, system.interface, "restart_hmc_file_{}".format(self._label))
+            self.__dict__ = self.read_restart_pickle(settings.restart, system.interface, settings.restart["restart_hmc_file"].format(self._label))
 
             # Read data into system
             system.read_data(os.path.join(settings.restart["restart_dir"], "{}_hmc_{}.nc".format(system.name, self._label)))
@@ -487,7 +488,7 @@ class HMCSampler(Task):
 
             # Write restart files
             if self._n % checkpoint_freq == 0:
-                self.write_restart_pickle(settings.restart, system.interface, "restart_hmc_file_{}".format(self._label), self.__dict__)
+                self.write_restart_pickle(settings.restart, system.interface, settings.restart["restart_hmc_file"].format(self._label), self.__dict__)
                 system.write_data(os.path.join(settings.restart["restart_dir"], "{}_hmc_{}.nc".format(system.name, self._label)))
                 system.write_coordinates_xyz("{}_hmc_{}.xyz".format(system.name, self._label))
 

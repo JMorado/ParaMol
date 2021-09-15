@@ -1,6 +1,3 @@
-import sys
-sys.path.insert(0, "/home/treason/PycharmProjects/ParaMol_git_master")
-
 import simtk.unit as unit
 
 # ParaMol imports
@@ -38,11 +35,11 @@ calc = Dftb(Hamiltonian_='DFTB',  # line is included by default
             Hamiltonian_SCC='Yes',
             Hamiltonian_SCCTolerance=1e-8, )
 
-# Alternative, we could set the calculator in the settings
+# Set the calculator in the settings
 paramol_settings.qm_engine["ase"]["calculator"] = calc
 
 # --------------------------------------------------------- #
-#                  Perform the HMC Sampling                 #
+#                Perform the nMC-MC Sampling                #
 # --------------------------------------------------------- #
 hmc_sampler = HMCSampler()
 
