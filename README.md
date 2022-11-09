@@ -10,8 +10,6 @@ ParaMol is a Python library that aims to ease the process of force field paramet
 
 Current Version: 1.1.4
 
-NOTE: This library is no longer under active development. 
-
 # Quick Installation
 The easiest way to install ParaMol it.
 
@@ -56,3 +54,7 @@ If you have any question or issue to report please contact j.morado@soton.ac.uk.
 # References
 
 Morado, J.; Mortenson, P. N.; Verdonk, M. L.; Ward, R. A.; Essex, J. W.; Skylaris, C.-K. ParaMol: A Package for Automatic Parameterization of Molecular Mechanics Force Fields. J. Chem. Inf. Model. 2021, acs.jcim.0c01444. https://doi.org/10.1021/acs.jcim.0c01444.  
+
+# Notes
+
+This library is no longer under active development. 
