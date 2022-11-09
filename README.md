@@ -10,6 +10,7 @@ ParaMol is a Python library that aims to ease the process of force field paramet
 
 Current Version: 1.1.4
 
+NOTE: This library is no longer under active development. 
 
 # Quick Installation
 The easiest way to install ParaMol it.
