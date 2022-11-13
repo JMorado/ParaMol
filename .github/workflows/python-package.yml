@@ -35,6 +35,7 @@ jobs:
     - name: Test with pytest
       run: |
         $CONDA/bin/conda create -n paramol_${{ matrix.python-version }} python=${{ matrix.python-version }}
+        conda init bash
         conda activate paramol_${{ matrix.python-version }}
         conda install paramol -c jmorado -c ambermd -c conda-forge -c omnia -c rdkit -c anaconda
         pytest
