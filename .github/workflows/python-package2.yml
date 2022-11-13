@@ -43,7 +43,6 @@ jobs:
     - name: Run tests
       shell: bash -l {0}
       run:
-        $CONDA/bin/activate base
-        pytest
+        $CONDA/bin/activate base && pytest
 
         
