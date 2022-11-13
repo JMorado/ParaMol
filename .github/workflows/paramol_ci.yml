@@ -1,4 +1,4 @@
-name: ParaMol
+name: continuous integration
 
 on:
   push:
@@ -43,6 +43,7 @@ jobs:
       shell: bash -l {0}
       run: |
           conda install pytest
+          python -V
           pytest
 
         
