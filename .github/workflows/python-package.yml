@@ -1,4 +1,4 @@
-name: ParaMol
+name: ParaMol CI
 
 on:
   push:
