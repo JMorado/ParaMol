@@ -38,7 +38,7 @@ jobs:
         use-only-tar-bz2: true  # IMPORTANT: This needs to be set for caching to work properly!
         auto-update-conda: true
         auto-activate-base: false
-        environment-file: paramol_env.yml
+        environment-file: .github/workflows/paramol_env.yml
     - name: Run tests
       shell: bash -l {0}
       run: pytest
