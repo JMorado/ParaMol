@@ -1,6 +1,6 @@
 [![Build Status](https://travis-ci.com/JMorado/ParaMol.svg?branch=master)](https://travis-ci.org/JMorado/ParaMol)
 [![Documentation Status](https://readthedocs.org/projects/paramol/badge/?version=latest)](https://paramol.readthedocs.io/en/latest/?badge=latest)
-
+![example workflow](https://github.com/github/docs/actions/workflows/main.yml/badge.svg)
 # ParaMol 
 
 ![ParaMol](docs/source/paramol-white.png)
