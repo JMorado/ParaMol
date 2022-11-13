@@ -26,7 +26,6 @@ jobs:
         python -m pip install flake8 pytest
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         $CONDA/bin/conda create -n paramol_${{ matrix.python-version }} python=${{ matrix.python-version }}
-        $CONDA/bin/activate paramol_${{ matrix.python-version }}
         $CONDA/bin/conda env update --file conda-build/meta.yaml --name paramol_${{ matrix.python-version }}
     - name: Lint with flake8
       run: |
@@ -36,4 +35,5 @@ jobs:
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
     - name: Test with pytest
       run: |
+        $CONDA/bin/activate paramol_${{ matrix.python-version }}
         pytest
