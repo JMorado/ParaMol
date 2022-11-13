@@ -32,10 +32,20 @@ jobs:
         flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
         # exit-zero treats all errors as warnings. The GitHub editor is 127 chars wide
         flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
-    - name: Test with pytest
+    - uses: conda-incubator/setup-miniconda@v2
+      with:
+        miniconda-version: "latest"
+        channels: anaconda, ambermd, jmorado, omnia, rdkit, conda-forge, defaults
+        use-only-tar-bz2: true  # IMPORTANT: This needs to be set for caching to work properly!
+        auto-update-conda: true
+        auto-activate-base: true
+    - name: Install ParaMol environment
       run: |
-        $CONDA/bin/conda create -n paramol_${{ matrix.python-version }} python=${{ matrix.python-version }}
-        conda init bash
-        conda activate paramol_${{ matrix.python-version }}
-        conda install paramol -c jmorado -c ambermd -c conda-forge -c omnia -c rdkit -c anaconda
-        pytest
+          echo "begin: PATH=$PATH;"
+
+          conda create -y --name paramol
+          conda activate paramol || true
+          conda install paramol -c jmorado -c ambermd -c conda-forge -c omnia -c rdkit -c anaconda
+          echo "after conda activate samtools: PATH=$PATH;"
+
+        
