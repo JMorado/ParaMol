@@ -28,7 +28,7 @@ jobs:
         auto-update-conda: true
         auto-activate-base: false
         python-version: ${{ matrix.python-version }}
-        #environment-file: .github/workflows/paramol_env.yml
+        environment-file: .github/workflows/paramol_env.yml
     - shell: bash -l {0}
       run: |
         conda info
@@ -42,7 +42,6 @@ jobs:
     - name: Run pytest
       shell: bash -l {0}
       run: |
-          conda install paramol -c jmorado -c ambermd -c conda-forge -c omnia -c rdkit -c anaconda
           conda install pytest
           pytest
 
