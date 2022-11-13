@@ -1,4 +1,4 @@
-name: ParaMol CI
+name: ParaMol
 
 on:
   push:
@@ -20,11 +20,6 @@ jobs:
       uses: actions/setup-python@v3
       with:
         python-version: ${{ matrix.python-version }}
-    - name: Install dependencies and create conda environment
-      run: |
-        python -m pip install --upgrade pip
-        python -m pip install flake8 pytest
-        if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
@@ -35,13 +30,26 @@ jobs:
       with:
         miniconda-version: "latest"
         channels: anaconda, ambermd, jmorado, omnia, rdkit, conda-forge, defaults
-        use-only-tar-bz2: true  # IMPORTANT: This needs to be set for caching to work properly!
+        use-only-tar-bz2: true
         auto-update-conda: true
-        auto-activate-base: true
-    - name: Install ParaMol environment
+        auto-activate-base: false
+        python-version: ${{ matrix.python-version }}
+        #environment-file: .github/workflows/paramol_env.yml
+    - shell: bash -l {0}
       run: |
-          conda create -y --name paramol_${{ matrix.python-version }}
-          conda activate paramol_${{ matrix.python-version }} 
+        conda info
+        conda list
+    - name: Lint
+      shell: bash -l {0}
+      run: |
+          conda install flake8
+          python -m flake8 . --count --select=E9,F63,F7,F82 --show-source --statistics
+          python -m flake8 . --count --exit-zero --max-complexity=10 --max-line-length=127 --statistics
+    - name: Run pytest
+      shell: bash -l {0}
+      run: |
           conda install paramol -c jmorado -c ambermd -c conda-forge -c omnia -c rdkit -c anaconda
+          conda install pytest
           pytest
+
         
