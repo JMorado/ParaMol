@@ -872,7 +872,7 @@ class ForceField:
                     # For a given force, iterate over all force field terms
                     for force_field_term in sub_force:
                         for parameter in force_field_term.parameters.values():
-                            if parameter.param_key is not "torsion_periodicity":
+                            if parameter.param_key == "torsion_periodicity":
                                 if force_field_term.atoms in torsions:
                                     dihedral_types.append(parameter.symmetry_group)
 
