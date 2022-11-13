@@ -26,8 +26,8 @@ jobs:
         python -m pip install flake8 pytest
         if [ -f requirements.txt ]; then pip install -r requirements.txt; fi
         $CONDA/bin/conda create -n paramol_${{ matrix.python-version }} python=${{ matrix.python-version }}
-        $CONDA/bin/conda activate paramol_${{ matrix.python-version }}
-        $CONDA/bin/conda install paramol -c jmorado -c ambermd -c conda-forge -c omnia -c rdkit -c anaconda
+        $CONDA/bin/activate paramol_${{ matrix.python-version }}
+        $CONDA/bin/install paramol -c jmorado -c ambermd -c conda-forge -c omnia -c rdkit -c anaconda
     - name: Lint with flake8
       run: |
         # stop the build if there are Python syntax errors or undefined names
